@@ -66,6 +66,8 @@ FencetasticCRM/
 - 2 seeded users: Adnaan (adnaan@fencetastic.com) and Meme (meme@fencetastic.com)
 - Both users have identical permissions — no role-based access control needed
 - Session expiry: 7 days, refresh on activity
+- **CORS:** API sets `Access-Control-Allow-Origin` to the web service URL, `Access-Control-Allow-Credentials: true`. Cookies use `SameSite=None; Secure; HttpOnly`. Both services should be on the same parent domain (e.g., `api.fencetastic.app` and `app.fencetastic.app`) to simplify cookie sharing.
+- **Concurrency:** Simple 30-second polling on the frontend. Last-write-wins — acceptable for 2 users. No WebSockets needed for v1.
 
 ---
 
@@ -102,6 +104,8 @@ FencetasticCRM/
 | completedDate | date | Date project completed (nullable) |
 | estimateDate | date | Date estimate was given (nullable) |
 | followUpDate | date | Follow-up reminder date (nullable) |
+| linearFeet | decimal(10,2) | Linear footage for rate template calc (nullable) |
+| rateTemplateId | uuid | FK → RateTemplate used for estimate (nullable) |
 | subcontractor | string | Primary subcontractor name (nullable) |
 | notes | text | General project notes (nullable) |
 | createdById | uuid | FK → User |
@@ -160,6 +164,25 @@ Tracks the running balance of the old owner's credit card debt.
 
 The initial balance ($5,988.41 from the Payout sheet) is seeded as the first ledger entry.
 
+### CommissionSnapshot
+
+Persisted when a project status changes to COMPLETED. Locks in the commission values at completion time so historical reports are stable.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| id | uuid | PK |
+| projectId | uuid | FK → Project (unique) |
+| moneyReceived | decimal(10,2) | Actual received at time of completion |
+| totalExpenses | decimal(10,2) | materialsCost + sum(sub.amountOwed) |
+| adnaanCommission | decimal(10,2) | projectTotal × 0.10 |
+| memeCommission | decimal(10,2) | projectTotal × 0.05 |
+| grossProfit | decimal(10,2) | moneyReceived - totalExpenses - adnaanCommission |
+| aimannDeduction | decimal(10,2) | max(grossProfit, 0) × 0.25 (or 0 if no debt) |
+| debtBalanceBefore | decimal(10,2) | Aimann debt balance before this project |
+| debtBalanceAfter | decimal(10,2) | Balance after deduction posted |
+| netProfit | decimal(10,2) | grossProfit - aimannDeduction - memeCommission |
+| settledAt | timestamptz | When snapshot was created |
+
 ### OperatingExpense
 
 | Field | Type | Notes |
@@ -184,7 +207,7 @@ INPUTS:
   projectTotal      — what we charged the customer
   paymentMethod     — CASH, CHECK, or CREDIT_CARD
   materialsCost     — actual materials
-  subPaymentsTotal  — sum of all SubcontractorPayment.amountPaid for this project
+  subOwedTotal      — sum of all SubcontractorPayment.amountOwed for this project
   aimannDebtBalance — current running balance from AimannDebtLedger
 
 STEP 1: Money Received
@@ -194,7 +217,7 @@ STEP 1: Money Received
     moneyReceived = projectTotal
 
 STEP 2: Total Expenses
-  totalExpenses = materialsCost + subPaymentsTotal
+  totalExpenses = materialsCost + subOwedTotal  (uses amountOwed, not amountPaid)
 
 STEP 3: Commissions (based on projectTotal)
   adnaanCommission = projectTotal × 0.10
@@ -205,9 +228,10 @@ STEP 4: Gross Profit
 
 STEP 5: Aimann Deduction
   if aimannDebtBalance > 0:
-    aimannDeduction = grossProfit × 0.25
+    aimannDeduction = max(grossProfit, 0) × 0.25
   else:
     aimannDeduction = 0
+  (Guard: if grossProfit is negative, aimannDeduction is $0 — never negative)
 
 STEP 6: Net Profit
   netProfit = grossProfit - aimannDeduction - memeCommission
@@ -215,10 +239,12 @@ STEP 6: Net Profit
 
 ### Rules
 
-- Commissions are computed values, not stored — recalculated on every read
-- The Aimann deduction entry is written to AimannDebtLedger when a project status changes to COMPLETED
+- For OPEN/IN_PROGRESS projects: commissions are computed live from current values (for previews and pipeline projections)
+- When a project status changes to COMPLETED: a `CommissionSnapshot` is persisted, locking in all values at that moment. The Aimann deduction is also written to `AimannDebtLedger`.
+- Historical reports and the Commissions page read from `CommissionSnapshot`, not live calculations — this ensures numbers never shift after completion
 - Aimann's 25% applies as the full percentage as long as any debt balance remains (no capping at remaining balance)
 - Commission percentages are defined as constants in `packages/shared/constants.ts` for easy future adjustment
+- All monetary calculations use 2 decimal places, rounded half-up
 
 ---
 
@@ -339,7 +365,7 @@ STEP 6: Net Profit
 
 - **Upload flow:** Frontend sends file to `POST /api/upload` → API streams to R2 → returns public URL → URL stored in ProjectNote.photoUrls array
 - **File types:** JPEG, PNG, HEIC (iPhone photos). Max 10MB per file, max 5 files per note.
-- **R2 bucket structure:** `fencetastic/{projectId}/{noteId}/{filename}`
+- **R2 bucket structure:** `fencetastic/{projectId}/uploads/{uuid}-{filename}` (no noteId dependency — photos are uploaded before the note is created, then URLs are attached to the note on creation)
 - **Environment variables:** `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`
 - **Client SDK:** `@aws-sdk/client-s3` with R2 endpoint
 
@@ -380,6 +406,7 @@ One-time import script at `scripts/import-spreadsheet.ts`:
 - `POST /api/auth/login` — email + password → JWT cookie
 - `POST /api/auth/logout` — clear cookie
 - `GET /api/auth/me` — current user
+- `PATCH /api/auth/password` — change password (requires current password)
 
 ### Projects
 - `GET /api/projects` — list with filters (status, fenceType, search, dateRange)
@@ -396,6 +423,11 @@ One-time import script at `scripts/import-spreadsheet.ts`:
 ### Project Notes
 - `GET /api/projects/:id/notes` — list notes for project
 - `POST /api/projects/:id/notes` — create note (with photo URLs)
+- `PATCH /api/notes/:id` — edit note content
+- `DELETE /api/notes/:id` — delete note
+
+### Activity Log
+- `GET /api/activity` — recent status changes and notes across all projects (for dashboard widget)
 
 ### Upload
 - `POST /api/upload` — upload file to R2, returns URL
