@@ -7,6 +7,8 @@ import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 import { useCalendarEvents, type CalendarEvent } from '@/hooks/use-calendar-events';
 import { CreateProjectDialog } from '@/components/projects/create-project-dialog';
+import { Button } from '@/components/ui/button';
+import { Plus } from 'lucide-react';
 
 // --- date-fns localizer ---
 const locales = { 'en-US': enUS };
@@ -107,11 +109,16 @@ export default function CalendarPage() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Calendar</h1>
-        <p className="text-muted-foreground mt-1">
-          Schedule installs, estimates, and follow-ups.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Calendar</h1>
+          <p className="text-muted-foreground mt-1">
+            Schedule installs, estimates, and follow-ups.
+          </p>
+        </div>
+        <Button onClick={() => { setSelectedSlotDate(format(new Date(), 'yyyy-MM-dd')); setCreateDialogOpen(true); }}>
+          <Plus className="h-4 w-4 mr-1" />Add Event
+        </Button>
       </div>
 
       {/* Legend */}
