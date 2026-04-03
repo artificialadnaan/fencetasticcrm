@@ -35,3 +35,7 @@ npm-debug.log*
 
 # OMC
 .omc/
+
+# Uploaded files (local dev storage; Phase 8 will use R2)
+apps/api/uploads/*
+!apps/api/uploads/.gitkeep
