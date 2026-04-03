@@ -117,12 +117,19 @@ export default function CalendarPage() {
   // Projects list for optional project link
   const [projects, setProjects] = useState<ProjectOption[]>([]);
 
+  const [projectSearch, setProjectSearch] = useState('');
+
   useEffect(() => {
-    api.get('/projects?limit=200').then((res) => {
-      const data = res.data?.data ?? res.data ?? [];
-      setProjects(Array.isArray(data) ? data : []);
-    }).catch(() => {
-      // non-critical, project dropdown just stays empty
+    api.get('/projects?limit=500&sortBy=customer&sortDir=asc').then((res) => {
+      const raw = res.data?.data ?? res.data ?? [];
+      const arr = Array.isArray(raw) ? raw : [];
+      setProjects(arr.map((p: { id: string; customer: string; address: string }) => ({
+        id: p.id,
+        customer: p.customer,
+        address: p.address,
+      })));
+    }).catch((err) => {
+      console.error('Failed to fetch projects for dropdown:', err);
     });
   }, []);
 
@@ -345,25 +352,61 @@ export default function CalendarPage() {
               </Select>
             </div>
 
-            {/* Project link (optional) */}
+            {/* Project link (optional, searchable) */}
             <div className="space-y-1.5">
               <Label>Link to Project (optional)</Label>
-              <Select
-                value={form.projectId || 'none'}
-                onValueChange={(v) => setForm((f) => ({ ...f, projectId: v === 'none' ? '' : v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="No project" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No project</SelectItem>
-                  {projects.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.customer} — {p.address}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {form.projectId ? (
+                <div className="flex items-center gap-2 border rounded-md px-3 py-2 text-sm">
+                  <span className="flex-1 truncate">
+                    {projects.find((p) => p.id === form.projectId)?.customer ?? 'Selected project'} — {projects.find((p) => p.id === form.projectId)?.address ?? ''}
+                  </span>
+                  <button
+                    type="button"
+                    className="text-muted-foreground hover:text-foreground text-xs"
+                    onClick={() => { setForm((f) => ({ ...f, projectId: '' })); setProjectSearch(''); }}
+                  >
+                    Clear
+                  </button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <Input
+                    placeholder="Search by customer or address..."
+                    value={projectSearch}
+                    onChange={(e) => setProjectSearch(e.target.value)}
+                  />
+                  {projectSearch.length > 0 && (
+                    <div className="absolute z-50 top-full left-0 right-0 mt-1 border rounded-md bg-popover shadow-md max-h-48 overflow-y-auto">
+                      {projects
+                        .filter((p) => {
+                          const q = projectSearch.toLowerCase();
+                          return p.customer.toLowerCase().includes(q) || p.address.toLowerCase().includes(q);
+                        })
+                        .slice(0, 20)
+                        .map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
+                            onClick={() => {
+                              setForm((f) => ({ ...f, projectId: p.id }));
+                              setProjectSearch('');
+                            }}
+                          >
+                            <span className="font-medium">{p.customer}</span>
+                            <span className="text-muted-foreground"> — {p.address}</span>
+                          </button>
+                        ))}
+                      {projects.filter((p) => {
+                        const q = projectSearch.toLowerCase();
+                        return p.customer.toLowerCase().includes(q) || p.address.toLowerCase().includes(q);
+                      }).length === 0 && (
+                        <div className="px-3 py-2 text-sm text-muted-foreground">No projects found</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Notes */}
