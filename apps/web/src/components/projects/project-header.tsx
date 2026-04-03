@@ -31,8 +31,11 @@ export function ProjectHeader({
     try {
       await api.patch(`/projects/${projectId}`, { status: newStatus });
       onStatusChange();
-    } catch {
-      // Error will be visible on refetch
+    } catch (err) {
+      console.error('Status change failed:', err);
+      alert('Failed to update status. Please try again.');
+      // Refetch to reset the dropdown
+      onStatusChange();
     }
   }
 

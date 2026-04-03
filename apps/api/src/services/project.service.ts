@@ -121,7 +121,7 @@ export async function listProjects(query: ProjectListQuery = {}) {
   };
   const orderField = sortFieldMap[sortBy] || 'installDate';
 
-  const [projects, total] = await Promise.all([
+  const [projects, total, latestDebt] = await Promise.all([
     prisma.project.findMany({
       where,
       include: {
@@ -134,7 +134,13 @@ export async function listProjects(query: ProjectListQuery = {}) {
       take: limit,
     }),
     prisma.project.count({ where }),
+    prisma.aimannDebtLedger.findFirst({
+      orderBy: { date: 'desc' },
+      select: { runningBalance: true },
+    }),
   ]);
+
+  const currentDebtBalance = latestDebt ? d(latestDebt.runningBalance) : 0;
 
   const data: ProjectListItem[] = projects.map((p) => {
     const projectTotal = d(p.projectTotal);
@@ -146,13 +152,13 @@ export async function listProjects(query: ProjectListQuery = {}) {
       0
     );
 
-    // Quick inline commission calc for list view profit %
+    // Commission calc for list view profit % using actual current debt balance
     const breakdown = calculateCommission({
       projectTotal,
       paymentMethod: p.paymentMethod as PaymentMethod,
       materialsCost,
       subOwedTotal,
-      aimannDebtBalance: 0, // Simplified for list view — no debt lookup per row
+      aimannDebtBalance: currentDebtBalance,
     });
 
     const profitPercent =
@@ -298,8 +304,92 @@ export async function getProjectById(projectId: string) {
   };
 }
 
+// Shared helper: generate commission snapshot + debt ledger entry for a completed project.
+// Must be called inside a serializable Prisma interactive transaction (tx).
+async function generateCommissionSnapshot(
+  projectId: string,
+  tx: Omit<typeof prisma, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>
+): Promise<void> {
+  const project = await tx.project.findUnique({ where: { id: projectId } });
+  if (!project) throw new AppError(404, 'Project not found', 'PROJECT_NOT_FOUND');
+
+  const subAgg = await tx.subcontractorPayment.aggregate({
+    where: { projectId },
+    _sum: { amountOwed: true },
+  });
+  const subOwedTotal = subAgg._sum.amountOwed ? Number(subAgg._sum.amountOwed) : 0;
+
+  // Lock the latest debt ledger row to prevent race conditions
+  const lastLedgerRows = await tx.$queryRaw<Array<{ runningBalance: string }>>`
+    SELECT "runningBalance"
+    FROM "AimannDebtLedger"
+    ORDER BY "date" DESC
+    LIMIT 1
+    FOR UPDATE
+  `;
+  const aimannDebtBalance = lastLedgerRows.length > 0 ? Number(lastLedgerRows[0].runningBalance) : 0;
+
+  const projectTotal = Number(project.projectTotal);
+  const materialsCost = Number(project.materialsCost);
+
+  const breakdown = calculateCommission({
+    projectTotal,
+    paymentMethod: project.paymentMethod as PaymentMethod,
+    materialsCost,
+    subOwedTotal,
+    aimannDebtBalance,
+  });
+
+  const debtBalanceAfter = Number(
+    (aimannDebtBalance - breakdown.aimannDeduction).toFixed(2)
+  );
+
+  // Upsert commission snapshot — handles re-completion of reopened projects
+  await tx.commissionSnapshot.upsert({
+    where: { projectId },
+    create: {
+      projectId,
+      moneyReceived: breakdown.moneyReceived,
+      totalExpenses: breakdown.totalExpenses,
+      adnaanCommission: breakdown.adnaanCommission,
+      memeCommission: breakdown.memeCommission,
+      grossProfit: breakdown.grossProfit,
+      aimannDeduction: breakdown.aimannDeduction,
+      debtBalanceBefore: aimannDebtBalance,
+      debtBalanceAfter,
+      netProfit: breakdown.netProfit,
+    },
+    update: {
+      moneyReceived: breakdown.moneyReceived,
+      totalExpenses: breakdown.totalExpenses,
+      adnaanCommission: breakdown.adnaanCommission,
+      memeCommission: breakdown.memeCommission,
+      grossProfit: breakdown.grossProfit,
+      aimannDeduction: breakdown.aimannDeduction,
+      debtBalanceBefore: aimannDebtBalance,
+      debtBalanceAfter,
+      netProfit: breakdown.netProfit,
+      settledAt: new Date(),
+    },
+  });
+
+  // Write debt ledger entry if deduction > 0
+  if (breakdown.aimannDeduction > 0) {
+    await tx.aimannDebtLedger.create({
+      data: {
+        projectId,
+        amount: -breakdown.aimannDeduction,
+        runningBalance: debtBalanceAfter,
+        note: `Commission deduction from project: ${project.customer} - ${project.address}`,
+        date: new Date(),
+      },
+    });
+  }
+}
+
 export async function createProject(dto: CreateProjectDTO, createdById: string) {
   const moneyReceived = calcMoneyReceived(dto.projectTotal, dto.paymentMethod);
+  const status = dto.status || ProjectStatus.ESTIMATE;
 
   const project = await prisma.project.create({
     data: {
@@ -307,7 +397,7 @@ export async function createProject(dto: CreateProjectDTO, createdById: string) 
       address: dto.address,
       description: dto.description,
       fenceType: dto.fenceType,
-      status: dto.status || ProjectStatus.ESTIMATE,
+      status,
       projectTotal: dto.projectTotal,
       paymentMethod: dto.paymentMethod,
       moneyReceived,
@@ -327,6 +417,16 @@ export async function createProject(dto: CreateProjectDTO, createdById: string) 
     },
   });
 
+  // If created directly as COMPLETED, generate snapshot immediately
+  if (status === ProjectStatus.COMPLETED) {
+    await prisma.$transaction(
+      async (tx) => {
+        await generateCommissionSnapshot(project.id, tx);
+      },
+      { isolationLevel: 'Serializable' }
+    );
+  }
+
   return { id: project.id };
 }
 
@@ -338,6 +438,20 @@ export async function updateProject(projectId: string, dto: UpdateProjectDTO) {
 
   if (!current || current.isDeleted) {
     throw new AppError(404, 'Project not found', 'PROJECT_NOT_FOUND');
+  }
+
+  // Completed projects are locked — only allow status, notes, and followUpDate changes
+  if (current.status === ProjectStatus.COMPLETED) {
+    const allowedFields = ['status', 'notes', 'followUpDate'];
+    const attemptedFields = Object.keys(dto);
+    const blockedFields = attemptedFields.filter((f) => !allowedFields.includes(f));
+    if (blockedFields.length > 0) {
+      throw new AppError(
+        400,
+        `Cannot modify ${blockedFields.join(', ')} on a completed project`,
+        'COMPLETED_LOCKED'
+      );
+    }
   }
 
   // Build update data — only set fields that were provided
@@ -388,72 +502,20 @@ export async function updateProject(projectId: string, dto: UpdateProjectDTO) {
       updateData.completedDate = new Date();
     }
 
-    // Use a transaction for atomicity: update project + create snapshot + write ledger
-    return prisma.$transaction(async (tx) => {
-      const updated = await tx.project.update({
-        where: { id: projectId },
-        data: updateData,
-      });
-
-      // Get subcontractor totals
-      const subAgg = await tx.subcontractorPayment.aggregate({
-        where: { projectId },
-        _sum: { amountOwed: true },
-      });
-      const subOwedTotal = subAgg._sum.amountOwed ? Number(subAgg._sum.amountOwed) : 0;
-
-      // Get current Aimann debt balance
-      const lastLedger = await tx.aimannDebtLedger.findFirst({
-        orderBy: { date: 'desc' },
-      });
-      const aimannDebtBalance = lastLedger ? Number(lastLedger.runningBalance) : 0;
-
-      const projectTotal = Number(updated.projectTotal);
-      const materialsCost = Number(updated.materialsCost);
-
-      const breakdown = calculateCommission({
-        projectTotal,
-        paymentMethod: updated.paymentMethod as PaymentMethod,
-        materialsCost,
-        subOwedTotal,
-        aimannDebtBalance,
-      });
-
-      const debtBalanceAfter = Number(
-        (aimannDebtBalance - breakdown.aimannDeduction).toFixed(2)
-      );
-
-      // Create commission snapshot
-      await tx.commissionSnapshot.create({
-        data: {
-          projectId,
-          moneyReceived: breakdown.moneyReceived,
-          totalExpenses: breakdown.totalExpenses,
-          adnaanCommission: breakdown.adnaanCommission,
-          memeCommission: breakdown.memeCommission,
-          grossProfit: breakdown.grossProfit,
-          aimannDeduction: breakdown.aimannDeduction,
-          debtBalanceBefore: aimannDebtBalance,
-          debtBalanceAfter,
-          netProfit: breakdown.netProfit,
-        },
-      });
-
-      // Write debt ledger entry if deduction > 0
-      if (breakdown.aimannDeduction > 0) {
-        await tx.aimannDebtLedger.create({
-          data: {
-            projectId,
-            amount: -breakdown.aimannDeduction,
-            runningBalance: debtBalanceAfter,
-            note: `Commission deduction from project: ${updated.customer} - ${updated.address}`,
-            date: new Date(),
-          },
+    // Use a serializable transaction: update project + upsert snapshot + write ledger
+    return prisma.$transaction(
+      async (tx) => {
+        const updated = await tx.project.update({
+          where: { id: projectId },
+          data: updateData,
         });
-      }
 
-      return { id: updated.id };
-    });
+        await generateCommissionSnapshot(projectId, tx);
+
+        return { id: updated.id };
+      },
+      { isolationLevel: 'Serializable' }
+    );
   }
 
   // Normal update (no status transition to COMPLETED)

@@ -6,6 +6,7 @@ import { projectColumns } from '@/components/projects/columns';
 import { DataTableToolbar } from '@/components/projects/data-table-toolbar';
 import { DataTablePagination } from '@/components/projects/data-table-pagination';
 import { CreateProjectDialog } from '@/components/projects/create-project-dialog';
+import { Card, CardContent } from '@/components/ui/card';
 import type { ProjectListItem, ProjectListQuery } from '@fencetastic/shared';
 
 export default function ProjectsPage() {
@@ -17,7 +18,7 @@ export default function ProjectsPage() {
     sortDir: 'desc',
   });
 
-  const { data, pagination, isLoading, refetch } = useProjects(query);
+  const { data, pagination, isLoading, error, refetch } = useProjects(query);
 
   const handleSearchChange = useCallback((search: string) => {
     setQuery((prev) => ({ ...prev, search: search || undefined, page: 1 }));
@@ -53,6 +54,25 @@ export default function ProjectsPage() {
     },
     [navigate]
   );
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
+            <p className="text-muted-foreground mt-1">Manage all your fencing projects.</p>
+          </div>
+          <CreateProjectDialog onCreated={refetch} />
+        </div>
+        <Card>
+          <CardContent className="flex items-center justify-center py-16">
+            <p className="text-destructive">Failed to load projects. Please try again.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
