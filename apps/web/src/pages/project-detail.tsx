@@ -9,6 +9,8 @@ import { ProjectFinancialsCard } from '@/components/projects/project-financials-
 import { ProjectScheduleCard } from '@/components/projects/project-schedule-card';
 import { ProjectInfoCard } from '@/components/projects/project-info-card';
 import { SubcontractorTable } from '@/components/projects/subcontractor-table';
+import { ProjectIncome } from '@/components/projects/project-income';
+import { ProjectExpenses } from '@/components/projects/project-expenses';
 import { NotesTimeline } from '@/components/projects/notes-timeline';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
@@ -123,6 +125,12 @@ export default function ProjectDetailPage() {
           />
         </div>
       </div>
+
+      {/* Income / Payments */}
+      <ProjectIncome projectId={project.id} onDataChange={refetch} />
+
+      {/* Expenses */}
+      <ProjectExpenses projectId={project.id} onDataChange={refetch} />
 
       {/* Subcontractor Payments */}
       <SubcontractorTable
