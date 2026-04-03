@@ -569,7 +569,20 @@ async function main() {
   const totalSkipped = openResult.skipped + completedResult.skipped + payoutResult.skipped + expResult.skipped;
   const totalErrors = openResult.errors + completedResult.errors + payoutResult.errors + expResult.errors;
 
-  console.log('=== Import complete ===');
+  // ── Sort verification ──
+  // Projects are inserted in spreadsheet order. Log the date range so the caller
+  // can verify the import covered the expected range.
+  const [oldest, newest] = await Promise.all([
+    prisma.project.findFirst({ orderBy: { contractDate: 'asc' }, select: { contractDate: true, customer: true } }),
+    prisma.project.findFirst({ orderBy: { contractDate: 'desc' }, select: { contractDate: true, customer: true } }),
+  ]);
+  if (oldest && newest) {
+    console.log(`\nProject date range:`);
+    console.log(`  Oldest contract: ${oldest.contractDate?.toISOString().split('T')[0]} (${oldest.customer})`);
+    console.log(`  Newest contract: ${newest.contractDate?.toISOString().split('T')[0]} (${newest.customer})`);
+  }
+
+  console.log('\n=== Import complete ===');
   console.log(`Total imported: ${totalImported}`);
   console.log(`Total skipped:  ${totalSkipped}`);
   console.log(`Total errors:   ${totalErrors}`);
