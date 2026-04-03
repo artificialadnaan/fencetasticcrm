@@ -40,10 +40,12 @@ export async function getDebtLedger(): Promise<DebtLedgerEntry[]> {
   }));
 }
 
-export async function createDebtAdjustment(dto: DebtAdjustmentDTO): Promise<DebtLedgerEntry> {
+export async function createDebtAdjustment(dto: DebtAdjustmentDTO, userId: string): Promise<DebtLedgerEntry> {
   if (dto.amount === 0) {
     throw new AppError(400, 'Adjustment amount cannot be zero', 'INVALID_AMOUNT');
   }
+
+  console.log(`[Debt Adjustment] User ${userId} added adjustment: $${dto.amount} — "${dto.note}"`);
 
   return prisma.$transaction(
     async (tx) => {
@@ -65,7 +67,7 @@ export async function createDebtAdjustment(dto: DebtAdjustmentDTO): Promise<Debt
           amount: dto.amount,
           runningBalance: newBalance,
           note: dto.note,
-          date: dto.date ? new Date(dto.date) : new Date(),
+          date: new Date(),
         },
         include: {
           project: { select: { customer: true } },

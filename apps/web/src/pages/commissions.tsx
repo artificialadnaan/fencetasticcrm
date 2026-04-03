@@ -11,11 +11,13 @@ export default function CommissionsPage() {
   const [adjustmentOpen, setAdjustmentOpen] = useState(false);
   const [page, setPage] = useState(1);
 
-  const { data: summary, isLoading: summaryLoading } = useCommissionSummary();
-  const { data: byProject, pagination, isLoading: byProjectLoading, refetch: refetchByProject } = useCommissionsByProject(page);
-  const { data: pipeline, isLoading: pipelineLoading } = useCommissionPipeline();
-  const { balance, isLoading: balanceLoading, refetch: refetchBalance } = useDebtBalance();
-  const { data: ledger, isLoading: ledgerLoading, refetch: refetchLedger } = useDebtLedger();
+  const { data: summary, isLoading: summaryLoading, error: summaryError } = useCommissionSummary();
+  const { data: byProject, pagination, isLoading: byProjectLoading, refetch: refetchByProject, error: byProjectError } = useCommissionsByProject(page);
+  const { data: pipeline, isLoading: pipelineLoading, error: pipelineError } = useCommissionPipeline();
+  const { balance, isLoading: balanceLoading, refetch: refetchBalance, error: balanceError } = useDebtBalance();
+  const { data: ledger, isLoading: ledgerLoading, refetch: refetchLedger, error: ledgerError } = useDebtLedger();
+
+  const pageError = summaryError ?? byProjectError ?? pipelineError ?? balanceError ?? ledgerError;
   const { submit, isSubmitting } = useDebtAdjustment();
 
   async function handleAdjustmentSubmit(dto: { amount: number; note: string; date?: string }) {
@@ -33,6 +35,12 @@ export default function CommissionsPage() {
           Commission payouts, Aimann debt tracking, and pipeline projections.
         </p>
       </div>
+
+      {pageError && (
+        <div className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          Failed to load commission data: {pageError}
+        </div>
+      )}
 
       {/* Summary Cards */}
       <SummaryCards summary={summary} isLoading={summaryLoading} />

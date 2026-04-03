@@ -13,7 +13,7 @@ export const debtRouter = Router();
 const adjustmentSchema = z.object({
   amount: z.number().refine((v) => v !== 0, { message: 'Amount cannot be zero' }),
   note: z.string().min(1, 'Note is required'),
-  date: z.string().optional(),
+  // date is ignored — server always uses now() for append-only integrity
 });
 
 // GET /api/debt/balance — current running balance
@@ -51,7 +51,7 @@ debtRouter.post(
   validate(adjustmentSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const entry = await createDebtAdjustment(req.body);
+      const entry = await createDebtAdjustment(req.body, req.user!.userId);
       res.status(201).json({ data: entry });
     } catch (err) {
       next(err);

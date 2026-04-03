@@ -120,6 +120,7 @@ export async function getCommissionPipeline(): Promise<PipelineProjectionSummary
 
   const currentDebtBalance = latestDebt ? d(latestDebt.runningBalance) : 0;
 
+  let simulatedDebtBalance = currentDebtBalance;
   const projects: PipelineProjection[] = pipelineProjects.map((p) => {
     const projectTotal = d(p.projectTotal);
     const materialsCost = d(p.materialsCost);
@@ -130,8 +131,13 @@ export async function getCommissionPipeline(): Promise<PipelineProjectionSummary
       paymentMethod: p.paymentMethod as PaymentMethod,
       materialsCost,
       subOwedTotal,
-      aimannDebtBalance: currentDebtBalance,
+      aimannDebtBalance: simulatedDebtBalance,
     });
+
+    // Simulate debt paydown as projects complete sequentially
+    if (simulatedDebtBalance > 0) {
+      simulatedDebtBalance = Math.max(0, simulatedDebtBalance - breakdown.aimannDeduction);
+    }
 
     return {
       projectId: p.id,
