@@ -4,8 +4,8 @@ export interface CalendarEvent {
   id: string;
   title: string;
   start: string; // ISO date string YYYY-MM-DD
-  end: string;   // same as start — single-day events
-  type: 'estimate' | 'followup' | 'install' | 'completed';
+  end: string;   // same as start for single-day events
+  type: string;
   projectId: string;
   color: string;
 }
@@ -112,6 +112,26 @@ export async function getCalendarEvents(
         });
       }
     }
+  }
+
+  // Fetch standalone calendar events
+  const customEvents = await prisma.calendarEvent.findMany({
+    where: {
+      date: { gte: startDate, lt: endDate },
+    },
+    include: { project: { select: { customer: true } } },
+  });
+
+  for (const ce of customEvents) {
+    events.push({
+      id: ce.id,
+      title: ce.title,
+      start: toDateStr(ce.date),
+      end: ce.endDate ? toDateStr(ce.endDate) : toDateStr(ce.date),
+      type: ce.eventType,
+      projectId: ce.projectId ?? '',
+      color: ce.color,
+    });
   }
 
   // Sort chronologically

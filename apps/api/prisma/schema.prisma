@@ -60,6 +60,7 @@ model Project {
   aimannDebtLedgerEntries AimannDebtLedger[]
   transactions           Transaction[]
   workOrders             WorkOrder[]
+  calendarEvents         CalendarEvent[]
 
   @@map("projects")
 }
@@ -199,6 +200,23 @@ model FenceSegment {
   workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
 
   @@map("fence_segments")
+}
+
+model CalendarEvent {
+  id        String    @id @default(uuid()) @db.Uuid
+  title     String
+  date      DateTime  @db.Date
+  endDate   DateTime? @map("end_date") @db.Date
+  eventType String    @map("event_type")
+  color     String    @default("#3B82F6")
+  projectId String?   @map("project_id") @db.Uuid
+  notes     String?   @db.Text
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  project Project? @relation(fields: [projectId], references: [id])
+
+  @@map("calendar_events")
 }
 
 enum TransactionType {

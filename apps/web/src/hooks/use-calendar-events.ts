@@ -6,7 +6,7 @@ export interface CalendarEvent {
   title: string;
   start: string; // YYYY-MM-DD
   end: string;   // YYYY-MM-DD
-  type: 'estimate' | 'followup' | 'install' | 'completed';
+  type: string;
   projectId: string;
   color: string;
 }
