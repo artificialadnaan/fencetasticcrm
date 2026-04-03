@@ -24,6 +24,7 @@ export interface MonthlyPLRow {
   adnaanCommission: number;
   memeCommission: number;
   aimannDeduction: number;
+  operatingExpenses: number;
   netProfit: number;
 }
 
@@ -31,21 +32,40 @@ export async function getMonthlyPL(months: number): Promise<MonthlyPLRow[]> {
   const now = new Date();
   const startDate = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
 
-  const snapshots = await prisma.commissionSnapshot.findMany({
-    where: {
-      settledAt: { gte: startDate },
-      project: { isDeleted: false },
-    },
-    select: {
-      moneyReceived: true,
-      totalExpenses: true,
-      adnaanCommission: true,
-      memeCommission: true,
-      aimannDeduction: true,
-      netProfit: true,
-      settledAt: true,
-    },
-  });
+  const [snapshots, operatingExpenses] = await Promise.all([
+    prisma.commissionSnapshot.findMany({
+      where: {
+        settledAt: { gte: startDate },
+        project: { isDeleted: false },
+      },
+      select: {
+        moneyReceived: true,
+        totalExpenses: true,
+        adnaanCommission: true,
+        memeCommission: true,
+        aimannDeduction: true,
+        netProfit: true,
+        settledAt: true,
+      },
+    }),
+    prisma.operatingExpense.findMany({
+      where: { isActive: true },
+      select: { amount: true, frequency: true },
+    }),
+  ]);
+
+  // Compute prorated monthly operating expense total
+  let monthlyOpEx = 0;
+  for (const exp of operatingExpenses) {
+    const amt = d(exp.amount);
+    if (exp.frequency === 'MONTHLY') {
+      monthlyOpEx += amt;
+    } else if (exp.frequency === 'QUARTERLY') {
+      monthlyOpEx += amt / 3;
+    } else if (exp.frequency === 'ANNUAL') {
+      monthlyOpEx += amt / 12;
+    }
+  }
 
   // Build month buckets
   const monthLabels: string[] = [];
@@ -63,6 +83,7 @@ export async function getMonthlyPL(months: number): Promise<MonthlyPLRow[]> {
       adnaanCommission: 0,
       memeCommission: 0,
       aimannDeduction: 0,
+      operatingExpenses: 0,
       netProfit: 0,
     });
   }
@@ -82,6 +103,7 @@ export async function getMonthlyPL(months: number): Promise<MonthlyPLRow[]> {
 
   return monthLabels.map((label) => {
     const row = map.get(label)!;
+    const opEx = Number(monthlyOpEx.toFixed(2));
     return {
       month: row.month,
       revenue: Number(row.revenue.toFixed(2)),
@@ -89,7 +111,8 @@ export async function getMonthlyPL(months: number): Promise<MonthlyPLRow[]> {
       adnaanCommission: Number(row.adnaanCommission.toFixed(2)),
       memeCommission: Number(row.memeCommission.toFixed(2)),
       aimannDeduction: Number(row.aimannDeduction.toFixed(2)),
-      netProfit: Number(row.netProfit.toFixed(2)),
+      operatingExpenses: opEx,
+      netProfit: Number((row.netProfit - opEx).toFixed(2)),
     };
   });
 }
@@ -222,7 +245,7 @@ export async function getReceivablesAging(): Promise<ReceivablesAgingData> {
   const projects = await prisma.project.findMany({
     where: {
       isDeleted: false,
-      status: { not: ProjectStatus.ESTIMATE },
+      status: { in: [ProjectStatus.IN_PROGRESS, ProjectStatus.COMPLETED] },
     },
     select: {
       id: true,
@@ -230,6 +253,7 @@ export async function getReceivablesAging(): Promise<ReceivablesAgingData> {
       address: true,
       fenceType: true,
       contractDate: true,
+      installDate: true,
       projectTotal: true,
       customerPaid: true,
     },
@@ -242,7 +266,7 @@ export async function getReceivablesAging(): Promise<ReceivablesAgingData> {
     const owed = total - paid;
     if (owed <= 0.005) continue; // fully paid
     const ageDays = Math.floor(
-      (now.getTime() - p.contractDate.getTime()) / (1000 * 60 * 60 * 24)
+      (now.getTime() - p.installDate.getTime()) / (1000 * 60 * 60 * 24)
     );
     outstanding.push({
       id: p.id,

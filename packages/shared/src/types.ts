@@ -460,6 +460,7 @@ export interface MonthlyPLRow {
   adnaanCommission: number;
   memeCommission: number;
   aimannDeduction: number;
+  operatingExpenses: number;
   netProfit: number;
 }
 

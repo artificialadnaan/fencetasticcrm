@@ -135,21 +135,26 @@ export async function getDashboardData(): Promise<DashboardData> {
       _count: { id: true },
     }),
 
-    // Today's follow-ups
-    prisma.project.findMany({
-      where: {
-        followUpDate: new Date(todayStr),
-        isDeleted: false,
-      },
-      select: {
-        id: true,
-        customer: true,
-        address: true,
-        status: true,
-        followUpDate: true,
-      },
-      orderBy: { customer: 'asc' },
-    }),
+    // Today's and overdue follow-ups (ESTIMATE/OPEN only)
+    (() => {
+      const endOfToday = new Date(now);
+      endOfToday.setHours(23, 59, 59, 999);
+      return prisma.project.findMany({
+        where: {
+          isDeleted: false,
+          followUpDate: { lte: endOfToday },
+          status: { in: [ProjectStatus.ESTIMATE, ProjectStatus.OPEN] },
+        },
+        select: {
+          id: true,
+          customer: true,
+          address: true,
+          status: true,
+          followUpDate: true,
+        },
+        orderBy: { followUpDate: 'asc' },
+      });
+    })(),
 
     // Recent activity: last 5 notes
     prisma.projectNote.findMany({
