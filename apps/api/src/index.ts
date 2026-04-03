@@ -10,6 +10,7 @@ import { subcontractorRouter, addSubRoute } from './routes/subcontractors';
 import { noteRouter, addNoteRoutes } from './routes/notes';
 import { uploadRouter } from './routes/upload';
 import { activityRouter } from './routes/activity';
+import { calendarRouter } from './routes/calendar';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -50,6 +51,7 @@ app.use('/api/subs', subcontractorRouter);
 app.use('/api/notes', noteRouter);
 app.use('/api/upload', uploadRouter);
 app.use('/api/activity', activityRouter);
+app.use('/api/calendar', calendarRouter);
 
 app.use(errorHandler);
 
