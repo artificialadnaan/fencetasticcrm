@@ -85,10 +85,10 @@ export default function CalendarPage() {
     navigate(`/projects/${event.resource.projectId}`);
   };
 
-  // Click empty slot → create new project
-  const handleSelectSlot = ({ start }: { start: Date }) => {
-    const dateStr = format(start, 'yyyy-MM-dd');
-    navigate(`/projects/new?installDate=${dateStr}`);
+  // Click empty slot — project creation is on the Projects page
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleSelectSlot = (_slot: { start: Date }) => {
+    // no-op: /projects/new does not exist; create projects via the Projects page
   };
 
   // Navigate between months/weeks/days
@@ -132,7 +132,7 @@ export default function CalendarPage() {
 
       {/* Calendar */}
       <div
-        className="rounded-xl border bg-card shadow-sm overflow-hidden"
+        className="relative rounded-xl border bg-card shadow-sm overflow-hidden"
         style={{ height: 680 }}
       >
         {isLoading && (

@@ -19,6 +19,20 @@ calendarRouter.get(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { start, end } = req.query as { start: string; end: string };
+
+      // Fix 2: reject calendar dates that are structurally valid but don't exist (e.g. 2026-02-31)
+      const startDate = new Date(start);
+      const endDate = new Date(end);
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        return res.status(400).json({ message: 'Invalid date values', code: 'INVALID_DATE' });
+      }
+
+      // Fix 3: cap range to 1 year to prevent runaway queries
+      const maxRange = 365 * 24 * 60 * 60 * 1000;
+      if (endDate.getTime() - startDate.getTime() > maxRange) {
+        return res.status(400).json({ message: 'Date range cannot exceed 1 year', code: 'RANGE_TOO_LARGE' });
+      }
+
       const events = await getCalendarEvents(start, end);
       res.json({ data: events });
     } catch (err) {

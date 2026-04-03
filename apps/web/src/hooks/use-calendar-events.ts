@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '@/lib/api';
 
 export interface CalendarEvent {
@@ -30,21 +30,29 @@ export function useCalendarEvents(
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Fix 4: request counter to discard stale responses from earlier fetches
+  const requestIdRef = useRef(0);
+
   const startKey = start ? toDateParam(start) : null;
   const endKey = end ? toDateParam(end) : null;
 
   const fetchEvents = useCallback(async () => {
     if (!startKey || !endKey) return;
+    const currentRequestId = ++requestIdRef.current;
     try {
       setIsLoading(true);
       setError(null);
       const res = await api.get(`/calendar/events?start=${startKey}&end=${endKey}`);
+      if (currentRequestId !== requestIdRef.current) return; // stale response, discard
       setEvents(res.data.data);
     } catch (err: unknown) {
+      if (currentRequestId !== requestIdRef.current) return; // stale error, discard
       const msg = err instanceof Error ? err.message : 'Failed to load calendar events';
       setError(msg);
     } finally {
-      setIsLoading(false);
+      if (currentRequestId === requestIdRef.current) {
+        setIsLoading(false);
+      }
     }
   }, [startKey, endKey]);
 
