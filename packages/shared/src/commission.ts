@@ -11,10 +11,11 @@ import {
 } from './constants';
 
 /**
- * Round a number to 2 decimal places using "round half-up" strategy.
+ * Round a number to 2 decimal places using "round half away from zero" strategy.
+ * Works correctly for both positive and negative values.
  */
 function roundMoney(value: number): number {
-  return Math.round((value + Number.EPSILON) * 100) / 100;
+  return Number(value.toFixed(2));
 }
 
 /**

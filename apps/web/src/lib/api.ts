@@ -14,8 +14,12 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
+      const code = error.response?.data?.code;
+      // Only redirect for session-expired errors, not wrong-password etc.
+      if (code === 'NO_TOKEN' || code === 'INVALID_TOKEN' || code === 'AUTH_ERROR') {
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
       }
     }
     return Promise.reject(error);

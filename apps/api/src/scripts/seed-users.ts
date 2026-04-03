@@ -10,16 +10,22 @@ interface SeedUser {
   password: string;
 }
 
+const DEFAULT_PASSWORD = process.env.SEED_PASSWORD || 'Fencetastic2024!';
+
+if (!process.env.SEED_PASSWORD) {
+  console.log('  Warning: Using default password. Set SEED_PASSWORD env var for production.');
+}
+
 const SEED_USERS: SeedUser[] = [
   {
     email: 'adnaan@fencetastic.com',
     name: 'Adnaan',
-    password: 'Fencetastic2024!',
+    password: DEFAULT_PASSWORD,
   },
   {
     email: 'meme@fencetastic.com',
     name: 'Meme',
-    password: 'Fencetastic2024!',
+    password: DEFAULT_PASSWORD,
   },
 ];
 
