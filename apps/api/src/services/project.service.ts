@@ -564,7 +564,36 @@ export async function updateProject(projectId: string, dto: UpdateProjectDTO) {
     );
   }
 
-  // Normal update (no status transition to COMPLETED)
+  // Check if financial fields changed on an already-completed project → regenerate snapshot
+  const financialFields = ['projectTotal', 'paymentMethod', 'forecastedExpenses', 'materialsCost', 'customerPaid'];
+  const isAlreadyCompleted = current.status === ProjectStatus.COMPLETED && !isCompletingNow;
+  const financialFieldChanged = financialFields.some((f) => (dto as Record<string, unknown>)[f] !== undefined);
+
+  if (isAlreadyCompleted && financialFieldChanged) {
+    return prisma.$transaction(
+      async (tx) => {
+        const updated = await tx.project.update({
+          where: { id: projectId },
+          data: updateData,
+        });
+
+        await generateCommissionSnapshot(projectId, tx);
+
+        // Auto-transactions for deltas
+        for (const td of trackedDeltas) {
+          const delta = td.newVal - td.oldVal;
+          if (delta !== 0) {
+            await createAutoTransaction(projectId, td.type, td.category, td.sourceField, delta, current.customer);
+          }
+        }
+
+        return { id: updated.id };
+      },
+      { isolationLevel: 'Serializable' }
+    );
+  }
+
+  // Normal update (not completed, no snapshot needed)
   const updated = await prisma.project.update({
     where: { id: projectId },
     data: updateData,
