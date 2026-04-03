@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useProject } from '@/hooks/use-project';
 import { useSubcontractors } from '@/hooks/use-subcontractors';
 import { useNotes } from '@/hooks/use-notes';
@@ -11,9 +11,12 @@ import { SubcontractorTable } from '@/components/projects/subcontractor-table';
 import { NotesTimeline } from '@/components/projects/notes-timeline';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { FileEdit } from 'lucide-react';
 
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { project, isLoading, error, refetch } = useProject(id);
   const { user } = useAuth();
 
@@ -58,13 +61,19 @@ export default function ProjectDetailPage() {
 
   return (
     <div className="space-y-6">
-      <ProjectHeader
-        projectId={project.id}
-        customer={project.customer}
-        address={project.address}
-        status={project.status}
-        onStatusChange={refetch}
-      />
+      <div className="flex items-center justify-between">
+        <ProjectHeader
+          projectId={project.id}
+          customer={project.customer}
+          address={project.address}
+          status={project.status}
+          onStatusChange={refetch}
+        />
+        <Button variant="outline" onClick={() => navigate(`/projects/${id}/work-order`)}>
+          <FileEdit className="h-4 w-4 mr-1" />
+          Work Order
+        </Button>
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <ProjectFinancialsCard

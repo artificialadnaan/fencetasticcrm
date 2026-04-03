@@ -13,6 +13,7 @@ import {
   type CommissionPreview,
 } from '@fencetastic/shared';
 import { AppError } from '../middleware/error-handler';
+import { createAutoTransaction } from './transaction.service';
 
 // Helper: convert Prisma Decimal to number
 function d(val: Prisma.Decimal | null | undefined): number {
@@ -261,6 +262,10 @@ export async function getProjectById(projectId: string) {
     rateTemplateId: project.rateTemplateId,
     subcontractor: project.subcontractor,
     notes: project.notes,
+    commissionOwed: d(project.commissionOwed),
+    commissionPaid: d(project.commissionPaid),
+    memesCommission: d(project.memesCommission),
+    aimannsCommission: d(project.aimannsCommission),
     createdById: project.createdById,
     isDeleted: project.isDeleted,
     deletedAt: project.deletedAt?.toISOString() ?? null,
@@ -321,8 +326,8 @@ async function generateCommissionSnapshot(
 
   // Lock the latest debt ledger row to prevent race conditions
   const lastLedgerRows = await tx.$queryRaw<Array<{ runningBalance: string }>>`
-    SELECT "runningBalance"
-    FROM "AimannDebtLedger"
+    SELECT "running_balance" AS "runningBalance"
+    FROM "aimann_debt_ledger"
     ORDER BY "date" DESC
     LIMIT 1
     FOR UPDATE
@@ -413,6 +418,10 @@ export async function createProject(dto: CreateProjectDTO, createdById: string) 
       rateTemplateId: dto.rateTemplateId ?? null,
       subcontractor: dto.subcontractor ?? null,
       notes: dto.notes ?? null,
+      commissionOwed: dto.commissionOwed ?? null,
+      commissionPaid: dto.commissionPaid ?? null,
+      memesCommission: dto.memesCommission ?? null,
+      aimannsCommission: dto.aimannsCommission ?? null,
       createdById,
     },
   });
@@ -442,7 +451,7 @@ export async function updateProject(projectId: string, dto: UpdateProjectDTO) {
 
   // Completed projects are locked — only allow status, notes, and followUpDate changes
   if (current.status === ProjectStatus.COMPLETED) {
-    const allowedFields = ['status', 'notes', 'followUpDate'];
+    const allowedFields = ['status', 'notes', 'followUpDate', 'commissionOwed', 'commissionPaid', 'memesCommission', 'aimannsCommission'];
     const attemptedFields = Object.keys(dto);
     const blockedFields = attemptedFields.filter((f) => !allowedFields.includes(f));
     if (blockedFields.length > 0) {
@@ -452,6 +461,34 @@ export async function updateProject(projectId: string, dto: UpdateProjectDTO) {
         'COMPLETED_LOCKED'
       );
     }
+  }
+
+  // Track deltas for auto-transaction generation
+  const trackedDeltas: Array<{
+    type: 'INCOME' | 'EXPENSE';
+    category: string;
+    sourceField: string;
+    oldVal: number;
+    newVal: number;
+  }> = [];
+
+  if (dto.customerPaid !== undefined) {
+    trackedDeltas.push({
+      type: 'INCOME',
+      category: 'Customer Payment',
+      sourceField: 'customerPaid',
+      oldVal: d(current.customerPaid),
+      newVal: dto.customerPaid,
+    });
+  }
+  if (dto.materialsCost !== undefined) {
+    trackedDeltas.push({
+      type: 'EXPENSE',
+      category: 'Materials',
+      sourceField: 'materialsCost',
+      oldVal: d(current.materialsCost),
+      newVal: dto.materialsCost,
+    });
   }
 
   // Build update data — only set fields that were provided
@@ -490,6 +527,10 @@ export async function updateProject(projectId: string, dto: UpdateProjectDTO) {
   }
   if (dto.subcontractor !== undefined) updateData.subcontractor = dto.subcontractor;
   if (dto.notes !== undefined) updateData.notes = dto.notes;
+  if (dto.commissionOwed !== undefined) updateData.commissionOwed = dto.commissionOwed;
+  if (dto.commissionPaid !== undefined) updateData.commissionPaid = dto.commissionPaid;
+  if (dto.memesCommission !== undefined) updateData.memesCommission = dto.memesCommission;
+  if (dto.aimannsCommission !== undefined) updateData.aimannsCommission = dto.aimannsCommission;
 
   // Check if transitioning to COMPLETED
   const isCompletingNow =
@@ -524,7 +565,125 @@ export async function updateProject(projectId: string, dto: UpdateProjectDTO) {
     data: updateData,
   });
 
+  for (const td of trackedDeltas) {
+    const delta = td.newVal - td.oldVal;
+    if (delta !== 0) {
+      await createAutoTransaction(projectId, td.type, td.category, td.sourceField, delta, current.customer);
+    }
+  }
+
   return { id: updated.id };
+}
+
+export async function listProjectsGrid(query: ProjectListQuery = {}) {
+  const {
+    page = 1, limit = 50, sortBy = 'installDate', sortDir = 'desc',
+    status, fenceType, search, dateFrom, dateTo,
+  } = query;
+
+  const where: Prisma.ProjectWhereInput = { isDeleted: false };
+  if (status) where.status = status;
+  if (fenceType) where.fenceType = fenceType;
+  if (search) {
+    where.OR = [
+      { customer: { contains: search, mode: 'insensitive' } },
+      { address: { contains: search, mode: 'insensitive' } },
+      { subcontractor: { contains: search, mode: 'insensitive' } },
+    ];
+  }
+  if (dateFrom || dateTo) {
+    where.installDate = {};
+    if (dateFrom) where.installDate.gte = new Date(dateFrom);
+    if (dateTo) where.installDate.lte = new Date(dateTo);
+  }
+
+  const sortFieldMap: Record<string, string> = {
+    customer: 'customer', address: 'address', fenceType: 'fenceType',
+    status: 'status', projectTotal: 'projectTotal', installDate: 'installDate',
+    contractDate: 'contractDate', createdAt: 'createdAt',
+  };
+  const orderField = sortFieldMap[sortBy] || 'installDate';
+
+  const [projects, total] = await Promise.all([
+    prisma.project.findMany({
+      where,
+      include: {
+        subcontractorPayments: {
+          select: { amountPaid: true },
+          orderBy: { id: 'asc' },
+          take: 2,
+        },
+      },
+      orderBy: { [orderField]: sortDir },
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+    prisma.project.count({ where }),
+  ]);
+
+  const data = projects.map((p) => {
+    const projectTotal = d(p.projectTotal);
+    const moneyReceived = d(p.moneyReceived);
+    const customerPaid = d(p.customerPaid);
+    const forecastedExpenses = d(p.forecastedExpenses);
+    const materialsCost = d(p.materialsCost);
+    const commissionOwed = d(p.commissionOwed);
+    const commissionPaid = d(p.commissionPaid);
+    const memesCommission = d(p.memesCommission);
+    const aimannsCommission = d(p.aimannsCommission);
+
+    const outstandingReceivables = Number((projectTotal - customerPaid).toFixed(2));
+    const outstandingPayables = Number((commissionOwed - commissionPaid).toFixed(2));
+    const profitDollar = Number((moneyReceived - forecastedExpenses - commissionOwed).toFixed(2));
+    const profitPercent = projectTotal > 0 ? Number(((profitDollar / projectTotal) * 100).toFixed(2)) : 0;
+    const netProfitDollar = Number((profitDollar - memesCommission - aimannsCommission).toFixed(2));
+    const netProfitPercent = projectTotal > 0 ? Number(((netProfitDollar / projectTotal) * 100).toFixed(2)) : 0;
+
+    const subPayments = p.subcontractorPayments;
+
+    return {
+      id: p.id,
+      installDate: p.installDate?.toISOString().split('T')[0] ?? null,
+      status: p.status,
+      contractDate: p.contractDate.toISOString().split('T')[0],
+      notes: p.notes,
+      subcontractor: p.subcontractor,
+      customer: p.customer,
+      address: p.address,
+      description: p.description,
+      fenceType: p.fenceType,
+      projectTotal,
+      moneyReceived,
+      customerPaid,
+      paymentMethod: p.paymentMethod,
+      outstandingReceivables,
+      forecastedExpenses,
+      materialsCost,
+      subPayment1: subPayments[0] ? d(subPayments[0].amountPaid) : null,
+      subPayment2: subPayments[1] ? d(subPayments[1].amountPaid) : null,
+      commissionOwed,
+      commissionPaid,
+      outstandingPayables,
+      profitDollar,
+      profitPercent,
+      memesCommission,
+      aimannsCommission,
+      netProfitDollar,
+      netProfitPercent,
+    };
+  });
+
+  return { data, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+}
+
+export async function bulkUpdateProjects(ids: string[], updates: { status?: string }) {
+  const data: Prisma.ProjectUpdateManyMutationInput = {};
+  if (updates.status) data.status = updates.status as ProjectStatus;
+  await prisma.project.updateMany({
+    where: { id: { in: ids }, isDeleted: false },
+    data,
+  });
+  return { updated: ids.length };
 }
 
 export async function softDeleteProject(projectId: string) {

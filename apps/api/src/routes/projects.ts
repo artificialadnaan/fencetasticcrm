@@ -1,5 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
+import XLSX from 'xlsx';
 import { validate } from '../middleware/validate';
 import { validateQuery } from '../middleware/validate';
 import { requireAuth } from '../middleware/auth';
@@ -9,6 +10,8 @@ import {
   createProject,
   updateProject,
   softDeleteProject,
+  listProjectsGrid,
+  bulkUpdateProjects,
 } from '../services/project.service';
 
 export const projectRouter = Router();
@@ -16,8 +19,8 @@ export const projectRouter = Router();
 // --- Zod Schemas ---
 
 const fenceTypeEnum = z.enum(['WOOD', 'METAL', 'CHAIN_LINK', 'VINYL', 'GATE', 'OTHER']);
-const projectStatusEnum = z.enum(['ESTIMATE', 'OPEN', 'IN_PROGRESS', 'COMPLETED']);
-const paymentMethodEnum = z.enum(['CASH', 'CHECK', 'CREDIT_CARD']);
+const projectStatusEnum = z.enum(['ESTIMATE', 'OPEN', 'IN_PROGRESS', 'COMPLETED', 'CLOSED', 'WARRANTY']);
+const paymentMethodEnum = z.enum(['CASH', 'CHECK', 'CREDIT_CARD', 'ZELLE', 'FINANCING']);
 
 const listQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -50,6 +53,10 @@ const createProjectSchema = z.object({
   rateTemplateId: z.string().uuid().nullable().optional(),
   subcontractor: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
+  commissionOwed: z.number().nullable().optional(),
+  commissionPaid: z.number().nullable().optional(),
+  memesCommission: z.number().nullable().optional(),
+  aimannsCommission: z.number().nullable().optional(),
 });
 
 const updateProjectSchema = z.object({
@@ -72,6 +79,10 @@ const updateProjectSchema = z.object({
   rateTemplateId: z.string().uuid().nullable().optional(),
   subcontractor: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
+  commissionOwed: z.number().nullable().optional(),
+  commissionPaid: z.number().nullable().optional(),
+  memesCommission: z.number().nullable().optional(),
+  aimannsCommission: z.number().nullable().optional(),
 });
 
 // --- Routes ---
@@ -88,6 +99,45 @@ projectRouter.get(
     } catch (err) {
       next(err);
     }
+  }
+);
+
+// GET /api/projects/grid — grid view with computed columns
+projectRouter.get('/grid', requireAuth, validateQuery(listQuerySchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await listProjectsGrid(req.query as never);
+      res.json(result);
+    } catch (err) { next(err); }
+  }
+);
+
+// PATCH /api/projects/bulk — bulk status update
+projectRouter.patch('/bulk', requireAuth, validate(z.object({
+  ids: z.array(z.string().uuid()).min(1),
+  status: projectStatusEnum.optional(),
+})),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await bulkUpdateProjects(req.body.ids, { status: req.body.status });
+      res.json({ data: result });
+    } catch (err) { next(err); }
+  }
+);
+
+// GET /api/projects/export — export to xlsx
+projectRouter.get('/export', requireAuth,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await listProjectsGrid(Object.assign({}, req.query as never, { limit: 10000 }));
+      const ws = XLSX.utils.json_to_sheet(result.data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Projects');
+      const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename=projects.xlsx');
+      res.send(buffer);
+    } catch (err) { next(err); }
   }
 );
 

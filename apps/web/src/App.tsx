@@ -6,6 +6,9 @@ import LoginPage from '@/pages/login';
 import DashboardPage from '@/pages/dashboard';
 import ProjectsPage from '@/pages/projects';
 import ProjectDetailPage from '@/pages/project-detail';
+import ProjectGridPage from '@/pages/project-grid';
+import FinancesPage from '@/pages/finances';
+import WorkOrderPage from '@/pages/work-order';
 import CalendarPage from '@/pages/calendar';
 import CommissionsPage from '@/pages/commissions';
 import ReportsPage from '@/pages/reports';
@@ -28,7 +31,10 @@ export default function App() {
       <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/projects" element={<ProjectsPage />} />
+        <Route path="/projects/grid" element={<ProjectGridPage />} />
         <Route path="/projects/:id" element={<ProjectDetailPage />} />
+        <Route path="/projects/:id/work-order" element={<WorkOrderPage />} />
+        <Route path="/finances" element={<FinancesPage />} />
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/commissions" element={<CommissionsPage />} />
         <Route path="/reports" element={<ReportsPage />} />

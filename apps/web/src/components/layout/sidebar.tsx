@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, FolderOpen, Calendar, DollarSign, BarChart3, Settings,
-  ChevronLeft, ChevronRight, LogOut, Menu, X,
+  ChevronLeft, ChevronRight, LogOut, Menu, X, Wallet, Grid3X3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth-context';
@@ -14,6 +14,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 const NAV_ITEMS = [
   { label: 'Dashboard', path: '/', icon: LayoutDashboard },
   { label: 'Projects', path: '/projects', icon: FolderOpen },
+  { label: 'Grid View', path: '/projects/grid', icon: Grid3X3 },
+  { label: 'Finances', path: '/finances', icon: Wallet },
   { label: 'Calendar', path: '/calendar', icon: Calendar },
   { label: 'Commissions', path: '/commissions', icon: DollarSign },
   { label: 'Reports', path: '/reports', icon: BarChart3 },

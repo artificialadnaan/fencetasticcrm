@@ -16,6 +16,8 @@ import { debtRouter } from './routes/debt';
 import { dashboardRouter } from './routes/dashboard';
 import { reportsRouter } from './routes/reports';
 import { operatingExpenseRouter } from './routes/operating-expenses';
+import { transactionRouter } from './routes/transactions';
+import { workOrderRouter } from './routes/work-orders';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -27,7 +29,7 @@ app.use(
     credentials: true,
   })
 );
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
 
 // Serve uploaded files from local storage (dev only; Phase 8 will use R2)
@@ -62,6 +64,8 @@ app.use('/api/debt', debtRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/reports', reportsRouter);
 app.use('/api/operating-expenses', operatingExpenseRouter);
+app.use('/api/transactions', transactionRouter);
+app.use('/api', workOrderRouter);
 
 app.use(errorHandler);
 
