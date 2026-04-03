@@ -18,8 +18,9 @@ RUN npm ci
 COPY packages/shared/ packages/shared/
 COPY apps/api/ apps/api/
 
-# Build shared package
-RUN cd packages/shared && npm run build
+# Build shared package and point main to compiled output
+RUN cd packages/shared && npm run build && \
+    node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('package.json','utf8')); p.main='./dist/index.js'; p.types='./dist/index.d.ts'; fs.writeFileSync('package.json', JSON.stringify(p,null,2));"
 
 # Generate Prisma client and build API
 RUN cd apps/api && npx prisma generate && npm run build
