@@ -695,11 +695,24 @@ export default function WorkOrderPage() {
               key={type}
               title={label}
               onClick={() => {
-                setActiveTool(type);
-                if (type !== 'fence' && isDrawingFence) {
+                // Auto-commit in-progress fence when switching tools
+                if (type !== 'fence' && isDrawingFence && fencePoints.length >= 4) {
+                  const elId = uid();
+                  const el: CanvasElement = { id: elId, type: 'fence', x: 0, y: 0, points: [...fencePoints] };
+                  setElements((prev) => [...prev, el]);
+                  const linearFeet = pxToFeet(distanceBetweenPoints(fencePoints));
+                  const seg: FenceSegmentData = {
+                    segmentNumber: segments.length + 1, fenceType: 'Wood B/B', style: FenceStyle.NORMAL,
+                    height: 6, linearFeet, steps: null, additions: [], customAdditions: [], notes: null,
+                  };
+                  setSegments((prev) => [...prev, { ...seg, id: elId }]);
+                  setSelectedId(elId);
+                } else if (type !== 'fence' && isDrawingFence) {
                   setFencePoints([]);
-                  setIsDrawingFence(false);
                 }
+                setIsDrawingFence(false);
+                setFencePoints([]);
+                setActiveTool(type);
               }}
               className={`flex items-center justify-center w-10 h-10 rounded-md transition-colors ${
                 activeTool === type

@@ -451,7 +451,12 @@ export async function updateProject(projectId: string, dto: UpdateProjectDTO) {
 
   // Completed projects are locked — only allow status, notes, and followUpDate changes
   if (current.status === ProjectStatus.COMPLETED) {
-    const allowedFields = ['status', 'notes', 'followUpDate', 'commissionOwed', 'commissionPaid', 'memesCommission', 'aimannsCommission'];
+    const allowedFields = [
+      'status', 'notes', 'followUpDate',
+      'projectTotal', 'paymentMethod', 'forecastedExpenses', 'materialsCost',
+      'customerPaid', 'moneyReceived', 'linearFeet', 'subcontractor',
+      'commissionOwed', 'commissionPaid', 'memesCommission', 'aimannsCommission',
+    ];
     const attemptedFields = Object.keys(dto);
     const blockedFields = attemptedFields.filter((f) => !allowedFields.includes(f));
     if (blockedFields.length > 0) {
