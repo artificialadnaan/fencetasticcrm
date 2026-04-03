@@ -26,10 +26,26 @@ import { useRateTemplates } from '@/hooks/use-rate-templates';
 
 interface CreateProjectDialogProps {
   onCreated: () => void;
+  /** When provided, the dialog is controlled externally (no trigger button rendered). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Pre-fill the install date field (YYYY-MM-DD). */
+  defaultInstallDate?: string;
 }
 
-export function CreateProjectDialog({ onCreated }: CreateProjectDialogProps) {
-  const [open, setOpen] = useState(false);
+export function CreateProjectDialog({ onCreated, open: controlledOpen, onOpenChange, defaultInstallDate }: CreateProjectDialogProps) {
+  const isControlled = controlledOpen !== undefined;
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = isControlled ? controlledOpen : internalOpen;
+
+  const setOpen = (v: boolean) => {
+    if (isControlled) {
+      onOpenChange?.(v);
+    } else {
+      setInternalOpen(v);
+    }
+  };
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { templates } = useRateTemplates();
 
@@ -44,7 +60,7 @@ export function CreateProjectDialog({ onCreated }: CreateProjectDialogProps) {
   const [materialsCost, setMaterialsCost] = useState('');
   const [forecastedExpenses, setForecastedExpenses] = useState('');
   const [contractDate, setContractDate] = useState('');
-  const [installDate, setInstallDate] = useState('');
+  const [installDate, setInstallDate] = useState(defaultInstallDate ?? '');
   const [estimateDate, setEstimateDate] = useState('');
   const [followUpDate, setFollowUpDate] = useState('');
   const [linearFeet, setLinearFeet] = useState('');
@@ -52,6 +68,12 @@ export function CreateProjectDialog({ onCreated }: CreateProjectDialogProps) {
   const [subcontractor, setSubcontractor] = useState('');
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
+
+  // Sync defaultInstallDate into form when dialog opens with a new date
+  const prevDefaultInstallDate = useState(defaultInstallDate)[0];
+  if (defaultInstallDate !== prevDefaultInstallDate && open) {
+    setInstallDate(defaultInstallDate ?? '');
+  }
 
   function resetForm() {
     setCustomer('');
@@ -64,7 +86,7 @@ export function CreateProjectDialog({ onCreated }: CreateProjectDialogProps) {
     setMaterialsCost('');
     setForecastedExpenses('');
     setContractDate('');
-    setInstallDate('');
+    setInstallDate(defaultInstallDate ?? '');
     setEstimateDate('');
     setFollowUpDate('');
     setLinearFeet('');
@@ -144,12 +166,14 @@ export function CreateProjectDialog({ onCreated }: CreateProjectDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
-      <DialogTrigger asChild>
-        <Button className="bg-gradient-to-r from-brand-purple to-brand-cyan hover:opacity-90">
-          <Plus className="h-4 w-4 mr-2" />
-          New Project
-        </Button>
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <Button className="bg-gradient-to-r from-brand-purple to-brand-cyan hover:opacity-90">
+            <Plus className="h-4 w-4 mr-2" />
+            New Project
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-2xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>Create New Project</DialogTitle>

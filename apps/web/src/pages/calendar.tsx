@@ -6,6 +6,7 @@ import { enUS } from 'date-fns/locale/en-US';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 import { useCalendarEvents, type CalendarEvent } from '@/hooks/use-calendar-events';
+import { CreateProjectDialog } from '@/components/projects/create-project-dialog';
 
 // --- date-fns localizer ---
 const locales = { 'en-US': enUS };
@@ -44,12 +45,14 @@ export default function CalendarPage() {
   const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<View>('month');
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [selectedSlotDate, setSelectedSlotDate] = useState<string | undefined>(undefined);
 
   // Compute the visible date range based on current month +/- 1 buffer
   const rangeStart = useMemo(() => startOfMonth(subMonths(currentDate, 1)), [currentDate]);
   const rangeEnd = useMemo(() => endOfMonth(addMonths(currentDate, 1)), [currentDate]);
 
-  const { events, isLoading, error } = useCalendarEvents(rangeStart, rangeEnd);
+  const { events, isLoading, error, refetch: refetchEvents } = useCalendarEvents(rangeStart, rangeEnd);
 
   // Transform API events to react-big-calendar format
   const rbcEvents: RbcEvent[] = useMemo(
@@ -85,10 +88,11 @@ export default function CalendarPage() {
     navigate(`/projects/${event.resource.projectId}`);
   };
 
-  // Click empty slot — project creation is on the Projects page
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleSelectSlot = (_slot: { start: Date }) => {
-    // no-op: /projects/new does not exist; create projects via the Projects page
+  // Click empty slot → open Create Project dialog pre-filled with the selected date
+  const handleSelectSlot = (slot: { start: Date }) => {
+    const dateStr = format(slot.start, 'yyyy-MM-dd');
+    setSelectedSlotDate(dateStr);
+    setCreateDialogOpen(true);
   };
 
   // Navigate between months/weeks/days
@@ -129,6 +133,21 @@ export default function CalendarPage() {
           Failed to load calendar events: {error}
         </div>
       )}
+
+      {/* Create Project Dialog — opened when user clicks an empty calendar slot */}
+      <CreateProjectDialog
+        open={createDialogOpen}
+        onOpenChange={(v) => {
+          setCreateDialogOpen(v);
+          if (!v) setSelectedSlotDate(undefined);
+        }}
+        defaultInstallDate={selectedSlotDate}
+        onCreated={() => {
+          setCreateDialogOpen(false);
+          setSelectedSlotDate(undefined);
+          refetchEvents();
+        }}
+      />
 
       {/* Calendar */}
       <div
