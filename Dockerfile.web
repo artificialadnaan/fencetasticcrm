@@ -18,7 +18,9 @@ COPY apps/web/ apps/web/
 # Build shared package
 RUN cd packages/shared && npm run build
 
-# Build web app
+# Build web app with API URL baked in
+ARG VITE_API_URL=https://fencetasticcrm-production.up.railway.app
+ENV VITE_API_URL=$VITE_API_URL
 RUN cd apps/web && npm run build
 
 # Install serve globally
