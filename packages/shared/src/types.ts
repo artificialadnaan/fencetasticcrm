@@ -181,3 +181,102 @@ export interface ApiError {
 export interface ApiResponse<T> {
   data: T;
 }
+
+// --- Project DTOs ---
+
+export interface CreateProjectDTO {
+  customer: string;
+  address: string;
+  description: string;
+  fenceType: FenceType;
+  status?: ProjectStatus;
+  projectTotal: number;
+  paymentMethod: PaymentMethod;
+  forecastedExpenses: number;
+  materialsCost: number;
+  contractDate: string;
+  installDate: string;
+  completedDate?: string | null;
+  estimateDate?: string | null;
+  followUpDate?: string | null;
+  linearFeet?: number | null;
+  rateTemplateId?: string | null;
+  subcontractor?: string | null;
+  notes?: string | null;
+}
+
+export interface UpdateProjectDTO {
+  customer?: string;
+  address?: string;
+  description?: string;
+  fenceType?: FenceType;
+  status?: ProjectStatus;
+  projectTotal?: number;
+  paymentMethod?: PaymentMethod;
+  forecastedExpenses?: number;
+  materialsCost?: number;
+  customerPaid?: number;
+  contractDate?: string;
+  installDate?: string;
+  completedDate?: string | null;
+  estimateDate?: string | null;
+  followUpDate?: string | null;
+  linearFeet?: number | null;
+  rateTemplateId?: string | null;
+  subcontractor?: string | null;
+  notes?: string | null;
+}
+
+export interface ProjectListQuery {
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortDir?: 'asc' | 'desc';
+  status?: ProjectStatus;
+  fenceType?: FenceType;
+  search?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+export interface CommissionPreview {
+  moneyReceived: number;
+  totalExpenses: number;
+  adnaanCommission: number;
+  memeCommission: number;
+  grossProfit: number;
+  aimannDeduction: number;
+  netProfit: number;
+  profitPercent: number;
+}
+
+export interface ProjectListItem {
+  id: string;
+  customer: string;
+  address: string;
+  fenceType: FenceType;
+  status: ProjectStatus;
+  projectTotal: number;
+  moneyReceived: number;
+  customerPaid: number;
+  installDate: string;
+  receivable: number;
+  profitPercent: number;
+}
+
+export interface ProjectDetail extends Project {
+  subcontractorPayments: SubcontractorPayment[];
+  projectNotes: (ProjectNote & { author: { id: string; name: string } })[];
+  commissionSnapshot: CommissionSnapshot | null;
+  commissionPreview: CommissionPreview;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
