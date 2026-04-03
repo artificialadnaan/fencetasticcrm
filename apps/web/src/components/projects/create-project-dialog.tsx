@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -70,10 +70,11 @@ export function CreateProjectDialog({ onCreated, open: controlledOpen, onOpenCha
   const [error, setError] = useState('');
 
   // Sync defaultInstallDate into form when dialog opens with a new date
-  const prevDefaultInstallDate = useState(defaultInstallDate)[0];
-  if (defaultInstallDate !== prevDefaultInstallDate && open) {
-    setInstallDate(defaultInstallDate ?? '');
-  }
+  useEffect(() => {
+    if (open && defaultInstallDate) {
+      setInstallDate(defaultInstallDate);
+    }
+  }, [open, defaultInstallDate]);
 
   function resetForm() {
     setCustomer('');

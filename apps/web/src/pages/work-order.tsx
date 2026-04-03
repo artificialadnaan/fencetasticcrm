@@ -326,6 +326,8 @@ export default function WorkOrderPage() {
         notes: null,
       };
       setSegments((prev) => [...prev, { ...seg, id: elId }]);
+      setSelectedId(elId);
+      setActiveTool('select');
 
       setFencePoints([]);
       setIsDrawingFence(false);
@@ -370,6 +372,10 @@ export default function WorkOrderPage() {
 
   // ------ save ------
   async function handleSave() {
+    if (!projectId) {
+      alert('No project ID found. Cannot save work order.');
+      return;
+    }
     const drawingData = {
       elements,
       stagePos,
@@ -529,7 +535,8 @@ export default function WorkOrderPage() {
               <Line
                 points={el.points ?? []}
                 stroke={isSelected ? '#7c3aed' : '#92400e'}
-                strokeWidth={isSelected ? 3 : 2}
+                strokeWidth={isSelected ? 4 : 3}
+                hitStrokeWidth={20}
                 lineCap="round"
                 lineJoin="round"
                 onClick={() => handleElementClick(el.id)}
