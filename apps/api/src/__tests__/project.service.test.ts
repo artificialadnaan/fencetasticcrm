@@ -219,6 +219,10 @@ describe('Project Service', () => {
   describe('softDeleteProject', () => {
     it('sets isDeleted=true and deletedAt to now', async () => {
       const now = new Date();
+      vi.mocked(prisma.project.findUnique).mockResolvedValue({
+        id: 'p1',
+        isDeleted: false,
+      } as never);
       vi.mocked(prisma.project.update).mockResolvedValue({
         id: 'p1',
         isDeleted: true,
