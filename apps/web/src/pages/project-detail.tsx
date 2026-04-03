@@ -1,15 +1,36 @@
 import { useParams } from 'react-router-dom';
 import { useProject } from '@/hooks/use-project';
+import { useSubcontractors } from '@/hooks/use-subcontractors';
+import { useNotes } from '@/hooks/use-notes';
+import { useAuth } from '@/lib/auth-context';
 import { ProjectHeader } from '@/components/projects/project-header';
 import { ProjectFinancialsCard } from '@/components/projects/project-financials-card';
 import { ProjectScheduleCard } from '@/components/projects/project-schedule-card';
 import { ProjectInfoCard } from '@/components/projects/project-info-card';
+import { SubcontractorTable } from '@/components/projects/subcontractor-table';
+import { NotesTimeline } from '@/components/projects/notes-timeline';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
 
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { project, isLoading, error, refetch } = useProject(id);
+  const { user } = useAuth();
+
+  const {
+    data: subs,
+    addSub,
+    updateSub,
+    deleteSub,
+  } = useSubcontractors(id);
+
+  const {
+    data: notes,
+    createNote,
+    updateNote,
+    deleteNote,
+    uploadPhoto,
+  } = useNotes(id);
 
   if (isLoading) {
     return (
@@ -73,6 +94,26 @@ export default function ProjectDetailPage() {
           />
         </div>
       </div>
+
+      {/* Subcontractor Payments */}
+      <SubcontractorTable
+        projectId={project.id}
+        subs={subs}
+        onAdd={addSub}
+        onUpdate={updateSub}
+        onDelete={deleteSub}
+      />
+
+      {/* Notes Timeline */}
+      <NotesTimeline
+        projectId={project.id}
+        notes={notes}
+        currentUserId={user?.id ?? ''}
+        onCreateNote={createNote}
+        onUpdateNote={updateNote}
+        onDeleteNote={deleteNote}
+        uploadPhoto={uploadPhoto}
+      />
     </div>
   );
 }
