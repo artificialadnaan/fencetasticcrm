@@ -18,7 +18,11 @@ export function formatCurrency(value: number | null | undefined): string {
  */
 export function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '—';
-  const date = new Date(dateStr + 'T00:00:00'); // Avoid timezone shift
+  const normalized = /^\d{4}-\d{2}-\d{2}$/.test(dateStr)
+    ? `${dateStr}T00:00:00`
+    : dateStr;
+  const date = new Date(normalized);
+  if (isNaN(date.getTime())) return '—';
   return new Intl.DateTimeFormat('en-US', {
     month: 'short',
     day: 'numeric',

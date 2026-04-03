@@ -19,6 +19,11 @@ export function DebtTracker({
   isLoadingLedger,
   onAddAdjustment,
 }: DebtTrackerProps) {
+  const formatLedgerDate = (value: string) => {
+    const normalized = value.includes('T') ? value.split('T')[0] : value;
+    return formatDate(normalized);
+  };
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -93,7 +98,7 @@ export function DebtTracker({
                       className={`border-b transition-colors hover:bg-muted/30 ${i % 2 === 0 ? '' : 'bg-muted/10'}`}
                     >
                       <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
-                        {formatDate(entry.date)}
+                        {formatLedgerDate(entry.date)}
                       </td>
                       <td className="px-3 py-2 max-w-xs truncate" title={entry.note}>
                         {entry.note}
