@@ -1,27 +1,77 @@
-import { useParams, Link } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { useParams } from 'react-router-dom';
+import { useProject } from '@/hooks/use-project';
+import { ProjectHeader } from '@/components/projects/project-header';
+import { ProjectFinancialsCard } from '@/components/projects/project-financials-card';
+import { ProjectScheduleCard } from '@/components/projects/project-schedule-card';
+import { ProjectInfoCard } from '@/components/projects/project-info-card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent } from '@/components/ui/card';
 
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild><Link to="/projects"><ArrowLeft className="h-4 w-4" /></Link></Button>
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Project Detail</h1>
-          <p className="text-muted-foreground mt-1">Project ID: {id}</p>
+  const { project, isLoading, error, refetch } = useProject(id);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-12 w-[300px]" />
+        <div className="grid gap-4 md:grid-cols-2">
+          <Skeleton className="h-[400px]" />
+          <Skeleton className="h-[400px]" />
         </div>
       </div>
+    );
+  }
+
+  if (error || !project) {
+    return (
+      <Card className="border-destructive">
+        <CardContent className="py-8 text-center">
+          <p className="text-destructive">{error || 'Project not found'}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const isSnapshot = project.status === 'COMPLETED' && project.commissionSnapshot !== null;
+
+  return (
+    <div className="space-y-6">
+      <ProjectHeader
+        projectId={project.id}
+        customer={project.customer}
+        address={project.address}
+        status={project.status}
+        onStatusChange={refetch}
+      />
+
       <div className="grid gap-4 md:grid-cols-2">
-        {['Financials', 'Expenses Breakdown', 'Schedule', 'Notes Timeline'].map((section) => (
-          <Card key={section} className="border-dashed">
-            <CardHeader><CardTitle className="text-lg">{section}</CardTitle></CardHeader>
-            <CardContent className="flex items-center justify-center py-8"><Badge variant="secondary">Phase 3</Badge></CardContent>
-          </Card>
-        ))}
+        <ProjectFinancialsCard
+          projectTotal={project.projectTotal}
+          paymentMethod={project.paymentMethod}
+          commissionPreview={project.commissionPreview}
+          isSnapshot={isSnapshot}
+        />
+
+        <div className="space-y-4">
+          <ProjectScheduleCard
+            contractDate={project.contractDate}
+            installDate={project.installDate}
+            estimateDate={project.estimateDate}
+            followUpDate={project.followUpDate}
+            completedDate={project.completedDate}
+          />
+
+          <ProjectInfoCard
+            description={project.description}
+            fenceType={project.fenceType}
+            subcontractor={project.subcontractor}
+            linearFeet={project.linearFeet}
+            customerPaid={project.customerPaid}
+            forecastedExpenses={project.forecastedExpenses}
+            notes={project.notes}
+          />
+        </div>
       </div>
     </div>
   );

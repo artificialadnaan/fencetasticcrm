@@ -1,25 +1,96 @@
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { FolderOpen, Plus } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useProjects } from '@/hooks/use-projects';
+import { DataTable } from '@/components/projects/data-table';
+import { projectColumns } from '@/components/projects/columns';
+import { DataTableToolbar } from '@/components/projects/data-table-toolbar';
+import { DataTablePagination } from '@/components/projects/data-table-pagination';
+import { CreateProjectDialog } from '@/components/projects/create-project-dialog';
+import type { ProjectListItem, ProjectListQuery } from '@fencetastic/shared';
 
 export default function ProjectsPage() {
+  const navigate = useNavigate();
+  const [query, setQuery] = useState<ProjectListQuery>({
+    page: 1,
+    limit: 20,
+    sortBy: 'installDate',
+    sortDir: 'desc',
+  });
+
+  const { data, pagination, isLoading, refetch } = useProjects(query);
+
+  const handleSearchChange = useCallback((search: string) => {
+    setQuery((prev) => ({ ...prev, search: search || undefined, page: 1 }));
+  }, []);
+
+  const handleStatusChange = useCallback((status: string) => {
+    setQuery((prev) => ({
+      ...prev,
+      status: status === 'ALL' ? undefined : (status as ProjectListQuery['status']),
+      page: 1,
+    }));
+  }, []);
+
+  const handleFenceTypeChange = useCallback((fenceType: string) => {
+    setQuery((prev) => ({
+      ...prev,
+      fenceType: fenceType === 'ALL' ? undefined : (fenceType as ProjectListQuery['fenceType']),
+      page: 1,
+    }));
+  }, []);
+
+  const handleReset = useCallback(() => {
+    setQuery({ page: 1, limit: 20, sortBy: 'installDate', sortDir: 'desc' });
+  }, []);
+
+  const handlePageChange = useCallback((page: number) => {
+    setQuery((prev) => ({ ...prev, page }));
+  }, []);
+
+  const handleRowClick = useCallback(
+    (row: ProjectListItem) => {
+      navigate(`/projects/${row.id}`);
+    },
+    [navigate]
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
-          <p className="text-muted-foreground mt-1">Manage all your fencing projects.</p>
+          <p className="text-muted-foreground mt-1">
+            Manage all your fencing projects.
+          </p>
         </div>
-        <Button className="bg-gradient-to-r from-brand-purple to-brand-cyan hover:opacity-90"><Plus className="h-4 w-4 mr-2" />New Project</Button>
+        <CreateProjectDialog onCreated={refetch} />
       </div>
-      <Card className="border-dashed">
-        <CardContent className="flex flex-col items-center justify-center py-16">
-          <FolderOpen className="h-12 w-12 text-muted-foreground/50 mb-4" />
-          <Badge variant="secondary" className="mb-2">Phase 2</Badge>
-          <p className="text-muted-foreground">Filterable project data table with status badges coming in the next phase.</p>
-        </CardContent>
-      </Card>
+
+      <DataTableToolbar
+        search={query.search || ''}
+        onSearchChange={handleSearchChange}
+        statusFilter={query.status || 'ALL'}
+        onStatusChange={handleStatusChange}
+        fenceTypeFilter={query.fenceType || 'ALL'}
+        onFenceTypeChange={handleFenceTypeChange}
+        onReset={handleReset}
+      />
+
+      <DataTable
+        columns={projectColumns}
+        data={data}
+        isLoading={isLoading}
+        onRowClick={handleRowClick}
+      />
+
+      {pagination && (
+        <DataTablePagination
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          total={pagination.total}
+          onPageChange={handlePageChange}
+        />
+      )}
     </div>
   );
 }
