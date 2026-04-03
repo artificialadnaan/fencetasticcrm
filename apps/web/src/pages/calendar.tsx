@@ -118,6 +118,7 @@ export default function CalendarPage() {
   const [projects, setProjects] = useState<ProjectOption[]>([]);
 
   const [projectSearch, setProjectSearch] = useState('');
+  const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
 
   useEffect(() => {
     api.get('/projects?limit=500&sortBy=customer&sortDir=asc').then((res) => {
@@ -371,38 +372,40 @@ export default function CalendarPage() {
               ) : (
                 <div className="relative">
                   <Input
-                    placeholder="Search by customer or address..."
+                    placeholder="Search or select a project..."
                     value={projectSearch}
                     onChange={(e) => setProjectSearch(e.target.value)}
+                    onFocus={() => setProjectDropdownOpen(true)}
+                    onBlur={() => setTimeout(() => setProjectDropdownOpen(false), 200)}
                   />
-                  {projectSearch.length > 0 && (
+                  {projectDropdownOpen && (
                     <div className="absolute z-50 top-full left-0 right-0 mt-1 border rounded-md bg-popover shadow-md max-h-48 overflow-y-auto">
-                      {projects
-                        .filter((p) => {
-                          const q = projectSearch.toLowerCase();
-                          return p.customer.toLowerCase().includes(q) || p.address.toLowerCase().includes(q);
-                        })
-                        .slice(0, 20)
-                        .map((p) => (
+                      {(() => {
+                        const q = projectSearch.toLowerCase();
+                        const filtered = q
+                          ? projects.filter((p) => p.customer.toLowerCase().includes(q) || p.address.toLowerCase().includes(q))
+                          : projects;
+                        const visible = filtered.slice(0, 30);
+                        if (visible.length === 0) {
+                          return <div className="px-3 py-2 text-sm text-muted-foreground">No projects found</div>;
+                        }
+                        return visible.map((p) => (
                           <button
                             key={p.id}
                             type="button"
                             className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
+                            onMouseDown={(e) => e.preventDefault()}
                             onClick={() => {
                               setForm((f) => ({ ...f, projectId: p.id }));
                               setProjectSearch('');
+                              setProjectDropdownOpen(false);
                             }}
                           >
                             <span className="font-medium">{p.customer}</span>
                             <span className="text-muted-foreground"> — {p.address}</span>
                           </button>
-                        ))}
-                      {projects.filter((p) => {
-                        const q = projectSearch.toLowerCase();
-                        return p.customer.toLowerCase().includes(q) || p.address.toLowerCase().includes(q);
-                      }).length === 0 && (
-                        <div className="px-3 py-2 text-sm text-muted-foreground">No projects found</div>
-                      )}
+                        ));
+                      })()}
                     </div>
                   )}
                 </div>
