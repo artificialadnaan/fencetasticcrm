@@ -12,12 +12,11 @@ declare global {
 
 export function requireAuth(req: Request, _res: Response, next: NextFunction): void {
   try {
-    const token = req.cookies?.token;
-
-    if (!token) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       throw new AppError(401, 'Authentication required', 'NO_TOKEN');
     }
-
+    const token = authHeader.split(' ')[1];
     const payload = verifyToken(token);
     req.user = payload;
     next();

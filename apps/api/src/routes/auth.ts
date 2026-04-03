@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { validate } from '../middleware/validate';
 import { requireAuth } from '../middleware/auth';
 import { loginUser, getUserById, changePassword } from '../services/auth.service';
+import { prisma } from '../lib/prisma';
 
 export const authRouter = Router();
 
@@ -16,13 +17,17 @@ const changePasswordSchema = z.object({
   newPassword: z.string().min(8, 'New password must be at least 8 characters'),
 });
 
-const COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: process.env.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
-  maxAge: 7 * 24 * 60 * 60 * 1000,
-  path: '/',
-};
+// GET /api/auth/users — public, returns all users for picker
+authRouter.get('/users', async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: { id: true, email: true, name: true },
+    });
+    res.json({ data: users });
+  } catch (err) {
+    next(err);
+  }
+});
 
 authRouter.post(
   '/login',
@@ -31,8 +36,7 @@ authRouter.post(
     try {
       const { email, password } = req.body;
       const { token, user } = await loginUser(email, password);
-      res.cookie('token', token, COOKIE_OPTIONS);
-      res.json({ data: user });
+      res.json({ data: { ...user, token } });
     } catch (err) {
       next(err);
     }
@@ -40,12 +44,6 @@ authRouter.post(
 );
 
 authRouter.post('/logout', (_req: Request, res: Response) => {
-  res.clearCookie('token', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
-    path: '/',
-  });
   res.json({ data: { message: 'Logged out' } });
 });
 

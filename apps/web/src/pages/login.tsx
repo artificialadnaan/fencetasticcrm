@@ -1,68 +1,53 @@
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth-context';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [loading, setLoading] = useState<string | null>(null);
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setError('');
-    setIsSubmitting(true);
+  async function handleSelect(email: string, name: string) {
+    setLoading(name);
     try {
-      await login(email, password);
+      await login(email, 'Fencetastic2024!');
       navigate('/');
-    } catch (err: unknown) {
-      if (err && typeof err === 'object' && 'response' in err) {
-        const axiosErr = err as { response?: { data?: { message?: string } } };
-        setError(axiosErr.response?.data?.message || 'Login failed');
-      } else {
-        setError('Login failed. Please try again.');
-      }
+    } catch {
+      alert('Login failed');
     } finally {
-      setIsSubmitting(false);
+      setLoading(null);
     }
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-brand-purple to-brand-cyan bg-clip-text text-transparent">
-            Fencetastic
-          </CardTitle>
-          <CardDescription>Sign in to your dashboard</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-                {error}
-              </div>
-            )}
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="you@fencetastic.com" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" autoFocus />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" placeholder="Enter your password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
-            </div>
-            <Button type="submit" className="w-full bg-gradient-to-r from-brand-purple to-brand-cyan hover:opacity-90 transition-opacity" disabled={isSubmitting}>
-              {isSubmitting ? 'Signing in...' : 'Sign In'}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+      <div className="w-full max-w-md text-center">
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-brand-purple to-brand-cyan bg-clip-text text-transparent mb-2">
+          Fencetastic
+        </h1>
+        <p className="text-muted-foreground mb-8">Select your account</p>
+        <div className="grid gap-4">
+          <button
+            onClick={() => handleSelect('adnaan@fencetastic.com', 'Adnaan')}
+            className="p-6 rounded-lg border-2 hover:border-brand-purple transition-colors bg-white text-left"
+            disabled={loading !== null}
+          >
+            <p className="text-lg font-semibold">Adnaan</p>
+            <p className="text-sm text-muted-foreground">adnaan@fencetastic.com</p>
+          </button>
+          <button
+            onClick={() => handleSelect('meme@fencetastic.com', 'Meme')}
+            className="p-6 rounded-lg border-2 hover:border-brand-cyan transition-colors bg-white text-left"
+            disabled={loading !== null}
+          >
+            <p className="text-lg font-semibold">Meme</p>
+            <p className="text-sm text-muted-foreground">meme@fencetastic.com</p>
+          </button>
+        </div>
+        {loading && (
+          <p className="mt-4 text-sm text-muted-foreground">Signing in as {loading}...</p>
+        )}
+      </div>
     </div>
   );
 }

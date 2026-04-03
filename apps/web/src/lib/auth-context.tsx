@@ -34,10 +34,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const checkAuth = async () => {
+      const token = localStorage.getItem('fencetastic_token');
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
       try {
         const res = await api.get('/auth/me');
         setUser(res.data.data);
       } catch {
+        localStorage.removeItem('fencetastic_token');
         setUser(null);
       } finally {
         setIsLoading(false);
@@ -48,11 +54,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     const res = await api.post('/auth/login', { email, password });
-    setUser(res.data.data);
+    const { token, ...user } = res.data.data;
+    localStorage.setItem('fencetastic_token', token);
+    setUser(user);
   }, []);
 
   const logout = useCallback(async () => {
-    await api.post('/auth/logout');
+    localStorage.removeItem('fencetastic_token');
     setUser(null);
   }, []);
 
