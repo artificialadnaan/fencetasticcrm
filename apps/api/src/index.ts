@@ -3,6 +3,8 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { errorHandler } from './middleware/error-handler';
 import { authRouter } from './routes/auth';
+import { projectRouter } from './routes/projects';
+import { rateTemplateRouter } from './routes/rate-templates';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -22,6 +24,8 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.use('/api/auth', authRouter);
+app.use('/api/projects', projectRouter);
+app.use('/api/rate-templates', rateTemplateRouter);
 
 app.use(errorHandler);
 
