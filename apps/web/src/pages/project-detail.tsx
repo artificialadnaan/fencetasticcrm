@@ -102,6 +102,7 @@ export default function ProjectDetailPage() {
         onAdd={addSub}
         onUpdate={updateSub}
         onDelete={deleteSub}
+        onDataChange={refetch}
       />
 
       {/* Notes Timeline */}

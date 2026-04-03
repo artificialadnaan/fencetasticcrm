@@ -35,6 +35,8 @@ interface SubcontractorTableProps {
     }
   ) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  /** Called after any successful add/update/delete so parent can refetch project data */
+  onDataChange?: () => void;
 }
 
 interface SubForm {
@@ -58,6 +60,7 @@ export function SubcontractorTable({
   onAdd,
   onUpdate,
   onDelete,
+  onDataChange,
 }: SubcontractorTableProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSub, setEditingSub] = useState<SubcontractorPayment | null>(null);
@@ -103,6 +106,7 @@ export function SubcontractorTable({
       } else {
         await onAdd(dto);
       }
+      onDataChange?.();
       setDialogOpen(false);
     } finally {
       setSaving(false);
@@ -113,6 +117,7 @@ export function SubcontractorTable({
     setSaving(true);
     try {
       await onDelete(id);
+      onDataChange?.();
     } finally {
       setSaving(false);
       setDeleteConfirmId(null);

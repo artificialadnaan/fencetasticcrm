@@ -5,9 +5,24 @@ import { randomUUID } from 'crypto';
 const UPLOAD_DIR = path.resolve(process.cwd(), 'uploads');
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/heic', 'image/heif'];
+const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.heic'];
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function ensureUploadDir(projectId: string): Promise<string> {
+  // Fix 1: Validate projectId is a UUID before using it in a path
+  if (!UUID_REGEX.test(projectId)) {
+    throw new Error('Invalid project ID format');
+  }
+
   const dir = path.join(UPLOAD_DIR, projectId);
+
+  // Fix 1: Verify the resolved path stays inside UPLOAD_DIR
+  const resolvedDir = path.resolve(dir);
+  const resolvedUploadDir = path.resolve(UPLOAD_DIR);
+  if (!resolvedDir.startsWith(resolvedUploadDir + path.sep) && resolvedDir !== resolvedUploadDir) {
+    throw new Error('Invalid path');
+  }
+
   await fs.mkdir(dir, { recursive: true });
   return dir;
 }
@@ -29,10 +44,15 @@ export async function saveUploadedFile(
 ): Promise<string> {
   validateUploadFile(mimetype, buffer.length);
 
+  // Fix 2: Whitelist extensions — reject anything not in the allowed list
+  const ext = path.extname(originalName).toLowerCase();
+  if (!ALLOWED_EXTENSIONS.includes(ext)) {
+    throw new Error('Only .jpg, .jpeg, .png, .heic files are allowed');
+  }
+
   const dir = await ensureUploadDir(projectId);
-  const ext = path.extname(originalName).toLowerCase() || '.jpg';
-  const safeName = originalName.replace(/[^a-zA-Z0-9._-]/g, '_');
-  const filename = `${randomUUID()}-${safeName}`;
+  // Use only the UUID + whitelisted extension — drop original filename entirely
+  const filename = `${randomUUID()}${ext}`;
   const filepath = path.join(dir, filename);
 
   await fs.writeFile(filepath, buffer);

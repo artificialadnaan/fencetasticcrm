@@ -25,7 +25,14 @@ app.use(express.json());
 app.use(cookieParser());
 
 // Serve uploaded files from local storage (dev only; Phase 8 will use R2)
-app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads')));
+// Fix 2: nosniff + restrictive CSP to prevent XSS via uploaded files
+const uploadsPath = path.resolve(process.cwd(), 'uploads');
+app.use('/uploads', express.static(uploadsPath, {
+  setHeaders: (res) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Security-Policy', "default-src 'none'");
+  },
+}));
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
