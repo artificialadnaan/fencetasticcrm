@@ -11,6 +11,8 @@ import { noteRouter, addNoteRoutes } from './routes/notes';
 import { uploadRouter } from './routes/upload';
 import { activityRouter } from './routes/activity';
 import { calendarRouter } from './routes/calendar';
+import { commissionRouter } from './routes/commissions';
+import { debtRouter } from './routes/debt';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -52,6 +54,8 @@ app.use('/api/notes', noteRouter);
 app.use('/api/upload', uploadRouter);
 app.use('/api/activity', activityRouter);
 app.use('/api/calendar', calendarRouter);
+app.use('/api/commissions', commissionRouter);
+app.use('/api/debt', debtRouter);
 
 app.use(errorHandler);
 

@@ -339,3 +339,62 @@ export interface UploadResponse {
   url: string;
   filename: string;
 }
+
+// --- Commission Page Types ---
+
+export interface CommissionSummary {
+  adnaanMTD: number;
+  adnaanYTD: number;
+  memeMTD: number;
+  memeYTD: number;
+}
+
+export interface CommissionByProject {
+  projectId: string;
+  customer: string;
+  projectTotal: number;
+  adnaanCommission: number;
+  memeCommission: number;
+  aimannDeduction: number;
+  netProfit: number;
+  completedDate: string;
+}
+
+export interface PipelineProjection {
+  projectId: string;
+  customer: string;
+  status: string;
+  projectTotal: number;
+  adnaanCommission: number;
+  memeCommission: number;
+  aimannDeduction: number;
+  netProfit: number;
+}
+
+export interface PipelineProjectionSummary {
+  projects: PipelineProjection[];
+  totalAdnaan: number;
+  totalMeme: number;
+  totalAimann: number;
+  totalNetProfit: number;
+}
+
+export interface DebtLedgerEntry {
+  id: string;
+  projectId: string | null;
+  projectCustomer: string | null;
+  amount: number;
+  runningBalance: number;
+  note: string;
+  date: string;
+}
+
+export interface DebtBalanceResponse {
+  balance: number;
+}
+
+export interface DebtAdjustmentDTO {
+  amount: number;
+  note: string;
+  date?: string;
+}
