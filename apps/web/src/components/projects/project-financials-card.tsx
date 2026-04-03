@@ -1,20 +1,39 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { EditableField } from '@/components/ui/editable-field';
 import { formatCurrency, formatPercent } from '@/lib/formatters';
 import type { CommissionPreview } from '@fencetastic/shared';
 
+const PAYMENT_METHOD_OPTIONS = [
+  { label: 'Cash', value: 'CASH' },
+  { label: 'Check', value: 'CHECK' },
+  { label: 'Credit Card', value: 'CREDIT_CARD' },
+  { label: 'Zelle', value: 'ZELLE' },
+  { label: 'Financing', value: 'FINANCING' },
+];
+
 interface ProjectFinancialsCardProps {
+  projectId: string;
   projectTotal: number;
   paymentMethod: string;
+  customerPaid: number;
+  forecastedExpenses: number;
+  materialsCost: number;
   commissionPreview: CommissionPreview;
   isSnapshot: boolean;
+  onSave: (field: string, value: string | number | null) => Promise<void>;
 }
 
 export function ProjectFinancialsCard({
+  projectId: _projectId,
   projectTotal,
   paymentMethod,
+  customerPaid,
+  forecastedExpenses,
+  materialsCost,
   commissionPreview,
   isSnapshot,
+  onSave,
 }: ProjectFinancialsCardProps) {
   return (
     <Card>
@@ -29,8 +48,53 @@ export function ProjectFinancialsCard({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <Row label="Project Total" value={formatCurrency(projectTotal)} />
-        <Row label="Payment Method" value={paymentMethod.replace('_', ' ')} />
+        <EditableRow label="Project Total">
+          <EditableField
+            label="Project Total"
+            value={projectTotal}
+            type="currency"
+            formatDisplay={(v) => formatCurrency(v as number)}
+            onSave={(v) => onSave('projectTotal', v)}
+          />
+        </EditableRow>
+        <EditableRow label="Payment Method">
+          <EditableField
+            label="Payment Method"
+            value={paymentMethod}
+            type="select"
+            options={PAYMENT_METHOD_OPTIONS}
+            formatDisplay={(v) => String(v ?? '').replace(/_/g, ' ')}
+            onSave={(v) => onSave('paymentMethod', v)}
+          />
+        </EditableRow>
+        <EditableRow label="Customer Paid">
+          <EditableField
+            label="Customer Paid"
+            value={customerPaid}
+            type="currency"
+            formatDisplay={(v) => formatCurrency(v as number)}
+            onSave={(v) => onSave('customerPaid', v)}
+          />
+        </EditableRow>
+        <EditableRow label="Materials Cost">
+          <EditableField
+            label="Materials Cost"
+            value={materialsCost}
+            type="currency"
+            formatDisplay={(v) => formatCurrency(v as number)}
+            onSave={(v) => onSave('materialsCost', v)}
+          />
+        </EditableRow>
+        <EditableRow label="Forecasted Expenses">
+          <EditableField
+            label="Forecasted Expenses"
+            value={forecastedExpenses}
+            type="currency"
+            formatDisplay={(v) => formatCurrency(v as number)}
+            onSave={(v) => onSave('forecastedExpenses', v)}
+          />
+        </EditableRow>
+        <Separator />
         <Row label="Money Received" value={formatCurrency(commissionPreview.moneyReceived)} />
         <Separator />
         <Row label="Total Expenses" value={formatCurrency(commissionPreview.totalExpenses)} negative />
@@ -44,6 +108,15 @@ export function ProjectFinancialsCard({
         <Row label="Profit %" value={formatPercent(commissionPreview.profitPercent)} highlight />
       </CardContent>
     </Card>
+  );
+}
+
+function EditableRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex justify-between items-center text-sm">
+      <span className="text-muted-foreground">{label}</span>
+      {children}
+    </div>
   );
 }
 

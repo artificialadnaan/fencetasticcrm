@@ -3,6 +3,7 @@ import { useProject } from '@/hooks/use-project';
 import { useSubcontractors } from '@/hooks/use-subcontractors';
 import { useNotes } from '@/hooks/use-notes';
 import { useAuth } from '@/lib/auth-context';
+import { api } from '@/lib/api';
 import { ProjectHeader } from '@/components/projects/project-header';
 import { ProjectFinancialsCard } from '@/components/projects/project-financials-card';
 import { ProjectScheduleCard } from '@/components/projects/project-schedule-card';
@@ -34,6 +35,16 @@ export default function ProjectDetailPage() {
     deleteNote,
     uploadPhoto,
   } = useNotes(id);
+
+  const handleFieldSave = async (field: string, value: string | number | null) => {
+    try {
+      await api.patch(`/projects/${id}`, { [field]: value });
+      refetch();
+    } catch (err) {
+      console.error('Failed to save:', err);
+      alert('Failed to save field.');
+    }
+  };
 
   if (isLoading) {
     return (
@@ -77,22 +88,30 @@ export default function ProjectDetailPage() {
 
       <div className="grid gap-4 md:grid-cols-2">
         <ProjectFinancialsCard
+          projectId={project.id}
           projectTotal={project.projectTotal}
           paymentMethod={project.paymentMethod}
+          customerPaid={project.customerPaid}
+          forecastedExpenses={project.forecastedExpenses}
+          materialsCost={project.materialsCost}
           commissionPreview={project.commissionPreview}
           isSnapshot={isSnapshot}
+          onSave={handleFieldSave}
         />
 
         <div className="space-y-4">
           <ProjectScheduleCard
+            projectId={project.id}
             contractDate={project.contractDate}
             installDate={project.installDate}
             estimateDate={project.estimateDate}
             followUpDate={project.followUpDate}
             completedDate={project.completedDate}
+            onSave={handleFieldSave}
           />
 
           <ProjectInfoCard
+            projectId={project.id}
             description={project.description}
             fenceType={project.fenceType}
             subcontractor={project.subcontractor}
@@ -100,6 +119,7 @@ export default function ProjectDetailPage() {
             customerPaid={project.customerPaid}
             forecastedExpenses={project.forecastedExpenses}
             notes={project.notes}
+            onSave={handleFieldSave}
           />
         </div>
       </div>
