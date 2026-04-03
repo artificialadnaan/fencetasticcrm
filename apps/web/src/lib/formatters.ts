@@ -2,7 +2,8 @@
  * Format a number as USD currency.
  * formatCurrency(1234.5) → "$1,234.50"
  */
-export function formatCurrency(value: number): string {
+export function formatCurrency(value: number | null | undefined): string {
+  if (value == null || isNaN(value)) return '$0.00';
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',

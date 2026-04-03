@@ -23,11 +23,11 @@ export function useCommissionSummary(): UseCommissionSummaryReturn {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetch = useCallback(async () => {
+  const loadData = useCallback(async () => {
     try {
       setError(null);
       const res = await api.get('/commissions/summary');
-      setData(res.data.data);
+      setData(res.data.data ?? null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load commission summary');
     } finally {
@@ -37,15 +37,15 @@ export function useCommissionSummary(): UseCommissionSummaryReturn {
 
   useEffect(() => {
     setIsLoading(true);
-    fetch();
-  }, [fetch]);
+    loadData();
+  }, [loadData]);
 
   useEffect(() => {
-    const interval = setInterval(fetch, POLLING_INTERVAL_MS);
+    const interval = setInterval(loadData, POLLING_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [fetch]);
+  }, [loadData]);
 
-  return { data, isLoading, error, refetch: fetch };
+  return { data, isLoading, error, refetch: loadData };
 }
 
 // --- Commission By Project ---
@@ -67,13 +67,13 @@ export function useCommissionsByProject(
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetch = useCallback(async () => {
+  const loadData = useCallback(async () => {
     try {
       setError(null);
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       const res = await api.get(`/commissions/by-project?${params}`);
-      setData(res.data.data);
-      setPagination(res.data.pagination);
+      setData(Array.isArray(res.data.data) ? res.data.data : []);
+      setPagination(res.data.pagination ?? null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load commissions by project');
     } finally {
@@ -83,15 +83,15 @@ export function useCommissionsByProject(
 
   useEffect(() => {
     setIsLoading(true);
-    fetch();
-  }, [fetch]);
+    loadData();
+  }, [loadData]);
 
   useEffect(() => {
-    const interval = setInterval(fetch, POLLING_INTERVAL_MS);
+    const interval = setInterval(loadData, POLLING_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [fetch]);
+  }, [loadData]);
 
-  return { data, pagination, isLoading, error, refetch: fetch };
+  return { data, pagination, isLoading, error, refetch: loadData };
 }
 
 // --- Commission Pipeline ---
@@ -108,11 +108,11 @@ export function useCommissionPipeline(): UseCommissionPipelineReturn {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetch = useCallback(async () => {
+  const loadData = useCallback(async () => {
     try {
       setError(null);
       const res = await api.get('/commissions/pipeline');
-      setData(res.data.data);
+      setData(res.data.data ?? null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load pipeline projections');
     } finally {
@@ -122,13 +122,13 @@ export function useCommissionPipeline(): UseCommissionPipelineReturn {
 
   useEffect(() => {
     setIsLoading(true);
-    fetch();
-  }, [fetch]);
+    loadData();
+  }, [loadData]);
 
   useEffect(() => {
-    const interval = setInterval(fetch, POLLING_INTERVAL_MS);
+    const interval = setInterval(loadData, POLLING_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [fetch]);
+  }, [loadData]);
 
-  return { data, isLoading, error, refetch: fetch };
+  return { data, isLoading, error, refetch: loadData };
 }

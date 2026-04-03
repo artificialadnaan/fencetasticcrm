@@ -18,11 +18,11 @@ export function useDebtBalance(): UseDebtBalanceReturn {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetch = useCallback(async () => {
+  const loadData = useCallback(async () => {
     try {
       setError(null);
       const res = await api.get<{ data: DebtBalanceResponse }>('/debt/balance');
-      setBalance(res.data.data.balance);
+      setBalance(res.data.data?.balance ?? null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load debt balance');
     } finally {
@@ -32,15 +32,15 @@ export function useDebtBalance(): UseDebtBalanceReturn {
 
   useEffect(() => {
     setIsLoading(true);
-    fetch();
-  }, [fetch]);
+    loadData();
+  }, [loadData]);
 
   useEffect(() => {
-    const interval = setInterval(fetch, POLLING_INTERVAL_MS);
+    const interval = setInterval(loadData, POLLING_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [fetch]);
+  }, [loadData]);
 
-  return { balance, isLoading, error, refetch: fetch };
+  return { balance, isLoading, error, refetch: loadData };
 }
 
 // --- Debt Ledger ---
@@ -57,11 +57,11 @@ export function useDebtLedger(): UseDebtLedgerReturn {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetch = useCallback(async () => {
+  const loadData = useCallback(async () => {
     try {
       setError(null);
       const res = await api.get<{ data: DebtLedgerEntry[] }>('/debt/ledger');
-      setData(res.data.data);
+      setData(Array.isArray(res.data.data) ? res.data.data : []);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load debt ledger');
     } finally {
@@ -71,15 +71,15 @@ export function useDebtLedger(): UseDebtLedgerReturn {
 
   useEffect(() => {
     setIsLoading(true);
-    fetch();
-  }, [fetch]);
+    loadData();
+  }, [loadData]);
 
   useEffect(() => {
-    const interval = setInterval(fetch, POLLING_INTERVAL_MS);
+    const interval = setInterval(loadData, POLLING_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [fetch]);
+  }, [loadData]);
 
-  return { data, isLoading, error, refetch: fetch };
+  return { data, isLoading, error, refetch: loadData };
 }
 
 // --- Debt Adjustment (mutation only) ---
