@@ -1,0 +1,116 @@
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { api } from '@/lib/api';
+
+interface ChangePasswordForm {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+const emptyForm: ChangePasswordForm = {
+  currentPassword: '',
+  newPassword: '',
+  confirmPassword: '',
+};
+
+export function ChangePasswordForm() {
+  const [form, setForm] = useState<ChangePasswordForm>(emptyForm);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  const passwordMismatch =
+    form.confirmPassword !== '' && form.newPassword !== form.confirmPassword;
+
+  const isValid =
+    form.currentPassword !== '' &&
+    form.newPassword.length >= 8 &&
+    form.newPassword === form.confirmPassword;
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!isValid) return;
+    setSaving(true);
+    setError(null);
+    setSuccess(false);
+    try {
+      await api.patch('/auth/password', {
+        currentPassword: form.currentPassword,
+        newPassword: form.newPassword,
+      });
+      setSuccess(true);
+      setForm(emptyForm);
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        (err instanceof Error ? err.message : 'Failed to change password');
+      setError(msg);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">Change Password</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4 max-w-sm">
+          <div className="space-y-1.5">
+            <Label htmlFor="cp-current">Current Password</Label>
+            <Input
+              id="cp-current"
+              type="password"
+              autoComplete="current-password"
+              value={form.currentPassword}
+              onChange={(e) => setForm((f) => ({ ...f, currentPassword: e.target.value }))}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="cp-new">New Password</Label>
+            <Input
+              id="cp-new"
+              type="password"
+              autoComplete="new-password"
+              placeholder="Minimum 8 characters"
+              value={form.newPassword}
+              onChange={(e) => {
+                setForm((f) => ({ ...f, newPassword: e.target.value }));
+                setSuccess(false);
+              }}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="cp-confirm">Confirm New Password</Label>
+            <Input
+              id="cp-confirm"
+              type="password"
+              autoComplete="new-password"
+              value={form.confirmPassword}
+              onChange={(e) => {
+                setForm((f) => ({ ...f, confirmPassword: e.target.value }));
+                setSuccess(false);
+              }}
+              className={passwordMismatch ? 'border-destructive' : ''}
+            />
+            {passwordMismatch && (
+              <p className="text-xs text-destructive">Passwords do not match.</p>
+            )}
+          </div>
+          {error != null && <p className="text-sm text-destructive">{error}</p>}
+          {success && (
+            <p className="text-sm text-green-600 dark:text-green-400">Password updated successfully.</p>
+          )}
+          <Button type="submit" disabled={saving || !isValid}>
+            {saving ? 'Updating…' : 'Update Password'}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}

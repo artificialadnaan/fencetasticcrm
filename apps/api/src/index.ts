@@ -15,6 +15,7 @@ import { commissionRouter } from './routes/commissions';
 import { debtRouter } from './routes/debt';
 import { dashboardRouter } from './routes/dashboard';
 import { reportsRouter } from './routes/reports';
+import { operatingExpenseRouter } from './routes/operating-expenses';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -22,7 +23,7 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 app.use(
   cors({
-    origin: FRONTEND_URL,
+    origin: FRONTEND_URL.split(',').map(s => s.trim()),
     credentials: true,
   })
 );
@@ -60,6 +61,7 @@ app.use('/api/commissions', commissionRouter);
 app.use('/api/debt', debtRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/reports', reportsRouter);
+app.use('/api/operating-expenses', operatingExpenseRouter);
 
 app.use(errorHandler);
 

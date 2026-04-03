@@ -451,6 +451,40 @@ export interface DashboardData {
   upcomingInstalls: DashboardUpcomingInstall[];
 }
 
+// ─── Rate Template DTOs ───────────────────────────────────────────────────────
+
+export interface CreateRateTemplateDTO {
+  fenceType: FenceType;
+  name: string;
+  ratePerFoot: number;
+  laborRatePerFoot: number;
+  description?: string | null;
+}
+
+export interface UpdateRateTemplateDTO {
+  fenceType?: FenceType;
+  name?: string;
+  ratePerFoot?: number;
+  laborRatePerFoot?: number;
+  description?: string | null;
+}
+
+// ─── Operating Expense DTOs ───────────────────────────────────────────────────
+
+export interface CreateOperatingExpenseDTO {
+  category: string;
+  description: string;
+  amount: number;
+  frequency: ExpenseFrequency;
+}
+
+export interface UpdateOperatingExpenseDTO {
+  category?: string;
+  description?: string;
+  amount?: number;
+  frequency?: ExpenseFrequency;
+}
+
 // ─── Report DTOs ──────────────────────────────────────────────────────────────
 
 export interface MonthlyPLRow {
