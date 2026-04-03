@@ -280,3 +280,62 @@ export interface PaginatedResponse<T> {
     totalPages: number;
   };
 }
+
+// --- SubcontractorPayment DTOs ---
+
+export interface CreateSubcontractorPaymentDTO {
+  subcontractorName: string;
+  amountOwed: number;
+  amountPaid?: number;
+  datePaid?: string | null;
+  notes?: string | null;
+}
+
+export interface UpdateSubcontractorPaymentDTO {
+  subcontractorName?: string;
+  amountOwed?: number;
+  amountPaid?: number;
+  datePaid?: string | null;
+  notes?: string | null;
+}
+
+// --- ProjectNote DTOs ---
+
+export interface NoteDTO {
+  id: string;
+  projectId: string;
+  authorId: string;
+  authorName: string;
+  content: string;
+  photoUrls: string[];
+  createdAt: string;
+}
+
+export interface CreateNoteDTO {
+  content: string;
+  photoUrls?: string[];
+}
+
+export interface UpdateNoteDTO {
+  content: string;
+}
+
+// --- Activity Log ---
+
+export type ActivityType = 'status_change' | 'note_added';
+
+export interface ActivityDTO {
+  id: string;
+  type: ActivityType;
+  projectId: string;
+  customer: string;
+  description: string;
+  createdAt: string;
+}
+
+// --- Upload ---
+
+export interface UploadResponse {
+  url: string;
+  filename: string;
+}
