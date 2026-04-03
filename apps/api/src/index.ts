@@ -13,6 +13,8 @@ import { activityRouter } from './routes/activity';
 import { calendarRouter } from './routes/calendar';
 import { commissionRouter } from './routes/commissions';
 import { debtRouter } from './routes/debt';
+import { dashboardRouter } from './routes/dashboard';
+import { reportsRouter } from './routes/reports';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -56,6 +58,8 @@ app.use('/api/activity', activityRouter);
 app.use('/api/calendar', calendarRouter);
 app.use('/api/commissions', commissionRouter);
 app.use('/api/debt', debtRouter);
+app.use('/api/dashboard', dashboardRouter);
+app.use('/api/reports', reportsRouter);
 
 app.use(errorHandler);
 

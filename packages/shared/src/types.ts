@@ -398,3 +398,109 @@ export interface DebtAdjustmentDTO {
   note: string;
   date?: string;
 }
+
+// ─── Dashboard DTOs ───────────────────────────────────────────────────────────
+
+export interface MonthlyRevenueExpense {
+  month: string;
+  revenue: number;
+  expenses: number;
+}
+
+export interface ProjectTypeBreakdown {
+  fenceType: string;
+  count: number;
+}
+
+export interface DashboardFollowUp {
+  id: string;
+  customer: string;
+  address: string;
+  status: string;
+  followUpDate: string;
+}
+
+export interface DashboardActivityItem {
+  id: string;
+  projectId: string;
+  customer: string;
+  description: string;
+  createdAt: string;
+}
+
+export interface DashboardUpcomingInstall {
+  id: string;
+  customer: string;
+  address: string;
+  fenceType: string;
+  status: string;
+  installDate: string;
+}
+
+export interface DashboardData {
+  kpis: {
+    revenueMTD: number;
+    openProjects: number;
+    outstandingReceivables: number;
+    aimannDebtBalance: number;
+  };
+  monthlyRevenueExpenses: MonthlyRevenueExpense[];
+  projectTypeBreakdown: ProjectTypeBreakdown[];
+  todaysFollowUps: DashboardFollowUp[];
+  recentActivity: DashboardActivityItem[];
+  upcomingInstalls: DashboardUpcomingInstall[];
+}
+
+// ─── Report DTOs ──────────────────────────────────────────────────────────────
+
+export interface MonthlyPLRow {
+  month: string;
+  revenue: number;
+  expenses: number;
+  adnaanCommission: number;
+  memeCommission: number;
+  aimannDeduction: number;
+  netProfit: number;
+}
+
+export interface AvgDurationByType {
+  fenceType: string;
+  avgDays: number;
+  count: number;
+}
+
+export interface CompletionsPerMonth {
+  month: string;
+  count: number;
+}
+
+export interface ProjectStatsData {
+  avgDurationByType: AvgDurationByType[];
+  completionsPerMonth: CompletionsPerMonth[];
+}
+
+export interface ReceivablesProject {
+  id: string;
+  customer: string;
+  address: string;
+  fenceType: string;
+  contractDate: string;
+  projectTotal: number;
+  customerPaid: number;
+  outstanding: number;
+  ageDays: number;
+}
+
+export interface ReceivablesAgingData {
+  bucket0_30: ReceivablesProject[];
+  bucket31_60: ReceivablesProject[];
+  bucket61_90: ReceivablesProject[];
+  bucket90plus: ReceivablesProject[];
+  totals: {
+    bucket0_30: number;
+    bucket31_60: number;
+    bucket61_90: number;
+    bucket90plus: number;
+    overall: number;
+  };
+}
