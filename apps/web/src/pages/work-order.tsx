@@ -173,8 +173,20 @@ export default function WorkOrderPage() {
       if (drawing.elements) setElements(drawing.elements);
       if (drawing.stagePos) setStagePos(drawing.stagePos);
       if (drawing.scale) setScale(drawing.scale);
-      if (workOrder.segments) setSegments(workOrder.segments);
       if (workOrder.propertyNotes) setPropertyNotes(workOrder.propertyNotes);
+
+      // Re-link segment IDs to canvas element IDs so clicking a fence
+      // line on canvas correctly selects the matching segment.
+      if (workOrder.segments && drawing.elements) {
+        const fenceElements = drawing.elements.filter((e) => e.type === 'fence');
+        const relinked = workOrder.segments.map((seg, i) => ({
+          ...seg,
+          id: fenceElements[i]?.id ?? seg.id,
+        }));
+        setSegments(relinked);
+      } else if (workOrder.segments) {
+        setSegments(workOrder.segments);
+      }
     }
   }, [workOrder]);
 
