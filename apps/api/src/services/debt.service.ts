@@ -51,8 +51,8 @@ export async function createDebtAdjustment(dto: DebtAdjustmentDTO, userId: strin
     async (tx) => {
       // Lock latest row to prevent race conditions
       const latestRows = await tx.$queryRaw<Array<{ runningBalance: string }>>`
-        SELECT "runningBalance"
-        FROM "AimannDebtLedger"
+        SELECT "running_balance" AS "runningBalance"
+        FROM "aimann_debt_ledger"
         ORDER BY "date" DESC
         LIMIT 1
         FOR UPDATE
