@@ -34,7 +34,7 @@ const createSchema = z.object({
   amount: z.number().min(0, 'Amount must be >= 0'),
   date: z.string().min(1, 'Date is required'),
   category: z.string().min(1, 'Category is required'),
-  description: z.string().min(1, 'Description is required'),
+  description: z.string().default(''),
   payee: z.string().nullable().optional(),
   paymentMethod: z.string().nullable().optional(),
   projectId: z.string().uuid().nullable().optional(),
