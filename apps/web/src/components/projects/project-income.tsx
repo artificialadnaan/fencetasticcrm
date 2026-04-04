@@ -60,10 +60,10 @@ export function ProjectIncome({ projectId, onDataChange }: ProjectIncomeProps) {
 
   const fetchIncome = useCallback(async () => {
     try {
-      const res = await api.get<Transaction[]>(
+      const res = await api.get(
         `/transactions?projectId=${projectId}&type=INCOME&limit=100`
       );
-      setIncome(res.data);
+      setIncome(res.data.data ?? []);
     } catch (err) {
       console.error('Failed to fetch income:', err);
     } finally {

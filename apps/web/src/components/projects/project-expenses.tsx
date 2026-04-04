@@ -63,10 +63,10 @@ export function ProjectExpenses({ projectId, onDataChange }: ProjectExpensesProp
 
   const fetchExpenses = useCallback(async () => {
     try {
-      const res = await api.get<Transaction[]>(
+      const res = await api.get(
         `/transactions?projectId=${projectId}&type=EXPENSE&limit=100`
       );
-      setExpenses(res.data);
+      setExpenses(res.data.data ?? []);
     } catch (err) {
       console.error('Failed to fetch expenses:', err);
     } finally {
