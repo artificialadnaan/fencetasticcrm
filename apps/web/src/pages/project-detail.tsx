@@ -340,7 +340,7 @@ export default function ProjectDetailPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => navigate(`/projects/${id}/work-order`)}
+                onClick={() => window.open('https://forms.zoho.com/fencetastic/form/PropertyInquiryForm', '_blank')}
               >
                 <FileEdit className="h-4 w-4 mr-1" />
                 Work Order
