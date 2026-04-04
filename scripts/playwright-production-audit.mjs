@@ -81,6 +81,9 @@ async function main() {
   let tempProjectId = null;
   let tempCalendarEventId = null;
   let tempFinanceTransactionId = null;
+  let tempDebtAdjustmentAmount = null;
+  let tempDebtAdjustmentNote = null;
+  let tempProjectDeleted = false;
 
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ acceptDownloads: true });
@@ -126,10 +129,13 @@ async function main() {
     await page.getByRole('button', { name: /create project/i }).click();
     await page.getByPlaceholder('Search customer or address...').fill(runId);
     await waitForText(page, `${runId} Customer`);
-    await page.getByText(`${runId} Customer`).click();
-    await page.waitForURL('**/projects/*', { timeout: 20000 });
-    tempProjectId = page.url().split('/projects/')[1];
+    const createdProjects = await apiRequest(token, 'GET', `/projects?page=1&limit=20&search=${encodeURIComponent(runId)}`);
+    const createdProject = (createdProjects.json?.data ?? []).find((item) => item.customer === `${runId} Customer`);
+    assert.ok(createdProject?.id, 'Created project was not returned by the API search');
+    tempProjectId = createdProject.id;
     assert.ok(tempProjectId, 'Project ID was not captured from URL');
+    await page.goto(`${WEB_URL}/projects/${tempProjectId}`);
+    await waitForText(page, `${runId} Customer`);
     log('projects', `Created temp project ${tempProjectId}`);
 
     await editField(page, 'Description', `Updated ${runId} Description`);
@@ -282,13 +288,15 @@ async function main() {
 
     await page.getByRole('link', { name: 'Commissions', exact: true }).click();
     await waitForText(page, 'Commission payouts, Aimann debt tracking, and pipeline projections.');
+    tempDebtAdjustmentAmount = 2.22;
+    tempDebtAdjustmentNote = `Audit adjustment ${runId}`;
     await page.getByRole('button', { name: /adjustment/i }).click();
     const adjustmentDialog = page.locator('[role="dialog"]').filter({ hasText: 'Manual Debt Adjustment' }).first();
-    await adjustmentDialog.locator('#adj-amount').fill('873.81');
-    await adjustmentDialog.locator('#adj-note').fill(`Nullify Shibu backfill pending review ${runId}`);
+    await adjustmentDialog.locator('#adj-amount').fill(String(tempDebtAdjustmentAmount));
+    await adjustmentDialog.locator('#adj-note').fill(tempDebtAdjustmentNote);
     await adjustmentDialog.getByRole('button', { name: /save adjustment/i }).click();
-    await waitForText(page, `Nullify Shibu backfill pending review ${runId}`);
-    log('commissions', 'Added nullifying debt adjustment');
+    await waitForText(page, tempDebtAdjustmentNote);
+    log('commissions', 'Added debt adjustment');
 
     await page.getByRole('button', { name: /sign out/i }).click();
     await page.waitForURL('**/login', { timeout: 20000 });
@@ -303,6 +311,7 @@ async function main() {
     await page.getByRole('button', { name: /^delete$/i }).click();
     await page.getByRole('button', { name: /delete project/i }).click();
     await page.waitForURL('**/projects', { timeout: 20000 });
+    tempProjectDeleted = true;
     log('cleanup', 'Deleted temporary project through UI');
 
     token = await apiLogin();
@@ -322,6 +331,14 @@ async function main() {
       assert.equal(deleted.status, 200, 'Failed to delete finance transaction cleanup');
     }
 
+    if (tempDebtAdjustmentAmount !== null && tempDebtAdjustmentNote) {
+      const reversed = await apiRequest(token, 'POST', '/debt/adjustment', {
+        amount: -tempDebtAdjustmentAmount,
+        note: `Cleanup reversal for ${tempDebtAdjustmentNote}`,
+      });
+      assert.equal(reversed.status, 201, 'Failed to reverse debt adjustment cleanup');
+    }
+
     log('result', JSON.stringify({
       runId,
       tempProjectId,
@@ -330,6 +347,48 @@ async function main() {
       dialogs,
     }, null, 2));
   } finally {
+    try {
+      token = await apiLogin();
+
+      if (!tempCalendarEventId) {
+        const calendarEvents = await apiRequest(token, 'GET', '/calendar/events?start=2026-04-01&end=2026-04-30');
+        const event = (calendarEvents.json?.data ?? []).find((item) => item.title === `${runId} Calendar Event`);
+        if (event) tempCalendarEventId = event.id;
+      }
+      if (tempCalendarEventId) {
+        await apiRequest(token, 'DELETE', `/calendar/events/${tempCalendarEventId}`);
+      }
+
+      if (!tempFinanceTransactionId) {
+        const txRes = await apiRequest(token, 'GET', '/transactions?page=1&limit=100');
+        const tx = (txRes.json?.data ?? []).find((item) => item.description === `Finance ${runId}`);
+        if (tx) tempFinanceTransactionId = tx.id;
+      }
+      if (tempFinanceTransactionId) {
+        await apiRequest(token, 'DELETE', `/transactions/${tempFinanceTransactionId}`);
+      }
+
+      if (tempDebtAdjustmentAmount !== null && tempDebtAdjustmentNote) {
+        const ledgerRes = await apiRequest(token, 'GET', '/debt/ledger');
+        const hasAuditAdjustment = (ledgerRes.json?.data ?? []).some((item) => item.note === tempDebtAdjustmentNote);
+        const hasCleanupAdjustment = (ledgerRes.json?.data ?? []).some(
+          (item) => item.note === `Cleanup reversal for ${tempDebtAdjustmentNote}`
+        );
+        if (hasAuditAdjustment && !hasCleanupAdjustment) {
+          await apiRequest(token, 'POST', '/debt/adjustment', {
+            amount: -tempDebtAdjustmentAmount,
+            note: `Cleanup reversal for ${tempDebtAdjustmentNote}`,
+          });
+        }
+      }
+
+      if (tempProjectId && !tempProjectDeleted) {
+        await apiRequest(token, 'DELETE', `/projects/${tempProjectId}`);
+      }
+    } catch (cleanupError) {
+      console.error('Cleanup failure', cleanupError);
+    }
+
     await page.close().catch(() => {});
     await context.close().catch(() => {});
     await browser.close().catch(() => {});
