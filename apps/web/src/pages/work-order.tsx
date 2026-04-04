@@ -142,6 +142,12 @@ export default function WorkOrderPage() {
   const [fencePoints, setFencePoints] = useState<number[]>([]);
   const [isDrawingFence, setIsDrawingFence] = useState(false);
 
+  // Inline input state (replaces prompt() popups)
+  const [pendingLabel, setPendingLabel] = useState<{ x: number; y: number } | null>(null);
+  const [labelText, setLabelText] = useState('');
+  const [customAdditionText, setCustomAdditionText] = useState('');
+  const [showCustomAdditionInput, setShowCustomAdditionInput] = useState(false);
+
   // Undo / redo
   const [, setUndoStack] = useState<CanvasElement[][]>([]);
   const [, setRedoStack] = useState<CanvasElement[][]>([]);
@@ -285,18 +291,8 @@ export default function WorkOrderPage() {
       }
 
       case 'label': {
-        const text = prompt('Enter label text:');
-        if (text) {
-          pushUndo();
-          const el: CanvasElement = {
-            id: uid(),
-            type: 'text',
-            x: snappedX,
-            y: snappedY,
-            text,
-          };
-          setElements((prev) => [...prev, el]);
-        }
+        setPendingLabel({ x: snappedX, y: snappedY });
+        setLabelText('');
         break;
       }
 
@@ -454,12 +450,17 @@ export default function WorkOrderPage() {
 
   function addCustomAddition() {
     if (!selectedSegment) return;
-    const text = prompt('Enter custom addition:');
-    if (text) {
-      updateSelectedSegment({
-        customAdditions: [...selectedSegment.customAdditions, text],
-      });
-    }
+    setShowCustomAdditionInput(true);
+    setCustomAdditionText('');
+  }
+
+  function confirmCustomAddition() {
+    if (!selectedSegment || !customAdditionText.trim()) return;
+    updateSelectedSegment({
+      customAdditions: [...selectedSegment.customAdditions, customAdditionText.trim()],
+    });
+    setCustomAdditionText('');
+    setShowCustomAdditionInput(false);
   }
 
   function addStep() {
@@ -753,6 +754,33 @@ export default function WorkOrderPage() {
               {renderFencePreview()}
             </Layer>
           </Stage>
+          {/* Label inline input */}
+          {pendingLabel && (
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex gap-1 bg-white border rounded-lg shadow-lg p-2">
+              <Input
+                autoFocus
+                className="h-8 w-48 text-sm"
+                placeholder="Enter label text..."
+                value={labelText}
+                onChange={(e) => setLabelText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && labelText.trim()) {
+                    pushUndo();
+                    setElements((prev) => [...prev, { id: uid(), type: 'text' as const, x: pendingLabel.x, y: pendingLabel.y, text: labelText.trim() }]);
+                    setPendingLabel(null);
+                    setLabelText('');
+                  }
+                  if (e.key === 'Escape') { setPendingLabel(null); setLabelText(''); }
+                }}
+              />
+              <Button size="sm" className="h-8" disabled={!labelText.trim()} onClick={() => {
+                pushUndo();
+                setElements((prev) => [...prev, { id: uid(), type: 'text' as const, x: pendingLabel.x, y: pendingLabel.y, text: labelText.trim() }]);
+                setPendingLabel(null); setLabelText('');
+              }}>Add</Button>
+              <Button size="sm" variant="outline" className="h-8" onClick={() => { setPendingLabel(null); setLabelText(''); }}>Cancel</Button>
+            </div>
+          )}
           {/* Zoom indicator */}
           <div className="absolute bottom-3 left-3 text-xs text-muted-foreground bg-white/80 rounded px-2 py-1">
             {Math.round(scale * 100)}%
@@ -926,15 +954,33 @@ export default function WorkOrderPage() {
                         </Badge>
                       ))}
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="mt-1"
-                      onClick={addCustomAddition}
-                    >
-                      <Plus className="h-3 w-3 mr-1" />
-                      Add Custom
-                    </Button>
+                    {showCustomAdditionInput ? (
+                      <div className="flex gap-1 mt-1">
+                        <Input
+                          autoFocus
+                          className="h-7 text-xs flex-1"
+                          placeholder="Custom addition..."
+                          value={customAdditionText}
+                          onChange={(e) => setCustomAdditionText(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') confirmCustomAddition();
+                            if (e.key === 'Escape') { setShowCustomAdditionInput(false); setCustomAdditionText(''); }
+                          }}
+                        />
+                        <Button size="sm" className="h-7 text-xs" disabled={!customAdditionText.trim()} onClick={confirmCustomAddition}>Add</Button>
+                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setShowCustomAdditionInput(false); setCustomAdditionText(''); }}>Cancel</Button>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="mt-1"
+                        onClick={addCustomAddition}
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Add Custom
+                      </Button>
+                    )}
                   </div>
 
                   {/* Notes */}
