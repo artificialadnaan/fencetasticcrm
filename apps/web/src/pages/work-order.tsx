@@ -57,6 +57,8 @@ interface CanvasElement {
   points?: number[];
   text?: string;
   rotation?: number;
+  gateType?: string;
+  gateWidth?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -105,6 +107,8 @@ const ADDITION_OPTIONS = [
   'Gate Operator',
 ] as const;
 
+const GATE_TYPES = ['Single Swing', 'Double Swing', 'Sliding', 'Walk Gate', 'Drive Gate'];
+
 // ---------------------------------------------------------------------------
 // Tool buttons
 // ---------------------------------------------------------------------------
@@ -141,6 +145,9 @@ export default function WorkOrderPage() {
   // Fence drawing state
   const [fencePoints, setFencePoints] = useState<number[]>([]);
   const [isDrawingFence, setIsDrawingFence] = useState(false);
+
+  // Measure tool state
+  const [measureStart, setMeasureStart] = useState<{ x: number; y: number } | null>(null);
 
   // Inline input state (replaces prompt() popups)
   const [pendingLabel, setPendingLabel] = useState<{ x: number; y: number } | null>(null);
@@ -285,8 +292,36 @@ export default function WorkOrderPage() {
           type: 'gate',
           x: snappedX,
           y: snappedY,
+          gateType: 'Single Swing',
+          gateWidth: 4,
         };
         setElements((prev) => [...prev, el]);
+        setSelectedId(el.id);
+        setActiveTool('select');
+        break;
+      }
+
+      case 'measure': {
+        if (!measureStart) {
+          setMeasureStart({ x: snappedX, y: snappedY });
+        } else {
+          pushUndo();
+          const pts = [measureStart.x, measureStart.y, snappedX, snappedY];
+          const dx = snappedX - measureStart.x;
+          const dy = snappedY - measureStart.y;
+          const distPx = Math.sqrt(dx * dx + dy * dy);
+          const distFt = pxToFeet(distPx);
+          const el: CanvasElement = {
+            id: uid(),
+            type: 'measure',
+            x: 0,
+            y: 0,
+            points: pts,
+            text: `${distFt}'`,
+          };
+          setElements((prev) => [...prev, el]);
+          setMeasureStart(null);
+        }
         break;
       }
 
@@ -431,6 +466,11 @@ export default function WorkOrderPage() {
 
   // ------ segment editing helpers ------
   const selectedSegment = segments.find((s) => s.id === selectedId);
+  const selectedGate = elements.find((e) => e.id === selectedId && e.type === 'gate') ?? null;
+
+  function updateElement(elId: string, patch: Partial<CanvasElement>) {
+    setElements((prev) => prev.map((e) => e.id === elId ? { ...e, ...patch } : e));
+  }
 
   function updateSelectedSegment(patch: Partial<FenceSegmentData>) {
     if (!selectedId) return;
@@ -587,10 +627,10 @@ export default function WorkOrderPage() {
               }
             >
               <Circle
-                radius={12}
+                radius={14}
                 fill={isSelected ? '#7c3aed' : '#dc2626'}
                 stroke={isSelected ? '#5b21b6' : '#991b1b'}
-                strokeWidth={1}
+                strokeWidth={1.5}
               />
               <KonvaText
                 text="G"
@@ -600,8 +640,61 @@ export default function WorkOrderPage() {
                 fontStyle="bold"
                 fill="white"
               />
+              <KonvaText
+                text={el.gateType ?? 'Gate'}
+                x={-20}
+                y={18}
+                fontSize={9}
+                fill="#666"
+                align="center"
+                width={40}
+              />
             </Group>
           );
+
+        case 'measure': {
+          const pts = el.points ?? [];
+          if (pts.length < 4) return null;
+          const midX = (pts[0] + pts[2]) / 2;
+          const midY = (pts[1] + pts[3]) / 2;
+          return (
+            <Group
+              key={el.id}
+              onClick={() => handleElementClick(el.id)}
+              onTap={() => handleElementClick(el.id)}
+            >
+              <Line
+                points={pts}
+                stroke={isSelected ? '#7c3aed' : '#2563eb'}
+                strokeWidth={1.5}
+                dash={[6, 4]}
+                lineCap="round"
+                hitStrokeWidth={12}
+              />
+              <Circle
+                x={pts[0]}
+                y={pts[1]}
+                radius={3}
+                fill={isSelected ? '#7c3aed' : '#2563eb'}
+              />
+              <Circle
+                x={pts[2]}
+                y={pts[3]}
+                radius={3}
+                fill={isSelected ? '#7c3aed' : '#2563eb'}
+              />
+              <KonvaText
+                text={el.text ?? ''}
+                x={midX - 15}
+                y={midY - 18}
+                fontSize={12}
+                fontStyle="bold"
+                fill={isSelected ? '#7c3aed' : '#2563eb'}
+                padding={2}
+              />
+            </Group>
+          );
+        }
 
         case 'text':
           return (
@@ -638,6 +731,20 @@ export default function WorkOrderPage() {
         dash={[6, 3]}
         lineCap="round"
         lineJoin="round"
+      />
+    );
+  }
+
+  // ------ measure tool preview (first point placed) ------
+  function renderMeasurePreview() {
+    if (activeTool !== 'measure' || !measureStart) return null;
+    return (
+      <Circle
+        x={measureStart.x}
+        y={measureStart.y}
+        radius={5}
+        fill="#2563eb"
+        opacity={0.5}
       />
     );
   }
@@ -713,6 +820,7 @@ export default function WorkOrderPage() {
                 }
                 setIsDrawingFence(false);
                 setFencePoints([]);
+                if (type !== 'measure') setMeasureStart(null);
                 setActiveTool(type);
               }}
               className={`flex items-center justify-center w-10 h-10 rounded-md transition-colors ${
@@ -752,6 +860,7 @@ export default function WorkOrderPage() {
               {renderGrid()}
               {renderElements()}
               {renderFencePreview()}
+              {renderMeasurePreview()}
             </Layer>
           </Stage>
           {/* Label inline input */}
@@ -995,6 +1104,49 @@ export default function WorkOrderPage() {
                       onChange={(e) =>
                         updateSelectedSegment({
                           notes: e.target.value || null,
+                        })
+                      }
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            ) : selectedGate ? (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">Gate Properties</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">
+                      Gate Type
+                    </label>
+                    <Select
+                      value={selectedGate.gateType ?? 'Single Swing'}
+                      onValueChange={(v) => updateElement(selectedGate.id, { gateType: v })}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {GATE_TYPES.map((gt) => (
+                          <SelectItem key={gt} value={gt}>
+                            {gt}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">
+                      Width (ft)
+                    </label>
+                    <Input
+                      type="number"
+                      className="mt-1"
+                      value={selectedGate.gateWidth ?? 4}
+                      onChange={(e) =>
+                        updateElement(selectedGate.id, {
+                          gateWidth: parseFloat(e.target.value) || 4,
                         })
                       }
                     />
