@@ -5,7 +5,7 @@ import { useSubcontractors } from '@/hooks/use-subcontractors';
 import { useNotes } from '@/hooks/use-notes';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/api';
-import { formatCurrency, formatDate, formatPercent } from '@/lib/formatters';
+import { formatCurrency, formatDate } from '@/lib/formatters';
 import { EditableField } from '@/components/ui/editable-field';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -907,106 +907,89 @@ export default function ProjectDetailPage() {
       {/* --- COMMISSION TAB --- */}
       {activeTab === 'commission' && (
         <div className="grid gap-4 md:grid-cols-3">
-          {/* Left: breakdown tables */}
+          {/* Left: payments + expenses + profit */}
           <div className="md:col-span-2 space-y-4">
-            {/* Income summary */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Payments Summary</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {incomeItems.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-2">No payments recorded.</p>
-                ) : (
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b text-muted-foreground">
-                        <th className="text-left py-1.5 font-medium">Category</th>
-                        <th className="text-right py-1.5 font-medium">Amount</th>
-                        <th className="text-left py-1.5 pl-4 font-medium">Date</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {incomeItems.map((item) => (
-                        <tr key={item.id} className="border-b border-dashed">
-                          <td className="py-1.5">{item.category}</td>
-                          <td className="py-1.5 text-right font-mono text-green-600">
-                            {formatCurrency(item.amount)}
-                          </td>
-                          <td className="py-1.5 pl-4 text-muted-foreground">
-                            {formatDate(item.date)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr className="border-t font-semibold">
-                        <td className="pt-2">Total</td>
-                        <td className="pt-2 text-right font-mono text-green-600">
-                          {formatCurrency(incomeTotal)}
-                        </td>
-                        <td />
-                      </tr>
-                    </tfoot>
-                  </table>
-                )}
-              </CardContent>
-            </Card>
+            {/* PAYMENTS */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Payments</h3>
+                <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setActiveTab('payments')}>
+                  <Plus className="h-3 w-3 mr-1" />Add
+                </Button>
+              </div>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-muted-foreground">
+                    <th className="text-left py-1.5 font-medium">Type</th>
+                    <th className="text-right py-1.5 font-medium">Amount</th>
+                    <th className="text-right py-1.5 font-medium">Received</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {incomeItems.length === 0 ? (
+                    <tr><td colSpan={3} className="py-3 text-center text-muted-foreground">No payments yet</td></tr>
+                  ) : incomeItems.map((item) => (
+                    <tr key={item.id} className="border-b border-dashed">
+                      <td className="py-1.5 font-medium uppercase text-xs">{item.category}</td>
+                      <td className="py-1.5 text-right font-mono">{formatCurrency(item.amount)}</td>
+                      <td className="py-1.5 text-right"><span className="text-green-600">&#10003;</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t font-semibold">
+                    <td className="pt-2">Total Income</td>
+                    <td className="pt-2 text-right font-mono">{formatCurrency(incomeTotal)}</td>
+                    <td />
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
 
-            {/* Expense summary */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Expenses Summary</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {expenseItems.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-2">No expenses recorded.</p>
-                ) : (
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b text-muted-foreground">
-                        <th className="text-left py-1.5 font-medium">Category</th>
-                        <th className="text-right py-1.5 font-medium">Amount</th>
-                        <th className="text-left py-1.5 pl-4 font-medium">Date</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {expenseItems.map((item) => (
-                        <tr key={item.id} className="border-b border-dashed">
-                          <td className="py-1.5">{item.category}</td>
-                          <td className="py-1.5 text-right font-mono text-red-500">
-                            {formatCurrency(item.amount)}
-                          </td>
-                          <td className="py-1.5 pl-4 text-muted-foreground">
-                            {formatDate(item.date)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr className="border-t font-semibold">
-                        <td className="pt-2">Total</td>
-                        <td className="pt-2 text-right font-mono text-red-500">
-                          {formatCurrency(expenseTotal)}
-                        </td>
-                        <td />
-                      </tr>
-                    </tfoot>
-                  </table>
-                )}
-              </CardContent>
-            </Card>
+            <Separator />
 
-            {/* Profit highlight */}
+            {/* EXPENSES */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Expenses</h3>
+                <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setActiveTab('expenses')}>
+                  <Plus className="h-3 w-3 mr-1" />Add
+                </Button>
+              </div>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-muted-foreground">
+                    <th className="text-left py-1.5 font-medium">Category</th>
+                    <th className="text-left py-1.5 font-medium">Description</th>
+                    <th className="text-right py-1.5 font-medium">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {expenseItems.length === 0 ? (
+                    <tr><td colSpan={3} className="py-3 text-center text-muted-foreground">No expenses yet</td></tr>
+                  ) : expenseItems.map((item) => (
+                    <tr key={item.id} className="border-b border-dashed">
+                      <td className="py-1.5 font-medium uppercase text-xs">{item.category}</td>
+                      <td className="py-1.5 text-muted-foreground">{item.description || '—'}</td>
+                      <td className="py-1.5 text-right font-mono">{formatCurrency(item.amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t font-semibold">
+                    <td colSpan={2} className="pt-2">Total Job Cost</td>
+                    <td className="pt-2 text-right font-mono">{formatCurrency(expenseTotal)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            {/* Total Profit bar */}
             <Card className="bg-gradient-to-r from-purple-600/5 to-cyan-500/5 border-purple-200">
               <CardContent className="py-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold">Total Profit</span>
-                  <span
-                    className={`text-xl font-bold font-mono ${
-                      cp.grossProfit >= 0 ? 'text-green-600' : 'text-red-500'
-                    }`}
-                  >
+                  <span className="font-semibold">Total Profit</span>
+                  <span className={`text-xl font-bold font-mono ${cp.grossProfit >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                     {formatCurrency(cp.grossProfit)}
                   </span>
                 </div>
@@ -1014,92 +997,49 @@ export default function ProjectDetailPage() {
             </Card>
           </div>
 
-          {/* Right: commission sidebar */}
+          {/* Right: SUMMARY sidebar */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Commission Breakdown</CardTitle>
+              <CardTitle className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Summary</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <SummaryRow label="Income" value={formatCurrency(cp.moneyReceived)} />
-              <SummaryRow
-                label="Expenses"
-                value={formatCurrency(cp.totalExpenses)}
-                negative
-              />
+              <SummaryRow label="Income" value={formatCurrency(incomeTotal > 0 ? incomeTotal : cp.moneyReceived)} />
+              <SummaryRow label="Expenses" value={formatCurrency(expenseTotal > 0 ? expenseTotal : cp.totalExpenses)} negative />
               <Separator />
-              <SummaryRow
-                label="Profit"
-                value={formatCurrency(cp.grossProfit)}
-                highlight
-                positive={cp.grossProfit >= 0}
-              />
-              <SummaryRow
-                label="Profit %"
-                value={formatPercent(cp.profitPercent)}
-                highlight
-              />
+              <SummaryRow label="Profit" value={formatCurrency(cp.grossProfit)} highlight positive={cp.grossProfit >= 0} />
               <Separator />
-              <SummaryRow
-                label="Adnaan Commission (10%)"
-                value={formatCurrency(cp.adnaanCommission)}
-                negative
-              />
-              <SummaryRow
-                label="Meme Commission (5%)"
-                value={formatCurrency(cp.memeCommission)}
-                negative
-              />
-              <SummaryRow
-                label="Aimann Deduction (25%)"
-                value={formatCurrency(cp.aimannDeduction)}
-                negative
-              />
+              <SummaryRow label="Adnaan Commission (10%)" value={formatCurrency(cp.adnaanCommission)} negative />
+              <SummaryRow label="Meme Commission (5%)" value={formatCurrency(cp.memeCommission)} negative />
+              <SummaryRow label="Aimann Deduction (25%)" value={formatCurrency(cp.aimannDeduction)} negative />
               <Separator />
-              <div className="flex justify-between items-center text-sm pt-1">
-                <span className="font-bold">Net Profit</span>
-                <span
-                  className={`font-bold font-mono text-base ${
-                    cp.netProfit >= 0 ? 'text-green-600' : 'text-red-500'
-                  }`}
-                >
-                  {formatCurrency(cp.netProfit)}
-                </span>
+              <SummaryRow label="Company Half" value={formatCurrency(cp.netProfit)} highlight positive={cp.netProfit >= 0} />
+
+              <Separator />
+
+              {/* Editable overrides */}
+              <div className="space-y-2 pt-1">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Overrides</p>
+                <FieldRow label="Commission Owed">
+                  <EditableField label="Commission Owed" value={projectExtra.commissionOwed ?? null} type="currency"
+                    formatDisplay={(v) => (v != null ? formatCurrency(v as number) : '\u2014')} onSave={(v) => handleFieldSave('commissionOwed', v)} />
+                </FieldRow>
+                <FieldRow label="Meme's Comm">
+                  <EditableField label="Meme's Commission" value={projectExtra.memesCommission ?? null} type="currency"
+                    formatDisplay={(v) => (v != null ? formatCurrency(v as number) : '\u2014')} onSave={(v) => handleFieldSave('memesCommission', v)} />
+                </FieldRow>
+                <FieldRow label="Aimann's Comm">
+                  <EditableField label="Aimann's Commission" value={projectExtra.aimannsCommission ?? null} type="currency"
+                    formatDisplay={(v) => (v != null ? formatCurrency(v as number) : '\u2014')} onSave={(v) => handleFieldSave('aimannsCommission', v)} />
+                </FieldRow>
               </div>
 
               <Separator />
 
-              {/* Editable commission fields */}
-              <div className="space-y-2 pt-1">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Manual Overrides
-                </p>
-                <FieldRow label="Commission Owed">
-                  <EditableField
-                    label="Commission Owed"
-                    value={projectExtra.commissionOwed ?? null}
-                    type="currency"
-                    formatDisplay={(v) => (v != null ? formatCurrency(v as number) : '\u2014')}
-                    onSave={(v) => handleFieldSave('commissionOwed', v)}
-                  />
-                </FieldRow>
-                <FieldRow label="Meme's Commission">
-                  <EditableField
-                    label="Meme's Commission"
-                    value={projectExtra.memesCommission ?? null}
-                    type="currency"
-                    formatDisplay={(v) => (v != null ? formatCurrency(v as number) : '\u2014')}
-                    onSave={(v) => handleFieldSave('memesCommission', v)}
-                  />
-                </FieldRow>
-                <FieldRow label="Aimann's Commission">
-                  <EditableField
-                    label="Aimann's Commission"
-                    value={projectExtra.aimannsCommission ?? null}
-                    type="currency"
-                    formatDisplay={(v) => (v != null ? formatCurrency(v as number) : '\u2014')}
-                    onSave={(v) => handleFieldSave('aimannsCommission', v)}
-                  />
-                </FieldRow>
+              {/* Notes */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Notes</p>
+                <EditableField label="Notes" value={project.notes} type="text"
+                  formatDisplay={(v) => (v ? String(v) : 'Add notes...')} onSave={(v) => handleFieldSave('notes', v)} />
               </div>
             </CardContent>
           </Card>
