@@ -171,7 +171,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       where: {
         installDate: { gt: now },
         isDeleted: false,
-        status: { not: ProjectStatus.COMPLETED },
+        status: { in: [ProjectStatus.OPEN, ProjectStatus.IN_PROGRESS] },
       },
       select: {
         id: true,

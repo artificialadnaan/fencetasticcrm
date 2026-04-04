@@ -162,6 +162,55 @@ describe('Project Service', () => {
       const createCall = vi.mocked(prisma.project.create).mock.calls[0][0];
       expect(Number(createCall.data.moneyReceived)).toBe(5000);
     });
+
+    it('captures estimateDate automatically when created in ESTIMATE', async () => {
+      vi.mocked(prisma.project.create).mockResolvedValue({
+        id: 'p-estimate',
+      } as never);
+
+      const { createProject } = await import('../services/project.service');
+      await createProject({
+        customer: 'Estimate Lead',
+        address: '101 Quote St',
+        description: 'Estimate stage',
+        fenceType: FenceType.WOOD,
+        status: ProjectStatus.ESTIMATE,
+        projectTotal: 2500,
+        paymentMethod: PaymentMethod.CHECK,
+        forecastedExpenses: 1000,
+        materialsCost: 500,
+        contractDate: '2026-04-01',
+        installDate: '2026-04-20',
+      }, 'user-1');
+
+      const createCall = vi.mocked(prisma.project.create).mock.calls[0][0];
+      expect(createCall.data.estimateDate).toBeInstanceOf(Date);
+    });
+
+    it('captures completedDate automatically when created in COMPLETED', async () => {
+      vi.mocked(prisma.project.create).mockResolvedValue({
+        id: 'p-complete',
+      } as never);
+      vi.mocked(prisma.$transaction).mockResolvedValueOnce(undefined as never);
+
+      const { createProject } = await import('../services/project.service');
+      await createProject({
+        customer: 'Finished Job',
+        address: '202 Closeout Ave',
+        description: 'Completed stage',
+        fenceType: FenceType.METAL,
+        status: ProjectStatus.COMPLETED,
+        projectTotal: 9000,
+        paymentMethod: PaymentMethod.CASH,
+        forecastedExpenses: 3200,
+        materialsCost: 2000,
+        contractDate: '2026-04-01',
+        installDate: '2026-04-10',
+      }, 'user-1');
+
+      const createCall = vi.mocked(prisma.project.create).mock.calls[0][0];
+      expect(createCall.data.completedDate).toBeInstanceOf(Date);
+    });
   });
 
   describe('updateProject — commission snapshot on COMPLETED', () => {

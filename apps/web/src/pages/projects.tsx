@@ -9,26 +9,24 @@ import { DataTablePagination } from '@/components/projects/data-table-pagination
 import { CreateProjectDialog } from '@/components/projects/create-project-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import type { ProjectListItem, ProjectListQuery } from '@fencetastic/shared';
+import { PROJECT_STATUS_META, PROJECT_STATUS_ORDER, type ProjectListItem, type ProjectListQuery } from '@fencetastic/shared';
 
 const STATUS_TABS = [
-  { label: 'Open', value: 'OPEN' },
-  { label: 'In Progress', value: 'IN_PROGRESS' },
-  { label: 'Completed', value: 'COMPLETED' },
-  { label: 'Closed', value: 'CLOSED' },
-  { label: 'Warranty', value: 'WARRANTY' },
+  ...PROJECT_STATUS_ORDER.map((status) => ({
+    label: PROJECT_STATUS_META[status].shortLabel,
+    value: status,
+  })),
   { label: 'All', value: '' },
 ];
 
 export default function ProjectsPage() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<string>('OPEN');
+  const [activeTab, setActiveTab] = useState<string>('');
   const [query, setQuery] = useState<ProjectListQuery>({
     page: 1,
     limit: 20,
     sortBy: 'installDate',
     sortDir: 'desc',
-    status: 'OPEN' as ProjectListQuery['status'],
   });
 
   const { data, pagination, isLoading, error, refetch } = useProjects(query);
@@ -38,6 +36,7 @@ export default function ProjectsPage() {
   }, []);
 
   const handleStatusChange = useCallback((status: string) => {
+    setActiveTab(status === 'ALL' ? '' : status);
     setQuery((prev) => ({
       ...prev,
       status: status === 'ALL' ? undefined : (status as ProjectListQuery['status']),
@@ -54,6 +53,7 @@ export default function ProjectsPage() {
   }, []);
 
   const handleReset = useCallback(() => {
+    setActiveTab('');
     setQuery({ page: 1, limit: 20, sortBy: 'installDate', sortDir: 'desc' });
   }, []);
 

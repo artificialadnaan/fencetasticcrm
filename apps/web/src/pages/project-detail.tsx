@@ -31,7 +31,7 @@ import { StatusBadge } from '@/components/projects/status-badge';
 import { NotesTimeline } from '@/components/projects/notes-timeline';
 import { PhotoGallery } from '@/components/projects/photo-gallery';
 import { SubcontractorTable } from '@/components/projects/subcontractor-table';
-import { ProjectStatus } from '@fencetastic/shared';
+import { PROJECT_STATUS_META, PROJECT_STATUS_ORDER, ProjectStatus } from '@fencetastic/shared';
 import type { Transaction } from '@fencetastic/shared';
 import {
   ArrowLeft,
@@ -292,13 +292,28 @@ export default function ProjectDetailPage() {
   }
 
   const cp = project.commissionPreview;
-  // The API returns commission fields that aren't on the ProjectDetail type
-  const projectExtra = project as unknown as {
-    commissionOwed?: number | null;
-    memesCommission?: number | null;
-    aimannsCommission?: number | null;
-  };
   const photosFromNotes = notes.filter((n) => n.photoUrls.length > 0);
+  const currentStatusIndex = PROJECT_STATUS_ORDER.indexOf(project.status);
+  const lifecycleStages = PROJECT_STATUS_ORDER.map((status) => {
+    const meta = PROJECT_STATUS_META[status];
+    const trackedDate =
+      meta.lifecycleDateField != null ? project[meta.lifecycleDateField] : null;
+    const isCurrent = status === project.status;
+    const isCompleted = currentStatusIndex >= PROJECT_STATUS_ORDER.indexOf(status);
+
+    return {
+      status,
+      meta,
+      trackedDate,
+      stateLabel: trackedDate
+        ? formatDate(trackedDate)
+        : isCurrent
+          ? 'Current stage'
+          : isCompleted
+            ? 'Reached'
+            : 'Pending',
+    };
+  });
 
   return (
     <div className="space-y-6">
@@ -340,7 +355,7 @@ export default function ProjectDetailPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => window.open('https://forms.zoho.com/fencetastic/form/PropertyInquiryForm', '_blank')}
+                onClick={() => navigate(`/projects/${project.id}/work-order`)}
               >
                 <FileEdit className="h-4 w-4 mr-1" />
                 Work Order
@@ -597,6 +612,29 @@ export default function ProjectDetailPage() {
                   onSave={(v) => handleFieldSave('completedDate', v)}
                 />
               </FieldRow>
+            </CardContent>
+          </Card>
+
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle className="text-lg">Lifecycle</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {lifecycleStages.map(({ status, meta, trackedDate, stateLabel }) => (
+                <div key={status} className="rounded-lg border p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="font-medium">{meta.label}</div>
+                    <StatusBadge status={status} className="text-[11px]" />
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground">{meta.description}</p>
+                  <p className="mt-3 text-xs uppercase tracking-wide text-muted-foreground">
+                    {meta.lifecycleDateLabel ?? 'Tracking'}
+                  </p>
+                  <p className="text-sm font-medium">
+                    {trackedDate ? formatDate(trackedDate) : stateLabel}
+                  </p>
+                </div>
+              ))}
             </CardContent>
           </Card>
         </div>
@@ -1020,15 +1058,15 @@ export default function ProjectDetailPage() {
               <div className="space-y-2 pt-1">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Overrides</p>
                 <FieldRow label="Commission Owed">
-                  <EditableField label="Commission Owed" value={projectExtra.commissionOwed ?? null} type="currency"
+                  <EditableField label="Commission Owed" value={project.commissionOwed ?? null} type="currency"
                     formatDisplay={(v) => (v != null ? formatCurrency(v as number) : '\u2014')} onSave={(v) => handleFieldSave('commissionOwed', v)} />
                 </FieldRow>
                 <FieldRow label="Meme's Comm">
-                  <EditableField label="Meme's Commission" value={projectExtra.memesCommission ?? null} type="currency"
+                  <EditableField label="Meme's Commission" value={project.memesCommission ?? null} type="currency"
                     formatDisplay={(v) => (v != null ? formatCurrency(v as number) : '\u2014')} onSave={(v) => handleFieldSave('memesCommission', v)} />
                 </FieldRow>
                 <FieldRow label="Aimann's Comm">
-                  <EditableField label="Aimann's Commission" value={projectExtra.aimannsCommission ?? null} type="currency"
+                  <EditableField label="Aimann's Commission" value={project.aimannsCommission ?? null} type="currency"
                     formatDisplay={(v) => (v != null ? formatCurrency(v as number) : '\u2014')} onSave={(v) => handleFieldSave('aimannsCommission', v)} />
                 </FieldRow>
               </div>

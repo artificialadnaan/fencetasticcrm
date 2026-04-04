@@ -13,7 +13,7 @@ import { api } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { useGridProjects } from '@/hooks/use-grid-projects';
 import type { GridProjectRow } from '@fencetastic/shared';
-import { ProjectStatus } from '@fencetastic/shared';
+import { PROJECT_STATUS_META, PROJECT_STATUS_ORDER, ProjectStatus } from '@fencetastic/shared';
 
 // ─── Editable Cell ───────────────────────────────────────────────────────────
 
@@ -81,34 +81,20 @@ function EditableCell({ value, rowId, field, isNumber = false, refetch, display 
 
 // ─── Status helpers ───────────────────────────────────────────────────────────
 
-const STATUS_LABELS: Record<ProjectStatus, string> = {
-  [ProjectStatus.ESTIMATE]: 'Estimate',
-  [ProjectStatus.OPEN]: 'Open',
-  [ProjectStatus.IN_PROGRESS]: 'In Progress',
-  [ProjectStatus.COMPLETED]: 'Completed',
-  [ProjectStatus.CLOSED]: 'Closed',
-  [ProjectStatus.WARRANTY]: 'Warranty',
-};
+const STATUS_LABELS: Record<ProjectStatus, string> = Object.fromEntries(
+  PROJECT_STATUS_ORDER.map((status) => [status, PROJECT_STATUS_META[status].label])
+) as Record<ProjectStatus, string>;
 
-const STATUS_BADGE_CLASS: Record<ProjectStatus, string> = {
-  [ProjectStatus.ESTIMATE]: 'bg-gray-100 text-gray-700',
-  [ProjectStatus.OPEN]: 'bg-amber-100 text-amber-800',
-  [ProjectStatus.IN_PROGRESS]: 'bg-blue-100 text-blue-800',
-  [ProjectStatus.COMPLETED]: 'bg-green-100 text-green-800',
-  [ProjectStatus.CLOSED]: 'bg-red-100 text-red-800',
-  [ProjectStatus.WARRANTY]: 'bg-purple-100 text-purple-800',
-};
+const STATUS_BADGE_CLASS: Record<ProjectStatus, string> = Object.fromEntries(
+  PROJECT_STATUS_ORDER.map((status) => [status, PROJECT_STATUS_META[status].badgeClassName])
+) as Record<ProjectStatus, string>;
 
-const ROW_BG: Record<ProjectStatus, string> = {
-  [ProjectStatus.ESTIMATE]: '',
-  [ProjectStatus.OPEN]: 'bg-amber-50',
-  [ProjectStatus.IN_PROGRESS]: 'bg-blue-50',
-  [ProjectStatus.COMPLETED]: 'bg-green-50',
-  [ProjectStatus.CLOSED]: 'bg-red-50',
-  [ProjectStatus.WARRANTY]: 'bg-purple-50',
-};
+const ROW_BG: Record<ProjectStatus, string> = Object.fromEntries(
+  PROJECT_STATUS_ORDER.map((status) => [status, PROJECT_STATUS_META[status].rowClassName])
+) as Record<ProjectStatus, string>;
 
 const STATUS_TABS: Array<{ label: string; value: ProjectStatus | 'ALL' }> = [
+  { label: 'Estimate', value: ProjectStatus.ESTIMATE },
   { label: 'Open', value: ProjectStatus.OPEN },
   { label: 'In Progress', value: ProjectStatus.IN_PROGRESS },
   { label: 'Completed', value: ProjectStatus.COMPLETED },

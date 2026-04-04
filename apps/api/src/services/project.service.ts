@@ -33,6 +33,29 @@ function calcMoneyReceived(projectTotal: number, paymentMethod: string): number 
   return projectTotal;
 }
 
+function deriveLifecycleDates(
+  status: ProjectStatus,
+  dates: {
+    estimateDate?: string | null;
+    completedDate?: string | null;
+  }
+) {
+  return {
+    estimateDate:
+      dates.estimateDate !== undefined
+        ? dates.estimateDate
+        : status === ProjectStatus.ESTIMATE
+          ? new Date().toISOString().split('T')[0]
+          : undefined,
+    completedDate:
+      dates.completedDate !== undefined
+        ? dates.completedDate
+        : status === ProjectStatus.COMPLETED
+          ? new Date().toISOString().split('T')[0]
+          : undefined,
+  };
+}
+
 // Helper: build commission preview for a project
 async function buildCommissionPreview(
   projectId: string,
@@ -395,6 +418,10 @@ async function generateCommissionSnapshot(
 export async function createProject(dto: CreateProjectDTO, createdById: string) {
   const moneyReceived = calcMoneyReceived(dto.projectTotal, dto.paymentMethod);
   const status = dto.status || ProjectStatus.ESTIMATE;
+  const lifecycleDates = deriveLifecycleDates(status, {
+    estimateDate: dto.estimateDate,
+    completedDate: dto.completedDate,
+  });
 
   const project = await prisma.project.create({
     data: {
@@ -411,8 +438,8 @@ export async function createProject(dto: CreateProjectDTO, createdById: string) 
       materialsCost: dto.materialsCost,
       contractDate: new Date(dto.contractDate),
       installDate: new Date(dto.installDate),
-      completedDate: dto.completedDate ? new Date(dto.completedDate) : null,
-      estimateDate: dto.estimateDate ? new Date(dto.estimateDate) : null,
+      completedDate: lifecycleDates.completedDate ? new Date(lifecycleDates.completedDate) : null,
+      estimateDate: lifecycleDates.estimateDate ? new Date(lifecycleDates.estimateDate) : null,
       followUpDate: dto.followUpDate ? new Date(dto.followUpDate) : null,
       linearFeet: dto.linearFeet ?? null,
       rateTemplateId: dto.rateTemplateId ?? null,
@@ -542,9 +569,16 @@ export async function updateProject(projectId: string, dto: UpdateProjectDTO) {
     dto.status === ProjectStatus.COMPLETED &&
     current.status !== ProjectStatus.COMPLETED;
 
+  const isMovingToEstimate =
+    dto.status === ProjectStatus.ESTIMATE &&
+    current.status !== ProjectStatus.ESTIMATE;
+
+  if (isMovingToEstimate && dto.estimateDate === undefined && !current.estimateDate) {
+    updateData.estimateDate = new Date();
+  }
+
   if (isCompletingNow) {
-    // Set completedDate if not explicitly provided
-    if (!dto.completedDate) {
+    if (dto.completedDate === undefined && !current.completedDate) {
       updateData.completedDate = new Date();
     }
 

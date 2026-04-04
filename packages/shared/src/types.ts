@@ -78,6 +78,10 @@ export interface Project {
   rateTemplateId: string | null;
   subcontractor: string | null;
   notes: string | null;
+  commissionOwed: number | null;
+  commissionPaid: number | null;
+  memesCommission: number | null;
+  aimannsCommission: number | null;
   createdById: string;
   isDeleted: boolean;
   deletedAt: string | null;

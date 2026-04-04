@@ -245,7 +245,7 @@ export async function getReceivablesAging(): Promise<ReceivablesAgingData> {
   const projects = await prisma.project.findMany({
     where: {
       isDeleted: false,
-      status: { in: [ProjectStatus.IN_PROGRESS, ProjectStatus.COMPLETED] },
+      status: { not: ProjectStatus.ESTIMATE },
     },
     select: {
       id: true,

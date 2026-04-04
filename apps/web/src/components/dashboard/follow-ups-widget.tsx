@@ -2,14 +2,7 @@ import { Bell } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import type { DashboardFollowUp } from '@fencetastic/shared';
-
-const STATUS_BADGE: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' }> = {
-  OPEN: { label: 'Open', variant: 'outline' },
-  IN_PROGRESS: { label: 'In Progress', variant: 'default' },
-  COMPLETED: { label: 'Completed', variant: 'secondary' },
-  ESTIMATE: { label: 'Estimate', variant: 'secondary' },
-};
+import { PROJECT_STATUS_META, type DashboardFollowUp, type ProjectStatus } from '@fencetastic/shared';
 
 interface FollowUpsWidgetProps {
   followUps: DashboardFollowUp[];
@@ -44,7 +37,7 @@ export function FollowUpsWidget({ followUps, isLoading }: FollowUpsWidgetProps) 
         ) : (
           <ul className="space-y-2">
             {followUps.map((f) => {
-              const badge = STATUS_BADGE[f.status] ?? { label: f.status, variant: 'outline' as const };
+              const badge = PROJECT_STATUS_META[f.status as ProjectStatus];
               return (
                 <li key={f.id}>
                   <Link
@@ -55,8 +48,8 @@ export function FollowUpsWidget({ followUps, isLoading }: FollowUpsWidgetProps) 
                       <p className="text-sm font-medium truncate">{f.customer}</p>
                       <p className="text-xs text-muted-foreground truncate">{f.address}</p>
                     </div>
-                    <Badge variant={badge.variant} className="ml-3 shrink-0 text-xs">
-                      {badge.label}
+                    <Badge variant="outline" className="ml-3 shrink-0 text-xs">
+                      {badge?.label ?? f.status}
                     </Badge>
                   </Link>
                 </li>
