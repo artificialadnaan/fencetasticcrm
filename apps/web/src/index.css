@@ -24,6 +24,13 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 262.1 83.3% 57.8%;
     --radius: 0.5rem;
+    --shell-sidebar: 221 42% 13%;
+    --shell-sidebar-foreground: 214 32% 90%;
+    --shell-sidebar-border: 219 28% 20%;
+    --shell-canvas: 40 34% 94%;
+    --shell-panel: 35 30% 97%;
+    --shell-glass: 0 0% 100%;
+    --shell-accent: 217 72% 62%;
   }
 }
 
@@ -31,8 +38,45 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+@layer components {
+  .shell-app {
+    min-height: 100vh;
+    background: hsl(var(--background));
+  }
+
+  .shell-canvas {
+    background-color: hsl(var(--shell-canvas));
+    background-image:
+      radial-gradient(circle at top, rgba(104, 133, 196, 0.16), transparent 32%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(243, 236, 223, 0.95));
+  }
+
+  .shell-sidebar {
+    background:
+      radial-gradient(circle at top, rgba(111, 154, 255, 0.16), transparent 26%),
+      linear-gradient(180deg, hsl(var(--shell-sidebar)), #0b1220 100%);
+    color: hsl(var(--shell-sidebar-foreground));
+  }
+
+  .shell-glass {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.62));
+    border: 1px solid rgba(255, 255, 255, 0.52);
+    box-shadow:
+      0 18px 50px rgba(32, 41, 57, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(18px);
+  }
+
+  .shell-panel {
+    background: hsl(var(--shell-panel));
+    border: 1px solid rgba(94, 82, 60, 0.08);
+    box-shadow: 0 10px 30px rgba(43, 33, 18, 0.05);
   }
 }
