@@ -5,6 +5,7 @@ import { validateQuery } from '../middleware/validate';
 import { requireAuth } from '../middleware/auth';
 import {
   listTransactions,
+  exportTransactions,
   getTransactionSummary,
   getMonthlyBreakdown,
   getCategoryBreakdown,
@@ -24,6 +25,7 @@ const listQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
   type: transactionTypeEnum.optional(),
   category: z.string().optional(),
+  search: z.string().optional(),
   projectId: z.string().uuid().optional(),
   dateFrom: z.string().optional(),
   dateTo: z.string().optional(),
@@ -105,6 +107,23 @@ transactionRouter.get(
     try {
       const result = await getCategoryBreakdown();
       res.json({ data: result });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// GET /api/transactions/export — export filtered transactions as CSV
+transactionRouter.get(
+  '/export',
+  requireAuth,
+  validateQuery(listQuerySchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const csv = await exportTransactions(req.query as never);
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename=transactions.csv');
+      res.send(csv);
     } catch (err) {
       next(err);
     }

@@ -200,6 +200,7 @@ export interface TransactionListQuery {
   limit?: number;
   type?: TransactionType;
   category?: string;
+  search?: string;
   projectId?: string;
   dateFrom?: string;
   dateTo?: string;
