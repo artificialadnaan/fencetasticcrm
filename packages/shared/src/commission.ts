@@ -23,7 +23,7 @@ function roundMoney(value: number): number {
  *
  * Calculation order:
  * 1. Money Received (apply CC fee if credit card)
- * 2. Total Expenses (materials + subcontractor owed)
+ * 2. Total Expenses (explicit override when provided, else materials + subcontractor owed)
  * 3. Commissions (Adnaan 10%, Meme 5% — based on projectTotal)
  * 4. Gross Profit (moneyReceived - totalExpenses - adnaanCommission)
  * 5. Aimann Deduction (25% of max(grossProfit, 0) if debt > 0)
@@ -35,6 +35,7 @@ export function calculateCommission(input: CommissionInput): CommissionBreakdown
     paymentMethod,
     materialsCost,
     subOwedTotal,
+    expenseOverride,
     aimannDebtBalance,
   } = input;
 
@@ -46,7 +47,9 @@ export function calculateCommission(input: CommissionInput): CommissionBreakdown
   );
 
   // Step 2: Total Expenses
-  const totalExpenses = roundMoney(materialsCost + subOwedTotal);
+  const totalExpenses = roundMoney(
+    expenseOverride ?? (materialsCost + subOwedTotal)
+  );
 
   // Step 3: Commissions (based on projectTotal, not moneyReceived)
   const adnaanCommission = roundMoney(projectTotal * ADNAAN_COMMISSION_RATE);

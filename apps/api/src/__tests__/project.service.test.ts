@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PaymentMethod, ProjectStatus, FenceType } from '@fencetastic/shared';
 
+const createAutoTransactionMock = vi.fn();
+
 // Mock Prisma before importing service
 vi.mock('../lib/prisma', () => ({
   prisma: {
@@ -13,6 +15,10 @@ vi.mock('../lib/prisma', () => ({
     },
     subcontractorPayment: {
       aggregate: vi.fn(),
+    },
+    transaction: {
+      aggregate: vi.fn(),
+      groupBy: vi.fn(),
     },
     aimannDebtLedger: {
       findFirst: vi.fn(),
@@ -39,6 +45,10 @@ vi.mock('../lib/prisma', () => ({
       },
     })),
   },
+}));
+
+vi.mock('../services/transaction.service', () => ({
+  createAutoTransaction: (...args: unknown[]) => createAutoTransactionMock(...args),
 }));
 
 import { prisma } from '../lib/prisma';
@@ -75,6 +85,7 @@ describe('Project Service', () => {
 
       vi.mocked(prisma.project.findMany).mockResolvedValue(mockProjects as never);
       vi.mocked(prisma.project.count).mockResolvedValue(mockCount);
+      vi.mocked(prisma.transaction.groupBy).mockResolvedValue([]);
 
       const { listProjects } = await import('../services/project.service');
       const result = await listProjects({ page: 1, limit: 20 });
@@ -89,6 +100,7 @@ describe('Project Service', () => {
     it('applies status filter', async () => {
       vi.mocked(prisma.project.findMany).mockResolvedValue([]);
       vi.mocked(prisma.project.count).mockResolvedValue(0);
+      vi.mocked(prisma.transaction.groupBy).mockResolvedValue([]);
 
       const { listProjects } = await import('../services/project.service');
       await listProjects({ status: ProjectStatus.OPEN });
@@ -101,12 +113,48 @@ describe('Project Service', () => {
     it('applies search filter on customer and address', async () => {
       vi.mocked(prisma.project.findMany).mockResolvedValue([]);
       vi.mocked(prisma.project.count).mockResolvedValue(0);
+      vi.mocked(prisma.transaction.groupBy).mockResolvedValue([]);
 
       const { listProjects } = await import('../services/project.service');
       await listProjects({ search: 'john' });
 
       const findManyCall = vi.mocked(prisma.project.findMany).mock.calls[0][0];
       expect(findManyCall?.where?.OR).toBeDefined();
+    });
+
+    it('uses actual expense rows for live profit percent when they exist', async () => {
+      vi.mocked(prisma.project.findMany).mockResolvedValue([
+        {
+          id: 'p-live',
+          customer: 'Live Expense',
+          address: '987 Cedar St',
+          fenceType: 'WOOD',
+          status: 'OPEN',
+          projectTotal: { toNumber: () => 10000 },
+          moneyReceived: { toNumber: () => 10000 },
+          customerPaid: { toNumber: () => 5000 },
+          materialsCost: { toNumber: () => 2000 },
+          forecastedExpenses: { toNumber: () => 3000 },
+          installDate: new Date('2026-04-15'),
+          isDeleted: false,
+          paymentMethod: 'CASH',
+          subcontractorPayments: [],
+        },
+      ] as never);
+      vi.mocked(prisma.project.count).mockResolvedValue(1);
+      vi.mocked(prisma.aimannDebtLedger.findFirst).mockResolvedValue(null);
+      vi.mocked(prisma.transaction.groupBy).mockResolvedValue([
+        {
+          projectId: 'p-live',
+          _sum: { amount: { toNumber: () => 4500 } },
+          _count: { _all: 2 },
+        },
+      ] as never);
+
+      const { listProjects } = await import('../services/project.service');
+      const result = await listProjects({ page: 1, limit: 20 });
+
+      expect(result.data[0].profitPercent).toBe(40);
     });
   });
 
@@ -284,6 +332,268 @@ describe('Project Service', () => {
       const updateCall = vi.mocked(prisma.project.update).mock.calls[0][0];
       expect(updateCall.data.isDeleted).toBe(true);
       expect(updateCall.data.deletedAt).toBeDefined();
+    });
+  });
+
+  describe('getProjectById', () => {
+    it('bases live commission preview expenses on forecasted expenses when they exceed materials cost', async () => {
+      vi.mocked(prisma.project.findUnique).mockResolvedValue({
+        id: 'p1',
+        customer: 'Schedule Test',
+        address: '123 Main St',
+        description: 'Install 10 x 6 iron fence',
+        fenceType: FenceType.METAL,
+        status: ProjectStatus.OPEN,
+        projectTotal: { toNumber: () => 2625 },
+        paymentMethod: PaymentMethod.CREDIT_CARD,
+        moneyReceived: { toNumber: () => 2546.25 },
+        customerPaid: { toNumber: () => 1312.5 },
+        forecastedExpenses: { toNumber: () => 852.74 },
+        materialsCost: { toNumber: () => 402.74 },
+        contractDate: new Date('2026-03-26'),
+        installDate: new Date('2026-04-20'),
+        completedDate: null,
+        estimateDate: null,
+        followUpDate: null,
+        linearFeet: null,
+        rateTemplateId: null,
+        subcontractor: 'Froilan',
+        notes: 'Install 4/20',
+        commissionOwed: { toNumber: () => 0 },
+        commissionPaid: { toNumber: () => 0 },
+        memesCommission: { toNumber: () => 0 },
+        aimannsCommission: { toNumber: () => 0 },
+        createdById: 'user-1',
+        isDeleted: false,
+        deletedAt: null,
+        createdAt: new Date('2026-03-26'),
+        updatedAt: new Date('2026-03-26'),
+        subcontractorPayments: [],
+        projectNotes: [],
+        commissionSnapshot: null,
+      } as never);
+      vi.mocked(prisma.subcontractorPayment.aggregate).mockResolvedValue({
+        _sum: { amountOwed: null },
+      } as never);
+      vi.mocked(prisma.transaction.aggregate).mockResolvedValue({
+        _sum: { amount: null },
+        _count: { _all: 0 },
+      } as never);
+      vi.mocked(prisma.aimannDebtLedger.findFirst).mockResolvedValue(null);
+
+      const { getProjectById } = await import('../services/project.service');
+      const result = await getProjectById('p1');
+
+      expect(result.forecastedExpenses).toBe(852.74);
+      expect(result.commissionPreview.totalExpenses).toBe(852.74);
+      expect(result.commissionPreview.netProfit).toBe(1299.76);
+    });
+
+    it('uses actual recorded expense transactions over forecasted expenses when present', async () => {
+      vi.mocked(prisma.project.findUnique).mockResolvedValue({
+        id: 'p2',
+        customer: 'Actual Expense Test',
+        address: '456 Oak St',
+        description: 'Install gate',
+        fenceType: FenceType.METAL,
+        status: ProjectStatus.OPEN,
+        projectTotal: { toNumber: () => 2625 },
+        paymentMethod: PaymentMethod.CREDIT_CARD,
+        moneyReceived: { toNumber: () => 2546.25 },
+        customerPaid: { toNumber: () => 1312.5 },
+        forecastedExpenses: { toNumber: () => 852.74 },
+        materialsCost: { toNumber: () => 402.74 },
+        contractDate: new Date('2026-03-26'),
+        installDate: new Date('2026-04-20'),
+        completedDate: null,
+        estimateDate: null,
+        followUpDate: null,
+        linearFeet: null,
+        rateTemplateId: null,
+        subcontractor: 'Froilan',
+        notes: 'Install 4/20',
+        commissionOwed: { toNumber: () => 0 },
+        commissionPaid: { toNumber: () => 0 },
+        memesCommission: { toNumber: () => 0 },
+        aimannsCommission: { toNumber: () => 0 },
+        createdById: 'user-1',
+        isDeleted: false,
+        deletedAt: null,
+        createdAt: new Date('2026-03-26'),
+        updatedAt: new Date('2026-03-26'),
+        subcontractorPayments: [],
+        projectNotes: [],
+        commissionSnapshot: null,
+      } as never);
+      vi.mocked(prisma.subcontractorPayment.aggregate).mockResolvedValue({
+        _sum: { amountOwed: null },
+      } as never);
+      vi.mocked(prisma.transaction.aggregate).mockResolvedValue({
+        _sum: { amount: { toNumber: () => 1200 } },
+        _count: { _all: 2 },
+      } as never);
+      vi.mocked(prisma.aimannDebtLedger.findFirst).mockResolvedValue(null);
+
+      const { getProjectById } = await import('../services/project.service');
+      const result = await getProjectById('p2');
+
+      expect(result.commissionPreview.totalExpenses).toBe(1200);
+    });
+
+    it('uses zero-sum actual expense rows instead of falling back to forecasted expenses', async () => {
+      vi.mocked(prisma.project.findUnique).mockResolvedValue({
+        id: 'p3',
+        customer: 'Zero Sum Expense Test',
+        address: '789 Pine St',
+        description: 'Repair gate',
+        fenceType: FenceType.METAL,
+        status: ProjectStatus.OPEN,
+        projectTotal: { toNumber: () => 5000 },
+        paymentMethod: PaymentMethod.CASH,
+        moneyReceived: { toNumber: () => 5000 },
+        customerPaid: { toNumber: () => 0 },
+        forecastedExpenses: { toNumber: () => 900 },
+        materialsCost: { toNumber: () => 300 },
+        contractDate: new Date('2026-03-26'),
+        installDate: new Date('2026-04-20'),
+        completedDate: null,
+        estimateDate: null,
+        followUpDate: null,
+        linearFeet: null,
+        rateTemplateId: null,
+        subcontractor: null,
+        notes: null,
+        commissionOwed: { toNumber: () => 0 },
+        commissionPaid: { toNumber: () => 0 },
+        memesCommission: { toNumber: () => 0 },
+        aimannsCommission: { toNumber: () => 0 },
+        createdById: 'user-1',
+        isDeleted: false,
+        deletedAt: null,
+        createdAt: new Date('2026-03-26'),
+        updatedAt: new Date('2026-03-26'),
+        subcontractorPayments: [],
+        projectNotes: [],
+        commissionSnapshot: null,
+      } as never);
+      vi.mocked(prisma.subcontractorPayment.aggregate).mockResolvedValue({
+        _sum: { amountOwed: null },
+      } as never);
+      vi.mocked(prisma.transaction.aggregate).mockResolvedValue({
+        _sum: { amount: { toNumber: () => 0 } },
+        _count: { _all: 2 },
+      } as never);
+      vi.mocked(prisma.aimannDebtLedger.findFirst).mockResolvedValue(null);
+
+      const { getProjectById } = await import('../services/project.service');
+      const result = await getProjectById('p3');
+
+      expect(result.commissionPreview.totalExpenses).toBe(0);
+    });
+  });
+
+  describe('updateProject', () => {
+    it('regenerates completed project snapshots after auto expense transactions are created', async () => {
+      const transactionStages: string[] = [];
+      let transactionCallCount = 0;
+
+      vi.mocked(prisma.project.findUnique)
+        .mockResolvedValueOnce({
+          id: 'p-completed',
+          customer: 'Completed Job',
+          status: ProjectStatus.COMPLETED,
+          paymentMethod: PaymentMethod.CASH,
+          projectTotal: { toNumber: () => 5000 },
+          customerPaid: { toNumber: () => 2500 },
+          forecastedExpenses: { toNumber: () => 1000 },
+          materialsCost: { toNumber: () => 500 },
+          contractDate: new Date('2026-04-01'),
+          installDate: new Date('2026-04-10'),
+          completedDate: new Date('2026-04-20'),
+          estimateDate: null,
+          followUpDate: null,
+          description: 'Completed project',
+          fenceType: FenceType.WOOD,
+          moneyReceived: { toNumber: () => 5000 },
+          linearFeet: null,
+          rateTemplateId: null,
+          subcontractor: null,
+          notes: null,
+          commissionOwed: { toNumber: () => 0 },
+          commissionPaid: { toNumber: () => 0 },
+          memesCommission: { toNumber: () => 0 },
+          aimannsCommission: { toNumber: () => 0 },
+          createdById: 'user-1',
+          isDeleted: false,
+          deletedAt: null,
+          createdAt: new Date('2026-04-01'),
+          updatedAt: new Date('2026-04-20'),
+        } as never)
+        .mockResolvedValueOnce({
+          id: 'p-completed',
+          customer: 'Completed Job',
+          projectTotal: { toNumber: () => 5000 },
+          paymentMethod: PaymentMethod.CASH,
+          materialsCost: { toNumber: () => 500 },
+        } as never);
+
+      vi.mocked(prisma.project.update).mockResolvedValue({
+        id: 'p-completed',
+      } as never);
+      vi.mocked(prisma.subcontractorPayment.aggregate).mockResolvedValue({
+        _sum: { amountOwed: null },
+      } as never);
+      vi.mocked(prisma.transaction.aggregate).mockResolvedValue({
+        _sum: { amount: { toNumber: () => 1200 } },
+        _count: { _all: 1 },
+      } as never);
+      vi.mocked(prisma.aimannDebtLedger.findFirst).mockResolvedValue(null);
+      vi.mocked(prisma.$transaction).mockImplementation(async (fn: Parameters<typeof prisma.$transaction>[0]) => {
+        transactionCallCount += 1;
+        transactionStages.push(transactionCallCount === 1 ? 'update' : 'snapshot');
+        return fn({
+          project: {
+            findUnique: vi.fn().mockResolvedValue({
+              id: 'p-completed',
+              customer: 'Completed Job',
+              projectTotal: { toNumber: () => 5000 },
+              paymentMethod: PaymentMethod.CASH,
+              materialsCost: { toNumber: () => 500 },
+              forecastedExpenses: { toNumber: () => 1000 },
+            }),
+            update: vi.fn().mockResolvedValue({ id: 'p-completed' }),
+          },
+          subcontractorPayment: {
+            aggregate: vi.fn().mockResolvedValue({ _sum: { amountOwed: null } }),
+          },
+          aimannDebtLedger: {
+            findFirst: vi.fn().mockResolvedValue(null),
+            create: vi.fn(),
+          },
+          commissionSnapshot: {
+            create: vi.fn(),
+            upsert: vi.fn(),
+          },
+          transaction: {
+            aggregate: vi.fn().mockResolvedValue({
+              _sum: { amount: { toNumber: () => 1200 } },
+              _count: { _all: 1 },
+            }),
+          },
+          $queryRaw: vi.fn().mockResolvedValue([]),
+        } as never);
+      });
+
+      createAutoTransactionMock.mockImplementation(async () => {
+        transactionStages.push('auto-transaction');
+      });
+
+      const { updateProject } = await import('../services/project.service');
+      await updateProject('p-completed', {
+        materialsCost: 1200,
+      });
+
+      expect(transactionStages).toEqual(['update', 'auto-transaction', 'snapshot']);
     });
   });
 });

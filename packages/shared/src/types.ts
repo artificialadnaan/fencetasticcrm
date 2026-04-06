@@ -279,6 +279,7 @@ export interface CommissionInput {
   paymentMethod: PaymentMethod;
   materialsCost: number;
   subOwedTotal: number;
+  expenseOverride?: number;
   aimannDebtBalance: number;
 }
 

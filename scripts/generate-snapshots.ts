@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { Prisma, PrismaClient, ProjectStatus } from '@prisma/client';
+import { Prisma, PrismaClient, ProjectStatus, TransactionType } from '@prisma/client';
 import { calculateCommission, PaymentMethod } from '@fencetastic/shared';
 
 function loadEnvFromApiApp(): void {
@@ -37,6 +37,24 @@ function roundMoney(value: number): number {
 
 function formatDate(date: Date | null): string {
   return date ? date.toISOString().split('T')[0] : 'n/a';
+}
+
+async function getExpenseBasis(
+  prisma: PrismaClient,
+  projectId: string,
+  fallbackExpense: number
+): Promise<number> {
+  const expenseAgg = await prisma.transaction.aggregate({
+    where: {
+      projectId,
+      type: TransactionType.EXPENSE,
+    },
+    _sum: { amount: true },
+    _count: { _all: true },
+  });
+
+  const hasActualExpenseRows = (expenseAgg._count?._all ?? 0) > 0;
+  return hasActualExpenseRows ? d(expenseAgg._sum.amount) : fallbackExpense;
 }
 
 async function main() {
@@ -96,12 +114,18 @@ async function main() {
         (sum, payment) => sum + d(payment.amountOwed),
         0
       );
+      const expenseBasis = await getExpenseBasis(
+        prisma,
+        project.id,
+        d(project.forecastedExpenses)
+      );
       const debtBalanceBefore = simulatedBalance;
       const breakdown = calculateCommission({
         projectTotal: d(project.projectTotal),
         paymentMethod: project.paymentMethod as PaymentMethod,
         materialsCost: d(project.materialsCost),
         subOwedTotal,
+        expenseOverride: expenseBasis,
         aimannDebtBalance: debtBalanceBefore,
       });
       const debtBalanceAfter = roundMoney(debtBalanceBefore - breakdown.aimannDeduction);
@@ -139,11 +163,24 @@ async function main() {
             select: { runningBalance: true },
           });
           const liveDebtBefore = latestRow ? d(latestRow.runningBalance) : 0;
+          const liveExpenseAgg = await tx.transaction.aggregate({
+            where: {
+              projectId: project.id,
+              type: TransactionType.EXPENSE,
+            },
+            _sum: { amount: true },
+            _count: { _all: true },
+          });
+          const hasActualExpenseRows = (liveExpenseAgg._count?._all ?? 0) > 0;
+          const liveExpenseBasis = hasActualExpenseRows
+            ? d(liveExpenseAgg._sum.amount)
+            : d(project.forecastedExpenses);
           const liveBreakdown = calculateCommission({
             projectTotal: d(project.projectTotal),
             paymentMethod: project.paymentMethod as PaymentMethod,
             materialsCost: d(project.materialsCost),
             subOwedTotal,
+            expenseOverride: liveExpenseBasis,
             aimannDebtBalance: liveDebtBefore,
           });
           const liveDebtAfter = roundMoney(liveDebtBefore - liveBreakdown.aimannDeduction);

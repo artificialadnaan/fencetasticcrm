@@ -148,4 +148,19 @@ describe('calculateCommission', () => {
     });
     expect(result.aimannDeduction).toBe(0);
   });
+
+  it('uses an explicit total expense override when provided', () => {
+    const result = calculateCommission({
+      projectTotal: 2625,
+      paymentMethod: PaymentMethod.CREDIT_CARD,
+      materialsCost: 402.74,
+      subOwedTotal: 0,
+      expenseOverride: 852.74,
+      aimannDebtBalance: 0,
+    });
+
+    expect(result.totalExpenses).toBe(852.74);
+    expect(result.grossProfit).toBe(1431.01);
+    expect(result.netProfit).toBe(1299.76);
+  });
 });

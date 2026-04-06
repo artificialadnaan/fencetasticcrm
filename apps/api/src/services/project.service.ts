@@ -5,6 +5,7 @@ import {
   PaymentMethod,
   ProjectStatus,
   FenceType,
+  TransactionType,
   CC_FEE_RATE,
   type CreateProjectDTO,
   type UpdateProjectDTO,
@@ -61,7 +62,8 @@ async function buildCommissionPreview(
   projectId: string,
   projectTotal: number,
   paymentMethod: string,
-  materialsCost: number
+  materialsCost: number,
+  expenseOverride?: number
 ): Promise<CommissionPreview> {
   const subAgg = await prisma.subcontractorPayment.aggregate({
     where: { projectId },
@@ -80,6 +82,7 @@ async function buildCommissionPreview(
     paymentMethod: paymentMethod as PaymentMethod,
     materialsCost,
     subOwedTotal,
+    expenseOverride,
     aimannDebtBalance,
   });
 
@@ -89,6 +92,71 @@ async function buildCommissionPreview(
       : 0;
 
   return { ...breakdown, profitPercent };
+}
+
+async function getProjectExpenseBasis(
+  projectId: string,
+  fallbackExpense: number
+) {
+  const actualExpenseAgg = await prisma.transaction.aggregate({
+    where: {
+      projectId,
+      type: TransactionType.EXPENSE,
+    },
+    _sum: { amount: true },
+    _count: { _all: true },
+  });
+
+  const hasActualExpenseRows = (actualExpenseAgg._count?._all ?? 0) > 0;
+  return hasActualExpenseRows ? d(actualExpenseAgg._sum.amount) : fallbackExpense;
+}
+
+async function getProjectExpenseBasisTx(
+  tx: Omit<typeof prisma, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>,
+  projectId: string,
+  fallbackExpense: number
+) {
+  const actualExpenseAgg = await tx.transaction.aggregate({
+    where: {
+      projectId,
+      type: TransactionType.EXPENSE,
+    },
+    _sum: { amount: true },
+    _count: { _all: true },
+  });
+
+  const hasActualExpenseRows = (actualExpenseAgg._count?._all ?? 0) > 0;
+  return hasActualExpenseRows ? d(actualExpenseAgg._sum.amount) : fallbackExpense;
+}
+
+async function getExpenseBasisByProjectIds(
+  projectIds: string[],
+  fallbackByProjectId: Map<string, number>
+) {
+  if (projectIds.length === 0) {
+    return fallbackByProjectId;
+  }
+
+  const groupedExpenses = await prisma.transaction.groupBy({
+    by: ['projectId'],
+    where: {
+      projectId: { in: projectIds },
+      type: TransactionType.EXPENSE,
+    },
+    _sum: { amount: true },
+    _count: { _all: true },
+  });
+
+  const result = new Map(fallbackByProjectId);
+  for (const row of groupedExpenses) {
+    if (!row.projectId) continue;
+    const hasActualExpenseRows = (row._count?._all ?? 0) > 0;
+    if (hasActualExpenseRows) {
+      result.set(row.projectId, d(row._sum.amount));
+    }
+  }
+
+  return result;
 }
 
 export async function listProjects(query: ProjectListQuery = {}) {
@@ -165,6 +233,10 @@ export async function listProjects(query: ProjectListQuery = {}) {
   ]);
 
   const currentDebtBalance = latestDebt ? d(latestDebt.runningBalance) : 0;
+  const expenseBasisByProjectId = await getExpenseBasisByProjectIds(
+    projects.map((project) => project.id),
+    new Map(projects.map((project) => [project.id, d(project.forecastedExpenses)]))
+  );
 
   const data: ProjectListItem[] = projects.map((p) => {
     const projectTotal = d(p.projectTotal);
@@ -182,6 +254,7 @@ export async function listProjects(query: ProjectListQuery = {}) {
       paymentMethod: p.paymentMethod as PaymentMethod,
       materialsCost,
       subOwedTotal,
+      expenseOverride: expenseBasisByProjectId.get(p.id) ?? d(p.forecastedExpenses),
       aimannDebtBalance: currentDebtBalance,
     });
 
@@ -235,6 +308,8 @@ export async function getProjectById(projectId: string) {
 
   const projectTotal = d(project.projectTotal);
   const materialsCost = d(project.materialsCost);
+  const forecastedExpenses = d(project.forecastedExpenses);
+  const expenseBasis = await getProjectExpenseBasis(projectId, forecastedExpenses);
 
   // For completed projects, use snapshot. For others, compute live.
   let commissionPreview: CommissionPreview;
@@ -258,7 +333,8 @@ export async function getProjectById(projectId: string) {
       project.id,
       projectTotal,
       project.paymentMethod,
-      materialsCost
+      materialsCost,
+      expenseBasis
     );
   }
 
@@ -274,7 +350,7 @@ export async function getProjectById(projectId: string) {
     paymentMethod: project.paymentMethod,
     moneyReceived: d(project.moneyReceived),
     customerPaid: d(project.customerPaid),
-    forecastedExpenses: d(project.forecastedExpenses),
+    forecastedExpenses,
     materialsCost,
     contractDate: project.contractDate.toISOString().split('T')[0],
     installDate: project.installDate.toISOString().split('T')[0],
@@ -359,12 +435,15 @@ async function generateCommissionSnapshot(
 
   const projectTotal = Number(project.projectTotal);
   const materialsCost = Number(project.materialsCost);
+  const forecastedExpenses = Number(project.forecastedExpenses);
+  const expenseBasis = await getProjectExpenseBasisTx(tx, projectId, forecastedExpenses);
 
   const breakdown = calculateCommission({
     projectTotal,
     paymentMethod: project.paymentMethod as PaymentMethod,
     materialsCost,
     subOwedTotal,
+    expenseOverride: expenseBasis,
     aimannDebtBalance,
   });
 
@@ -604,27 +683,30 @@ export async function updateProject(projectId: string, dto: UpdateProjectDTO) {
   const financialFieldChanged = financialFields.some((f) => (dto as Record<string, unknown>)[f] !== undefined);
 
   if (isAlreadyCompleted && financialFieldChanged) {
-    return prisma.$transaction(
-      async (tx) => {
-        const updated = await tx.project.update({
+    const updated = await prisma.$transaction(
+      async (tx) =>
+        tx.project.update({
           where: { id: projectId },
           data: updateData,
-        });
+        }),
+      { isolationLevel: 'Serializable' }
+    );
 
+    for (const td of trackedDeltas) {
+      const delta = td.newVal - td.oldVal;
+      if (delta !== 0) {
+        await createAutoTransaction(projectId, td.type, td.category, td.sourceField, delta, current.customer);
+      }
+    }
+
+    await prisma.$transaction(
+      async (tx) => {
         await generateCommissionSnapshot(projectId, tx);
-
-        // Auto-transactions for deltas
-        for (const td of trackedDeltas) {
-          const delta = td.newVal - td.oldVal;
-          if (delta !== 0) {
-            await createAutoTransaction(projectId, td.type, td.category, td.sourceField, delta, current.customer);
-          }
-        }
-
-        return { id: updated.id };
       },
       { isolationLevel: 'Serializable' }
     );
+
+    return { id: updated.id };
   }
 
   // Normal update (not completed, no snapshot needed)

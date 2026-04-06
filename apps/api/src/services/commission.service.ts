@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { Prisma, TransactionType } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import {
   calculateCommission,
@@ -17,6 +17,35 @@ function d(val: Prisma.Decimal | null | undefined): number {
     return (val as unknown as { toNumber: () => number }).toNumber();
   }
   return Number(val);
+}
+
+async function getExpenseBasisByProjectIds(
+  projectIds: string[],
+  fallbackByProjectId: Map<string, number>
+) {
+  if (projectIds.length === 0) {
+    return fallbackByProjectId;
+  }
+
+  const groupedExpenses = await prisma.transaction.groupBy({
+    by: ['projectId'],
+    where: {
+      projectId: { in: projectIds },
+      type: TransactionType.EXPENSE,
+    },
+    _sum: { amount: true },
+    _count: { _all: true },
+  });
+
+  const result = new Map(fallbackByProjectId);
+  for (const row of groupedExpenses) {
+    if (!row.projectId) continue;
+    if ((row._count?._all ?? 0) > 0) {
+      result.set(row.projectId, d(row._sum.amount));
+    }
+  }
+
+  return result;
 }
 
 export async function getCommissionSummary(): Promise<CommissionSummary> {
@@ -119,11 +148,16 @@ export async function getCommissionPipeline(): Promise<PipelineProjectionSummary
   ]);
 
   const currentDebtBalance = latestDebt ? d(latestDebt.runningBalance) : 0;
+  const expenseBasisByProjectId = await getExpenseBasisByProjectIds(
+    pipelineProjects.map((project) => project.id),
+    new Map(pipelineProjects.map((project) => [project.id, d(project.forecastedExpenses)]))
+  );
 
   let simulatedDebtBalance = currentDebtBalance;
   const projects: PipelineProjection[] = pipelineProjects.map((p) => {
     const projectTotal = d(p.projectTotal);
     const materialsCost = d(p.materialsCost);
+    const forecastedExpenses = d(p.forecastedExpenses);
     const subOwedTotal = p.subcontractorPayments.reduce((sum, sp) => sum + d(sp.amountOwed), 0);
 
     const breakdown = calculateCommission({
@@ -131,6 +165,7 @@ export async function getCommissionPipeline(): Promise<PipelineProjectionSummary
       paymentMethod: p.paymentMethod as PaymentMethod,
       materialsCost,
       subOwedTotal,
+      expenseOverride: expenseBasisByProjectId.get(p.id) ?? forecastedExpenses,
       aimannDebtBalance: simulatedDebtBalance,
     });
 
