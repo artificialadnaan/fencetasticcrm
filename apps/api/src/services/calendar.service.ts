@@ -8,6 +8,7 @@ export interface CalendarEvent {
   type: string;
   projectId: string;
   color: string;
+  notes?: string | null;
 }
 
 const EVENT_COLORS = {
@@ -64,6 +65,7 @@ export async function getCalendarEvents(
           type: 'estimate',
           projectId: project.id,
           color: EVENT_COLORS.estimate,
+          notes: null,
         });
       }
     }
@@ -79,6 +81,7 @@ export async function getCalendarEvents(
           type: 'followup',
           projectId: project.id,
           color: EVENT_COLORS.followup,
+          notes: null,
         });
       }
     }
@@ -94,6 +97,7 @@ export async function getCalendarEvents(
           type: 'install',
           projectId: project.id,
           color: EVENT_COLORS.install,
+          notes: null,
         });
       }
     }
@@ -109,6 +113,7 @@ export async function getCalendarEvents(
           type: 'completed',
           projectId: project.id,
           color: EVENT_COLORS.completed,
+          notes: null,
         });
       }
     }
@@ -131,6 +136,7 @@ export async function getCalendarEvents(
       type: ce.eventType,
       projectId: ce.projectId ?? '',
       color: ce.color,
+      notes: ce.notes,
     });
   }
 

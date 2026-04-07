@@ -1,75 +1,45 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, dateFnsLocalizer, View, NavigateAction } from 'react-big-calendar';
-import { format, parse, startOfWeek, getDay, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
-import { enUS } from 'date-fns/locale/en-US';
-import 'react-big-calendar/lib/css/react-big-calendar.css';
-
-import { useCalendarEvents, type CalendarEvent } from '@/hooks/use-calendar-events';
+import {
+  addMonths,
+  endOfMonth,
+  format,
+  isWithinInterval,
+  startOfMonth,
+  subMonths,
+} from 'date-fns';
+import { Filter, Plus, Search, X } from 'lucide-react';
+import { api } from '@/lib/api';
+import { useCalendarEvents } from '@/hooks/use-calendar-events';
+import { usePageShell } from '@/components/layout/page-shell';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Plus } from 'lucide-react';
-import { api } from '@/lib/api';
+import { CalendarMonthGrid } from '@/components/calendar/redesign/calendar-month-grid';
+import { CalendarSideInsights } from '@/components/calendar/redesign/calendar-side-insights';
+import type { CalendarEventView } from '@/components/calendar/redesign/calendar-types';
 
-// --- date-fns localizer ---
-const locales = { 'en-US': enUS };
-const localizer = dateFnsLocalizer({
-  format,
-  parse,
-  startOfWeek: () => startOfWeek(new Date(), { weekStartsOn: 0 }),
-  getDay,
-  locales,
-});
-
-// --- Types for react-big-calendar ---
-interface RbcEvent {
+interface ProjectOption {
   id: string;
-  title: string;
-  start: Date;
-  end: Date;
-  resource: CalendarEvent;
+  customer: string;
+  address: string;
 }
 
-// --- Event types ---
 const EVENT_TYPES = [
-  { label: 'Estimate', value: 'estimate', color: '#3B82F6' },
-  { label: 'Follow-Up', value: 'followup', color: '#F59E0B' },
-  { label: 'Install', value: 'install', color: '#10B981' },
-  { label: 'Project Start', value: 'project_start', color: '#8B5CF6' },
-  { label: 'Project Finish', value: 'project_finish', color: '#6B7280' },
-  { label: 'Meeting', value: 'meeting', color: '#EC4899' },
-  { label: 'Site Visit', value: 'site_visit', color: '#F97316' },
-  { label: 'Other', value: 'other', color: '#6366F1' },
-];
+  { label: 'All Types', value: 'ALL' },
+  { label: 'Estimate', value: 'estimate' },
+  { label: 'Follow-Up', value: 'followup' },
+  { label: 'Install', value: 'install' },
+  { label: 'Project Start', value: 'project_start' },
+  { label: 'Project Finish', value: 'project_finish' },
+  { label: 'Meeting', value: 'meeting' },
+  { label: 'Site Visit', value: 'site_visit' },
+  { label: 'Other', value: 'other' },
+] as const;
 
-const COLOR_OPTIONS = [
-  { label: 'Blue', value: '#3B82F6' },
-  { label: 'Amber', value: '#F59E0B' },
-  { label: 'Green', value: '#10B981' },
-  { label: 'Purple', value: '#8B5CF6' },
-  { label: 'Gray', value: '#6B7280' },
-  { label: 'Pink', value: '#EC4899' },
-  { label: 'Orange', value: '#F97316' },
-  { label: 'Indigo', value: '#6366F1' },
-  { label: 'Red', value: '#EF4444' },
-];
-
-// --- Legend (all event types) ---
 const LEGEND = [
   { label: 'Estimate Given', color: '#3B82F6' },
   { label: 'Follow-Up Reminder', color: '#F59E0B' },
@@ -79,21 +49,20 @@ const LEGEND = [
   { label: 'Meeting', color: '#EC4899' },
   { label: 'Site Visit', color: '#F97316' },
   { label: 'Other', color: '#6366F1' },
-];
+] as const;
 
-interface ProjectOption {
-  id: string;
-  customer: string;
-  address: string;
-}
+const EVENT_COLORS: Record<string, string> = {
+  estimate: '#3B82F6',
+  followup: '#F59E0B',
+  install: '#10B981',
+  project_start: '#8B5CF6',
+  project_finish: '#6B7280',
+  meeting: '#EC4899',
+  site_visit: '#F97316',
+  other: '#6366F1',
+};
 
-// Expand a YYYY-MM-DD string to a local midnight Date (avoids UTC off-by-one)
-function parseLocalDate(dateStr: string): Date {
-  const [year, month, day] = dateStr.split('-').map(Number);
-  return new Date(year, month - 1, day);
-}
-
-const EMPTY_FORM = {
+const DEFAULT_FORM = {
   title: '',
   date: '',
   endDate: '',
@@ -103,115 +72,150 @@ const EMPTY_FORM = {
   notes: '',
 };
 
+function toLocalDate(dateStr: string) {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function getEventColor(eventType: string) {
+  return EVENT_COLORS[eventType] ?? '#3B82F6';
+}
+
+function isDerivedProjectEvent(event: CalendarEventView) {
+  return event.id.startsWith('estimate-')
+    || event.id.startsWith('followup-')
+    || event.id.startsWith('install-')
+    || event.id.startsWith('completed-');
+}
+
 export default function CalendarPage() {
   const navigate = useNavigate();
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [view, setView] = useState<View>('month');
-
-  // Add Event dialog state
+  const [currentDate, setCurrentDate] = useState(() => new Date());
+  const [searchText, setSearchText] = useState('');
+  const [typeFilter, setTypeFilter] = useState<'ALL' | string>('ALL');
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({ ...EMPTY_FORM });
+  const [editingEvent, setEditingEvent] = useState<CalendarEventView | null>(null);
+  const [form, setForm] = useState({ ...DEFAULT_FORM });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-
-  // Projects list for optional project link
   const [projects, setProjects] = useState<ProjectOption[]>([]);
-
   const [projectSearch, setProjectSearch] = useState('');
   const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
 
+  const deferredSearch = useDeferredValue(searchText.trim().toLowerCase());
+
   useEffect(() => {
-    api.get('/projects?limit=500&sortBy=customer&sortDir=asc').then((res) => {
-      const raw = res.data?.data ?? res.data ?? [];
-      const arr = Array.isArray(raw) ? raw : [];
-      setProjects(arr.map((p: { id: string; customer: string; address: string }) => ({
-        id: p.id,
-        customer: p.customer,
-        address: p.address,
-      })));
-    }).catch((err) => {
-      console.error('Failed to fetch projects for dropdown:', err);
-    });
+    api.get('/projects?limit=500&sortBy=customer&sortDir=asc')
+      .then((res) => {
+        const raw = res.data?.data ?? res.data ?? [];
+        const arr = Array.isArray(raw) ? raw : [];
+        setProjects(
+          arr.map((project: { id: string; customer: string; address: string }) => ({
+            id: project.id,
+            customer: project.customer,
+            address: project.address,
+          }))
+        );
+      })
+      .catch((err) => {
+        console.error('Failed to load projects for calendar lookup', err);
+      });
   }, []);
 
-  // Compute the visible date range based on current month +/- 1 buffer
+  const projectLookup = useMemo(() => new Map(projects.map((project) => [project.id, project])), [projects]);
+
   const rangeStart = useMemo(() => startOfMonth(subMonths(currentDate, 1)), [currentDate]);
   const rangeEnd = useMemo(() => endOfMonth(addMonths(currentDate, 1)), [currentDate]);
 
-  const { events, isLoading, error, refetch: refetchEvents } = useCalendarEvents(rangeStart, rangeEnd);
+  const { events, isLoading, error, refetch } = useCalendarEvents(rangeStart, rangeEnd);
 
-  // Transform API events to react-big-calendar format
-  const rbcEvents: RbcEvent[] = useMemo(
+  const calendarEvents = useMemo<CalendarEventView[]>(
     () =>
-      events.map((e) => ({
-        id: e.id,
-        title: e.title,
-        start: parseLocalDate(e.start),
-        end: parseLocalDate(e.end),
-        resource: e,
-      })),
-    [events]
+      events.map((event) => {
+        const project = event.projectId ? projectLookup.get(event.projectId) : undefined;
+        const customer = project?.customer ?? '';
+        const address = project?.address ?? '';
+        const searchTextValue = [event.title, event.type, customer, address].filter(Boolean).join(' ').toLowerCase();
+
+        return {
+          ...event,
+          projectCustomer: customer,
+          projectAddress: address,
+          searchText: searchTextValue,
+        };
+      }),
+    [events, projectLookup]
   );
 
-  // Color events by type
-  const eventStyleGetter = (event: RbcEvent) => {
-    const color = event.resource.color;
-    return {
-      style: {
-        backgroundColor: color,
-        borderColor: color,
-        color: '#ffffff',
-        borderRadius: '4px',
-        border: 'none',
-        fontSize: '0.75rem',
-        padding: '1px 4px',
-      },
-    };
-  };
+  const filteredEvents = useMemo(() => {
+    return calendarEvents.filter((event) => {
+      const matchesType = typeFilter === 'ALL' || event.type === typeFilter;
+      const matchesSearch = !deferredSearch || event.searchText.includes(deferredSearch);
+      return matchesType && matchesSearch;
+    });
+  }, [calendarEvents, deferredSearch, typeFilter]);
 
-  // Click event → project detail (only for project-linked events)
-  const handleSelectEvent = (event: RbcEvent) => {
-    if (event.resource.projectId) {
-      navigate(`/projects/${event.resource.projectId}`);
-    }
-  };
+  const monthEvents = useMemo(() => {
+    const monthStart = startOfMonth(currentDate);
+    const monthEnd = endOfMonth(currentDate);
+    return filteredEvents.filter((event) =>
+      isWithinInterval(toLocalDate(event.start), { start: monthStart, end: monthEnd })
+    );
+  }, [currentDate, filteredEvents]);
 
-  // Open Add Event dialog with the clicked date pre-filled
-  const openDialog = (dateStr?: string) => {
+  const openCreateDialog = useCallback((dateStr?: string) => {
+    setEditingEvent(null);
     setForm({
-      ...EMPTY_FORM,
+      ...DEFAULT_FORM,
       date: dateStr ?? format(new Date(), 'yyyy-MM-dd'),
     });
+    setProjectSearch('');
     setSaveError(null);
     setDialogOpen(true);
-  };
+  }, []);
 
-  const handleSelectSlot = (slot: { start: Date }) => {
-    openDialog(format(slot.start, 'yyyy-MM-dd'));
-  };
+  const openEditDialog = useCallback((event: CalendarEventView) => {
+    setEditingEvent(event);
+    setForm({
+      title: event.title,
+      date: event.start,
+      endDate: event.end && event.end !== event.start ? event.end : '',
+      eventType: event.type,
+      color: event.color,
+      projectId: event.projectId,
+      notes: event.notes ?? '',
+    });
+    setProjectSearch(event.projectCustomer ? `${event.projectCustomer}${event.projectAddress ? ` - ${event.projectAddress}` : ''}` : '');
+    setSaveError(null);
+    setDialogOpen(true);
+  }, []);
 
-  const handleNavigate = (newDate: Date, _view: View, _action: NavigateAction) => {
-    setCurrentDate(newDate);
-  };
+  const closeDialog = useCallback(() => {
+    setDialogOpen(false);
+    setEditingEvent(null);
+    setSaveError(null);
+    setProjectDropdownOpen(false);
+  }, []);
 
-  const handleViewChange = (newView: View) => {
-    setView(newView);
-  };
+  const handleEventClick = useCallback((event: CalendarEventView) => {
+    if (event.projectId && isDerivedProjectEvent(event)) {
+      navigate(`/projects/${event.projectId}`);
+      return;
+    }
+    openEditDialog(event);
+  }, [navigate, openEditDialog]);
 
-  const handleEventTypeChange = (value: string) => {
-    const et = EVENT_TYPES.find((t) => t.value === value);
-    setForm((f) => ({ ...f, eventType: value, color: et?.color ?? f.color }));
-  };
-
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (!form.title.trim() || !form.date || !form.eventType) {
       setSaveError('Title, date, and event type are required.');
       return;
     }
+
     setSaving(true);
     setSaveError(null);
+
     try {
-      await api.post('/calendar/events', {
+      const payload = {
         title: form.title.trim(),
         date: form.date,
         endDate: form.endDate || null,
@@ -219,262 +223,430 @@ export default function CalendarPage() {
         color: form.color,
         projectId: form.projectId || null,
         notes: form.notes || null,
-      });
-      setDialogOpen(false);
-      refetchEvents();
+      };
+
+      if (editingEvent) {
+        await api.patch(`/calendar/events/${editingEvent.id}`, payload);
+      } else {
+        await api.post('/calendar/events', payload);
+      }
+
+      await refetch();
+      closeDialog();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to save event';
-      setSaveError(msg);
+      setSaveError(err instanceof Error ? err.message : 'Failed to save event');
     } finally {
       setSaving(false);
     }
-  };
+  }, [closeDialog, editingEvent, form, refetch]);
+
+  const handleDelete = useCallback(async () => {
+    if (!editingEvent) return;
+    setSaving(true);
+    setSaveError(null);
+
+    try {
+      await api.delete(`/calendar/events/${editingEvent.id}`);
+      await refetch();
+      closeDialog();
+    } catch (err: unknown) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to delete event');
+    } finally {
+      setSaving(false);
+    }
+  }, [closeDialog, editingEvent, refetch]);
+
+  const clearFilters = useCallback(() => {
+    setSearchText('');
+    setTypeFilter('ALL');
+  }, []);
+
+  const searchSlot = useMemo(() => {
+    const hasFilters = Boolean(searchText.trim() || typeFilter !== 'ALL');
+
+    return (
+      <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="relative w-full sm:w-[300px]">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            value={searchText}
+            onChange={(event) => setSearchText(event.target.value)}
+            placeholder="Search events or projects..."
+            className="h-10 rounded-2xl border-black/10 bg-white/80 pl-10 shadow-sm placeholder:text-slate-400"
+          />
+        </div>
+
+        <Select value={typeFilter} onValueChange={(value) => setTypeFilter(value)}>
+          <SelectTrigger className="h-10 w-full rounded-2xl border-black/10 bg-white/80 shadow-sm sm:w-[190px]">
+            <Filter className="mr-2 h-4 w-4 text-slate-500" />
+            <SelectValue placeholder="Filter View" />
+          </SelectTrigger>
+          <SelectContent>
+            {EVENT_TYPES.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {hasFilters && (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={clearFilters}
+            className="h-10 rounded-2xl border border-black/5 bg-white/60 px-4 text-slate-700 shadow-sm hover:bg-white"
+          >
+            <X className="h-4 w-4" />
+            Reset
+          </Button>
+        )}
+      </div>
+    );
+  }, [clearFilters, searchText, typeFilter]);
+
+  usePageShell({
+    eyebrow: 'Command Center',
+    title: 'Calendar',
+    subtitle: 'Schedule installs, estimates, and follow-ups with a live month view and direct project lookup.',
+    searchSlot,
+    primaryActions: (
+      <Button
+        type="button"
+        onClick={() => openCreateDialog()}
+        className="rounded-2xl bg-slate-950 px-4 text-white hover:bg-slate-800"
+      >
+        <Plus className="h-4 w-4" />
+        Add Event
+      </Button>
+    ),
+    secondaryActions: (
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => setCurrentDate(new Date())}
+        className="rounded-2xl border-black/10 bg-white/70 px-4 shadow-sm"
+      >
+        Today
+      </Button>
+    ),
+  });
+
+  const visibleCount = monthEvents.length;
+  const projectLinkedCount = monthEvents.filter((event) => event.projectId).length;
+  const customCount = visibleCount - projectLinkedCount;
+
+  const editDialogTitle = editingEvent ? 'Edit Calendar Event' : 'Add Calendar Event';
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Calendar</h1>
-          <p className="text-muted-foreground mt-1">
-            Schedule installs, estimates, and follow-ups.
-          </p>
-        </div>
-        <Button onClick={() => openDialog()}>
-          <Plus className="h-4 w-4 mr-1" />Add Event
-        </Button>
-      </div>
-
-      {/* Legend */}
-      <div className="flex flex-wrap gap-4">
-        {LEGEND.map(({ label, color }) => (
-          <div key={label} className="flex items-center gap-2 text-sm">
-            <span
-              className="inline-block w-3 h-3 rounded-full flex-shrink-0"
-              style={{ backgroundColor: color }}
-            />
-            <span className="text-muted-foreground">{label}</span>
+    <div className="space-y-6">
+      <section className="shell-panel rounded-[32px] p-5 md:p-6">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+              Central Region Operations
+            </p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-slate-950">
+              {format(currentDate, 'MMMM yyyy')}
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+              Month-by-month installs, estimate reminders, and custom schedule notes. Custom events can be created and edited directly from the calendar.
+            </p>
           </div>
-        ))}
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-[24px] border border-black/5 bg-white/70 px-4 py-3">
+              <p className="text-xs font-medium uppercase tracking-[0.2em] text-slate-500">Visible Events</p>
+              <p className="mt-2 text-lg font-semibold text-slate-950">{visibleCount}</p>
+            </div>
+            <div className="rounded-[24px] border border-black/5 bg-white/70 px-4 py-3">
+              <p className="text-xs font-medium uppercase tracking-[0.2em] text-slate-500">Project Linked</p>
+              <p className="mt-2 text-lg font-semibold text-slate-950">{projectLinkedCount}</p>
+            </div>
+            <div className="rounded-[24px] border border-black/5 bg-slate-950 px-4 py-3 text-white">
+              <p className="text-xs font-medium uppercase tracking-[0.2em] text-white/60">Custom Events</p>
+              <p className="mt-2 text-lg font-semibold">{customCount}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-5 flex flex-wrap items-center gap-2">
+          {LEGEND.map((item) => (
+            <span key={item.label} className="inline-flex items-center gap-2 rounded-full bg-white/75 px-3 py-1 text-xs font-medium text-slate-700 shadow-sm">
+              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+              {item.label}
+            </span>
+          ))}
+        </div>
+
+        {error && (
+          <div className="mt-5 rounded-[24px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            Failed to load calendar events: {error}
+          </div>
+        )}
+      </section>
+
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,0.7fr)]">
+        <CalendarMonthGrid
+          currentDate={currentDate}
+          events={monthEvents}
+          isLoading={isLoading}
+          onPrevMonth={() => setCurrentDate((value) => subMonths(value, 1))}
+          onNextMonth={() => setCurrentDate((value) => addMonths(value, 1))}
+          onToday={() => setCurrentDate(new Date())}
+          onSelectDate={(date) => openCreateDialog(format(date, 'yyyy-MM-dd'))}
+          onSelectEvent={handleEventClick}
+          onCreateEvent={() => openCreateDialog()}
+        />
+
+        <CalendarSideInsights
+          currentDate={currentDate}
+          events={filteredEvents}
+          isLoading={isLoading}
+          onOpenEvent={handleEventClick}
+          onViewFullSchedule={() => setCurrentDate(new Date())}
+        />
       </div>
 
-      {/* Error state */}
-      {error && (
-        <div className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          Failed to load calendar events: {error}
-        </div>
-      )}
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) {
+            setSaveError(null);
+            setEditingEvent(null);
+            setProjectDropdownOpen(false);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[92vh] overflow-y-auto rounded-[28px] border-black/5 bg-white p-0 shadow-2xl sm:max-w-[720px]">
+          <div className="border-b border-black/5 px-6 py-5">
+            <DialogHeader>
+              <DialogTitle className="text-2xl tracking-[-0.04em] text-slate-950">
+                {editDialogTitle}
+              </DialogTitle>
+            </DialogHeader>
+          </div>
 
-      {/* Add Event Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) setSaveError(null); }}>
-        <DialogContent className="sm:max-w-[480px]">
-          <DialogHeader>
-            <DialogTitle>Add Calendar Event</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 pt-2">
-            {/* Title */}
-            <div className="space-y-1.5">
-              <Label htmlFor="event-title">Title</Label>
-              <Input
-                id="event-title"
-                placeholder="Event title"
-                value={form.title}
-                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-              />
-            </div>
-
-            {/* Date + End Date */}
-            <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-6 p-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(260px,0.9fr)]">
+            <div className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="event-date">Date</Label>
+                <Label htmlFor="event-title">Title</Label>
                 <Input
-                  id="event-date"
-                  type="date"
-                  value={form.date}
-                  onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+                  id="event-title"
+                  placeholder="Event title"
+                  value={form.title}
+                  onChange={(event) => setForm((value) => ({ ...value, title: event.target.value }))}
                 />
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="event-end-date">End Date (optional)</Label>
-                <Input
-                  id="event-end-date"
-                  type="date"
-                  value={form.endDate}
-                  onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))}
-                />
-              </div>
-            </div>
 
-            {/* Event Type */}
-            <div className="space-y-1.5">
-              <Label>Event Type</Label>
-              <Select value={form.eventType} onValueChange={handleEventTypeChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {EVENT_TYPES.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>
-                      {t.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Color */}
-            <div className="space-y-1.5">
-              <Label>Color</Label>
-              <Select value={form.color} onValueChange={(v) => setForm((f) => ({ ...f, color: v }))}>
-                <SelectTrigger>
-                  <SelectValue>
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="inline-block w-3 h-3 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: form.color }}
-                      />
-                      {COLOR_OPTIONS.find((c) => c.value === form.color)?.label ?? form.color}
-                    </div>
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {COLOR_OPTIONS.map((c) => (
-                    <SelectItem key={c.value} value={c.value}>
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="inline-block w-3 h-3 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: c.value }}
-                        />
-                        {c.label}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Project link (optional, searchable) */}
-            <div className="space-y-1.5">
-              <Label>Link to Project (optional)</Label>
-              {form.projectId ? (
-                <div className="flex items-center gap-2 border rounded-md px-3 py-2 text-sm">
-                  <span className="flex-1 truncate">
-                    {projects.find((p) => p.id === form.projectId)?.customer ?? 'Selected project'} — {projects.find((p) => p.id === form.projectId)?.address ?? ''}
-                  </span>
-                  <button
-                    type="button"
-                    className="text-muted-foreground hover:text-foreground text-xs"
-                    onClick={() => { setForm((f) => ({ ...f, projectId: '' })); setProjectSearch(''); }}
-                  >
-                    Clear
-                  </button>
-                </div>
-              ) : (
-                <div className="relative">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="event-date">Date</Label>
                   <Input
-                    placeholder="Search or select a project..."
-                    value={projectSearch}
-                    onChange={(e) => setProjectSearch(e.target.value)}
-                    onFocus={() => setProjectDropdownOpen(true)}
-                    onBlur={() => setTimeout(() => setProjectDropdownOpen(false), 200)}
+                    id="event-date"
+                    type="date"
+                    value={form.date}
+                    onChange={(event) => setForm((value) => ({ ...value, date: event.target.value }))}
                   />
-                  {projectDropdownOpen && (
-                    <div className="absolute z-50 top-full left-0 right-0 mt-1 border rounded-md bg-popover shadow-md max-h-48 overflow-y-auto">
-                      {(() => {
-                        const q = projectSearch.toLowerCase();
-                        const filtered = q
-                          ? projects.filter((p) => p.customer.toLowerCase().includes(q) || p.address.toLowerCase().includes(q))
-                          : projects;
-                        const visible = filtered.slice(0, 30);
-                        if (visible.length === 0) {
-                          return <div className="px-3 py-2 text-sm text-muted-foreground">No projects found</div>;
-                        }
-                        return visible.map((p) => (
-                          <button
-                            key={p.id}
-                            type="button"
-                            className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
-                            onMouseDown={(e) => e.preventDefault()}
-                            onClick={() => {
-                              setForm((f) => ({ ...f, projectId: p.id }));
-                              setProjectSearch('');
-                              setProjectDropdownOpen(false);
-                            }}
-                          >
-                            <span className="font-medium">{p.customer}</span>
-                            <span className="text-muted-foreground"> — {p.address}</span>
-                          </button>
-                        ));
-                      })()}
-                    </div>
-                  )}
                 </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="event-end-date">End Date</Label>
+                  <Input
+                    id="event-end-date"
+                    type="date"
+                    value={form.endDate}
+                    onChange={(event) => setForm((value) => ({ ...value, endDate: event.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Event Type</Label>
+                <Select
+                  value={form.eventType}
+                  onValueChange={(value) =>
+                    setForm((current) => ({
+                      ...current,
+                      eventType: value,
+                      color: getEventColor(value),
+                    }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EVENT_TYPES.filter((item) => item.value !== 'ALL').map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Color</Label>
+                <Input
+                  type="text"
+                  value={form.color}
+                  onChange={(event) => setForm((value) => ({ ...value, color: event.target.value }))}
+                />
+                <p className="text-xs text-slate-500">Use a hex color or keep the default picked from the event type.</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Project Link</Label>
+                {form.projectId ? (
+                  <div className="flex items-center justify-between gap-3 rounded-2xl border border-black/10 bg-slate-50 px-3 py-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-slate-950">
+                        {projects.find((project) => project.id === form.projectId)?.customer ?? 'Selected project'}
+                      </p>
+                      <p className="truncate text-xs text-slate-500">
+                        {projects.find((project) => project.id === form.projectId)?.address ?? ''}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="text-xs font-medium text-slate-600 hover:text-slate-950"
+                      onClick={() => {
+                        setForm((value) => ({ ...value, projectId: '' }));
+                        setProjectSearch('');
+                      }}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <Input
+                      placeholder="Search or select a project..."
+                      value={projectSearch}
+                      onChange={(event) => setProjectSearch(event.target.value)}
+                      onFocus={() => setProjectDropdownOpen(true)}
+                      onBlur={() => setTimeout(() => setProjectDropdownOpen(false), 200)}
+                    />
+                    {projectDropdownOpen && (
+                      <div className="absolute z-50 mt-2 max-h-52 w-full overflow-y-auto rounded-2xl border border-black/10 bg-white shadow-xl">
+                        {(() => {
+                          const query = projectSearch.trim().toLowerCase();
+                          const filtered = query
+                            ? projects.filter((project) =>
+                                project.customer.toLowerCase().includes(query) ||
+                                project.address.toLowerCase().includes(query)
+                              )
+                            : projects;
+                          const visible = filtered.slice(0, 20);
+
+                          if (visible.length === 0) {
+                            return <div className="px-4 py-3 text-sm text-slate-500">No projects found</div>;
+                          }
+
+                          return visible.map((project) => (
+                            <button
+                              key={project.id}
+                              type="button"
+                              className="flex w-full flex-col items-start gap-1 px-4 py-3 text-left text-sm transition-colors hover:bg-slate-50"
+                              onMouseDown={(event) => event.preventDefault()}
+                              onClick={() => {
+                                setForm((value) => ({ ...value, projectId: project.id }));
+                                setProjectSearch(`${project.customer} — ${project.address}`);
+                                setProjectDropdownOpen(false);
+                              }}
+                            >
+                              <span className="font-medium text-slate-950">{project.customer}</span>
+                              <span className="text-xs text-slate-500">{project.address}</span>
+                            </button>
+                          ));
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="event-notes">Notes</Label>
+                <Textarea
+                  id="event-notes"
+                  rows={4}
+                  placeholder="Optional notes about the event."
+                  value={form.notes}
+                  onChange={(event) => setForm((value) => ({ ...value, notes: event.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="rounded-[26px] border border-black/5 bg-slate-50 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Selected Date</p>
+                <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-slate-950">
+                  {form.date ? format(toLocalDate(form.date), 'EEEE, MMM d') : 'No date selected'}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  {editingEvent
+                    ? 'Update this event directly from the calendar.'
+                    : 'Create a new event and optionally link it to a project.'}
+                </p>
+              </div>
+
+              <div className="rounded-[26px] border border-black/5 bg-white p-4 shadow-sm">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Behavior Notes</p>
+                <ul className="mt-3 space-y-3 text-sm leading-6 text-slate-600">
+                  <li>Project-linked events still route to the project detail page when clicked in the month grid or side rail.</li>
+                  <li>Standalone custom events can be edited and deleted directly from this dialog.</li>
+                  <li>Search and filter operate on visible events using the current client-side project lookup.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {saveError && (
+            <div className="px-6 pb-4 text-sm text-rose-700">
+              {saveError}
+            </div>
+          )}
+
+          <div className="flex flex-col gap-3 border-t border-black/5 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
+              {editingEvent ? 'Editing an existing event' : 'Creating a new event'}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {editingEvent && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleDelete}
+                  disabled={saving}
+                  className="rounded-2xl border-rose-200 bg-rose-50 px-4 text-rose-700 hover:bg-rose-100"
+                >
+                  Delete Event
+                </Button>
               )}
-            </div>
-
-            {/* Notes */}
-            <div className="space-y-1.5">
-              <Label htmlFor="event-notes">Notes (optional)</Label>
-              <Textarea
-                id="event-notes"
-                placeholder="Any additional notes..."
-                rows={3}
-                value={form.notes}
-                onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-              />
-            </div>
-
-            {saveError && (
-              <p className="text-sm text-destructive">{saveError}</p>
-            )}
-
-            <div className="flex justify-end gap-2 pt-1">
-              <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={closeDialog}
+                disabled={saving}
+                className="rounded-2xl border-black/10 bg-white px-4 shadow-sm"
+              >
                 Cancel
               </Button>
-              <Button onClick={handleSave} disabled={saving}>
-                {saving ? 'Saving…' : 'Save Event'}
+              <Button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                className="rounded-2xl bg-slate-950 px-4 text-white hover:bg-slate-800"
+              >
+                {saving ? 'Saving...' : editingEvent ? 'Save Changes' : 'Save Event'}
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Calendar */}
-      <div
-        className="relative rounded-xl border bg-card shadow-sm overflow-hidden"
-        style={{ height: 680 }}
-      >
-        {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center z-10 bg-background/40 pointer-events-none">
-            <span className="text-sm text-muted-foreground animate-pulse">Loading events…</span>
-          </div>
-        )}
-        <div className="p-4 h-full [&_.rbc-calendar]:h-full [&_.rbc-toolbar]:mb-4 [&_.rbc-toolbar_button]:rounded-md [&_.rbc-toolbar_button]:px-3 [&_.rbc-toolbar_button]:py-1.5 [&_.rbc-toolbar_button]:text-sm [&_.rbc-toolbar_button]:border [&_.rbc-toolbar_button]:border-border [&_.rbc-toolbar_button:hover]:bg-accent [&_.rbc-toolbar_button.rbc-active]:bg-primary [&_.rbc-toolbar_button.rbc-active]:text-primary-foreground [&_.rbc-toolbar_button.rbc-active]:border-primary [&_.rbc-header]:py-2 [&_.rbc-header]:text-sm [&_.rbc-header]:font-medium [&_.rbc-today]:bg-primary/10 [&_.rbc-off-range-bg]:bg-muted/30 [&_.rbc-event]:cursor-pointer [&_.rbc-event:focus]:outline-none [&_.rbc-slot-selection]:bg-primary/20">
-          <Calendar
-            localizer={localizer}
-            events={rbcEvents}
-            startAccessor="start"
-            endAccessor="end"
-            view={view}
-            date={currentDate}
-            onNavigate={handleNavigate}
-            onView={handleViewChange}
-            onSelectEvent={handleSelectEvent}
-            onSelectSlot={handleSelectSlot}
-            selectable
-            eventPropGetter={eventStyleGetter}
-            popup
-            showMultiDayTimes
-            formats={{
-              monthHeaderFormat: (date: Date) => format(date, 'MMMM yyyy'),
-              dayHeaderFormat: (date: Date) => format(date, 'EEEE, MMMM d'),
-              dayRangeHeaderFormat: ({ start, end }: { start: Date; end: Date }) =>
-                `${format(start, 'MMMM d')} – ${format(end, 'MMMM d, yyyy')}`,
-            }}
-          />
-        </div>
-      </div>
     </div>
   );
 }

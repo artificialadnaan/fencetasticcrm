@@ -9,6 +9,7 @@ export interface CalendarEvent {
   type: string;
   projectId: string;
   color: string;
+  notes?: string | null;
 }
 
 interface UseCalendarEventsReturn {
