@@ -111,6 +111,7 @@ model EstimateFollowUpSequence {
   project Project @relation(fields: [projectId], references: [id])
   tasks   EstimateFollowUpTask[]
 
+  @@index([projectId, status])
   @@map("estimate_follow_up_sequences")
 }
 
@@ -119,10 +120,10 @@ model EstimateFollowUpTask {
   sequenceId       String                     @map("sequence_id") @db.Uuid
   projectId        String                     @map("project_id") @db.Uuid
   kind             EstimateFollowUpTaskKind
-  dueDate          DateTime                   @map("due_date") @db.Timestamptz
+  dueDate          DateTime                   @map("due_date") @db.Date
   status           EstimateFollowUpTaskStatus  @default(PENDING)
-  draftSubject     String?                    @map("draft_subject")
-  draftBody        String?                    @map("draft_body") @db.Text
+  draftSubject     String                     @map("draft_subject")
+  draftBody        String                     @map("draft_body") @db.Text
   completedAt      DateTime?                  @map("completed_at") @db.Timestamptz
   completedByUserId String?                   @map("completed_by_user_id") @db.Uuid
   notes            String?                    @db.Text

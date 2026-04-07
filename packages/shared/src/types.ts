@@ -140,8 +140,8 @@ export interface EstimateFollowUpTask {
   kind: EstimateFollowUpTaskKind;
   dueDate: string;
   status: EstimateFollowUpTaskStatus;
-  draftSubject: string | null;
-  draftBody: string | null;
+  draftSubject: string;
+  draftBody: string;
   completedAt: string | null;
   completedByUserId: string | null;
   notes: string | null;
@@ -633,7 +633,7 @@ export interface DashboardFollowUpTask {
   projectId: string;
   customer: string;
   address: string;
-  status: EstimateFollowUpTaskStatus;
+  status: ProjectStatus;
   dueDate: string;
   kind: EstimateFollowUpTaskKind;
 }
