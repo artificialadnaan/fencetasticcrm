@@ -132,19 +132,39 @@ describe('follow-up.service', () => {
   });
 
   it('creates one active sequence and day 1/3/7/14 tasks from estimateDate', async () => {
+    const estimateDate = new Date('2026-04-07T15:30:00.000Z');
+
     prismaMock.tx.estimateFollowUpSequence.findFirst.mockResolvedValue(null);
     prismaMock.tx.project.findUnique.mockResolvedValue({
       id: 'project-1',
       customer: 'Jane Doe',
       description: 'Cedar privacy fence',
-      estimateDate: new Date('2026-04-07T15:30:00.000Z'),
+      estimateDate,
     });
     prismaMock.tx.estimateFollowUpSequence.create.mockResolvedValue(buildSequenceRow());
 
     const { ensureEstimateFollowUpSequence } = await import('../services/follow-up.service');
     const result = await ensureEstimateFollowUpSequence('project-1', 'user-1');
+    const createCall = prismaMock.tx.estimateFollowUpSequence.create.mock.calls[0][0];
+    const createdTasks = createCall.data.tasks.create;
 
     expect(result.sequence?.status).toBe(EstimateFollowUpSequenceStatus.ACTIVE);
+    expect(createdTasks.map((task: { kind: EstimateFollowUpTaskKind }) => task.kind)).toEqual([
+      EstimateFollowUpTaskKind.DAY_1,
+      EstimateFollowUpTaskKind.DAY_3,
+      EstimateFollowUpTaskKind.DAY_7,
+      EstimateFollowUpTaskKind.DAY_14,
+    ]);
+    expect(
+      createdTasks.map((task: { dueDate: Date }) => task.dueDate.toISOString().slice(0, 10))
+    ).toEqual([
+      '2026-04-08',
+      '2026-04-10',
+      '2026-04-14',
+      '2026-04-21',
+    ]);
+    expect(createdTasks[0].dueDate.toISOString()).toBe('2026-04-08T00:00:00.000Z');
+    expect(createdTasks[0].dueDate.getTime()).not.toBe(estimateDate.getTime());
     expect(result.tasks.map((task) => task.kind)).toEqual([
       EstimateFollowUpTaskKind.DAY_1,
       EstimateFollowUpTaskKind.DAY_3,
@@ -202,6 +222,11 @@ describe('follow-up.service', () => {
   });
 
   it('marks future pending tasks skipped when closing a sequence', async () => {
+    const closureMoment = new Date('2026-04-09T11:00:00.000Z');
+
+    vi.useFakeTimers();
+    vi.setSystemTime(closureMoment);
+
     prismaMock.tx.estimateFollowUpSequence.findUnique.mockResolvedValue(
       buildSequenceRow()
     );
@@ -220,17 +245,24 @@ describe('follow-up.service', () => {
       closedSummary: 'Customer asked to pause',
     });
 
-    expect(prismaMock.tx.estimateFollowUpTask.updateMany).toHaveBeenCalledWith({
-      where: {
-        sequenceId: 'sequence-1',
-        status: EstimateFollowUpTaskStatus.PENDING,
-      },
-      data: {
-        status: EstimateFollowUpTaskStatus.SKIPPED,
-      },
-    });
-    expect(result.sequence?.status).toBe(EstimateFollowUpSequenceStatus.CLOSED);
-    expect(result.sequence?.closedAt).not.toBeNull();
+    try {
+      expect(prismaMock.tx.estimateFollowUpTask.updateMany).toHaveBeenCalledWith({
+        where: {
+          sequenceId: 'sequence-1',
+          status: EstimateFollowUpTaskStatus.PENDING,
+          dueDate: {
+            gt: closureMoment,
+          },
+        },
+        data: {
+          status: EstimateFollowUpTaskStatus.SKIPPED,
+        },
+      });
+      expect(result.sequence?.status).toBe(EstimateFollowUpSequenceStatus.CLOSED);
+      expect(result.sequence?.closedAt).toBe(closureMoment.toISOString());
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('records completedAt and completedByUserId when a task is completed', async () => {

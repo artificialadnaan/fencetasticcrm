@@ -324,6 +324,7 @@ export async function closeFollowUpSequence(
   const client = getFollowUpClient();
 
   return client.$transaction(async (tx) => {
+    const closedAt = new Date();
     const existing = await tx.estimateFollowUpSequence.findUnique({
       where: { id: sequenceId },
       include: {
@@ -343,6 +344,9 @@ export async function closeFollowUpSequence(
       where: {
         sequenceId,
         status: EstimateFollowUpTaskStatus.PENDING,
+        dueDate: {
+          gt: closedAt,
+        },
       },
       data: {
         status: EstimateFollowUpTaskStatus.SKIPPED,
@@ -353,7 +357,7 @@ export async function closeFollowUpSequence(
       where: { id: sequenceId },
       data: {
         status: input.status,
-        closedAt: new Date(),
+        closedAt,
         closedSummary: input.closedSummary ?? null,
         lostReasonCode:
           input.status === EstimateFollowUpSequenceStatus.LOST ? input.lostReasonCode ?? null : null,
