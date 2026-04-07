@@ -15,6 +15,7 @@ import {
 } from '@fencetastic/shared';
 import { AppError } from '../middleware/error-handler';
 import { createAutoTransaction } from './transaction.service';
+import { ensureEstimateFollowUpSequence } from './follow-up.service';
 
 // Helper: convert Prisma Decimal to number
 function d(val: Prisma.Decimal | null | undefined): number {
@@ -532,6 +533,10 @@ export async function createProject(dto: CreateProjectDTO, createdById: string) 
     },
   });
 
+  if (project.status === ProjectStatus.ESTIMATE) {
+    await ensureEstimateFollowUpSequence(project.id, createdById);
+  }
+
   // If created directly as COMPLETED, generate snapshot immediately
   if (status === ProjectStatus.COMPLETED) {
     await prisma.$transaction(
@@ -714,6 +719,10 @@ export async function updateProject(projectId: string, dto: UpdateProjectDTO) {
     where: { id: projectId },
     data: updateData,
   });
+
+  if (isMovingToEstimate) {
+    await ensureEstimateFollowUpSequence(projectId, current.createdById);
+  }
 
   for (const td of trackedDeltas) {
     const delta = td.newVal - td.oldVal;

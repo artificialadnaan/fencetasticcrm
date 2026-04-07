@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PaymentMethod, ProjectStatus, FenceType } from '@fencetastic/shared';
 
 const createAutoTransactionMock = vi.fn();
+const ensureEstimateFollowUpSequenceMock = vi.fn();
 
 // Mock Prisma before importing service
 vi.mock('../lib/prisma', () => ({
@@ -51,6 +52,11 @@ vi.mock('../services/transaction.service', () => ({
   createAutoTransaction: (...args: unknown[]) => createAutoTransactionMock(...args),
 }));
 
+vi.mock('../services/follow-up.service', () => ({
+  ensureEstimateFollowUpSequence: (...args: unknown[]) =>
+    ensureEstimateFollowUpSequenceMock(...args),
+}));
+
 import { prisma } from '../lib/prisma';
 
 // We will import the actual service functions after creating them.
@@ -59,6 +65,11 @@ import { prisma } from '../lib/prisma';
 describe('Project Service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    ensureEstimateFollowUpSequenceMock.mockResolvedValue({
+      id: 'sequence-1',
+      projectId: 'p1',
+      status: 'ACTIVE',
+    });
   });
 
   describe('listProjects', () => {
@@ -214,6 +225,7 @@ describe('Project Service', () => {
     it('captures estimateDate automatically when created in ESTIMATE', async () => {
       vi.mocked(prisma.project.create).mockResolvedValue({
         id: 'p-estimate',
+        status: ProjectStatus.ESTIMATE,
       } as never);
 
       const { createProject } = await import('../services/project.service');
@@ -235,9 +247,35 @@ describe('Project Service', () => {
       expect(createCall.data.estimateDate).toBeInstanceOf(Date);
     });
 
+    it('creates a follow-up sequence when an ESTIMATE project is created', async () => {
+      vi.mocked(prisma.project.create).mockResolvedValue({
+        id: 'p-estimate',
+        status: ProjectStatus.ESTIMATE,
+      } as never);
+
+      const { createProject } = await import('../services/project.service');
+      await createProject({
+        customer: 'Estimate Lead',
+        address: '101 Quote St',
+        description: 'Estimate stage',
+        fenceType: FenceType.WOOD,
+        status: ProjectStatus.ESTIMATE,
+        projectTotal: 2500,
+        paymentMethod: PaymentMethod.CHECK,
+        forecastedExpenses: 1000,
+        materialsCost: 500,
+        contractDate: '2026-04-01',
+        installDate: '2026-04-20',
+      }, 'user-1');
+
+      expect(ensureEstimateFollowUpSequenceMock).toHaveBeenCalledWith('p-estimate', 'user-1');
+      expect(ensureEstimateFollowUpSequenceMock).toHaveBeenCalledTimes(1);
+    });
+
     it('captures completedDate automatically when created in COMPLETED', async () => {
       vi.mocked(prisma.project.create).mockResolvedValue({
         id: 'p-complete',
+        status: ProjectStatus.COMPLETED,
       } as never);
       vi.mocked(prisma.$transaction).mockResolvedValueOnce(undefined as never);
 
@@ -493,6 +531,95 @@ describe('Project Service', () => {
   });
 
   describe('updateProject', () => {
+    it('creates a follow-up sequence when a project transitions into ESTIMATE', async () => {
+      vi.mocked(prisma.project.findUnique).mockResolvedValue({
+        id: 'p-open',
+        customer: 'Open Lead',
+        status: ProjectStatus.OPEN,
+        paymentMethod: PaymentMethod.CASH,
+        projectTotal: { toNumber: () => 5000 },
+        customerPaid: { toNumber: () => 0 },
+        forecastedExpenses: { toNumber: () => 1000 },
+        materialsCost: { toNumber: () => 500 },
+        contractDate: new Date('2026-04-01'),
+        installDate: new Date('2026-04-10'),
+        completedDate: null,
+        estimateDate: null,
+        followUpDate: null,
+        description: 'Open project',
+        fenceType: FenceType.WOOD,
+        moneyReceived: { toNumber: () => 5000 },
+        linearFeet: null,
+        rateTemplateId: null,
+        subcontractor: null,
+        notes: null,
+        commissionOwed: { toNumber: () => 0 },
+        commissionPaid: { toNumber: () => 0 },
+        memesCommission: { toNumber: () => 0 },
+        aimannsCommission: { toNumber: () => 0 },
+        createdById: 'user-1',
+        isDeleted: false,
+        deletedAt: null,
+        createdAt: new Date('2026-04-01'),
+        updatedAt: new Date('2026-04-05'),
+      } as never);
+      vi.mocked(prisma.project.update).mockResolvedValue({
+        id: 'p-open',
+      } as never);
+
+      const { updateProject } = await import('../services/project.service');
+      await updateProject('p-open', {
+        status: ProjectStatus.ESTIMATE,
+      });
+
+      expect(ensureEstimateFollowUpSequenceMock).toHaveBeenCalledWith('p-open', 'user-1');
+      expect(ensureEstimateFollowUpSequenceMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not create a second active sequence when an estimate project is resaved', async () => {
+      vi.mocked(prisma.project.findUnique).mockResolvedValue({
+        id: 'p-estimate',
+        customer: 'Estimate Lead',
+        status: ProjectStatus.ESTIMATE,
+        paymentMethod: PaymentMethod.CASH,
+        projectTotal: { toNumber: () => 5000 },
+        customerPaid: { toNumber: () => 0 },
+        forecastedExpenses: { toNumber: () => 1000 },
+        materialsCost: { toNumber: () => 500 },
+        contractDate: new Date('2026-04-01'),
+        installDate: new Date('2026-04-10'),
+        completedDate: null,
+        estimateDate: new Date('2026-04-05'),
+        followUpDate: null,
+        description: 'Estimate project',
+        fenceType: FenceType.WOOD,
+        moneyReceived: { toNumber: () => 5000 },
+        linearFeet: null,
+        rateTemplateId: null,
+        subcontractor: null,
+        notes: 'resaved',
+        commissionOwed: { toNumber: () => 0 },
+        commissionPaid: { toNumber: () => 0 },
+        memesCommission: { toNumber: () => 0 },
+        aimannsCommission: { toNumber: () => 0 },
+        createdById: 'user-1',
+        isDeleted: false,
+        deletedAt: null,
+        createdAt: new Date('2026-04-01'),
+        updatedAt: new Date('2026-04-05'),
+      } as never);
+      vi.mocked(prisma.project.update).mockResolvedValue({
+        id: 'p-estimate',
+      } as never);
+
+      const { updateProject } = await import('../services/project.service');
+      await updateProject('p-estimate', {
+        notes: 'still estimate',
+      });
+
+      expect(ensureEstimateFollowUpSequenceMock).not.toHaveBeenCalled();
+    });
+
     it('regenerates completed project snapshots after auto expense transactions are created', async () => {
       const transactionStages: string[] = [];
       let transactionCallCount = 0;
