@@ -285,61 +285,71 @@ async function acquireSequenceCreationLock(tx: FollowUpTx, projectId: string) {
   );
 }
 
+export async function ensureEstimateFollowUpSequenceTx(
+  tx: unknown,
+  projectId: string,
+  _userId: string
+) {
+  const followUpTx = tx as FollowUpTx;
+
+  await acquireSequenceCreationLock(followUpTx, projectId);
+
+  const existing = await followUpTx.estimateFollowUpSequence.findFirst({
+    where: { projectId, status: EstimateFollowUpSequenceStatus.ACTIVE },
+    include: { tasks: { orderBy: { dueDate: 'asc' } } },
+  });
+
+  if (existing) {
+    return mapProjectFollowUpSummary(existing);
+  }
+
+  const project = await followUpTx.project.findUnique({
+    where: { id: projectId },
+    select: {
+      id: true,
+      customer: true,
+      description: true,
+      estimateDate: true,
+    },
+  });
+
+  if (!project) {
+    throw new AppError(404, 'Project not found', 'PROJECT_NOT_FOUND');
+  }
+
+  const anchorDate = startOfUtcDay(project.estimateDate ?? new Date());
+
+  const created = await followUpTx.estimateFollowUpSequence.create({
+    data: {
+      projectId,
+      status: EstimateFollowUpSequenceStatus.ACTIVE,
+      tasks: {
+        create: FOLLOW_UP_DAY_OFFSETS.map(([kind, offset]) => ({
+          projectId,
+          kind,
+          dueDate: addUtcDays(anchorDate, offset),
+          draftSubject: buildDraftSubject(project.customer, kind),
+          draftBody: buildDraftBody(project, kind),
+        })),
+      },
+    },
+    include: {
+      tasks: {
+        orderBy: { dueDate: 'asc' },
+      },
+    },
+  });
+
+  return mapProjectFollowUpSummary(created);
+}
+
 // userId is retained to keep the Task 2 service signature aligned with project-lifecycle callers.
 export async function ensureEstimateFollowUpSequence(projectId: string, _userId: string) {
   const client = getFollowUpClient();
 
-  return client.$transaction(async (tx) => {
-    await acquireSequenceCreationLock(tx, projectId);
-
-    const existing = await tx.estimateFollowUpSequence.findFirst({
-      where: { projectId, status: EstimateFollowUpSequenceStatus.ACTIVE },
-      include: { tasks: { orderBy: { dueDate: 'asc' } } },
-    });
-
-    if (existing) {
-      return mapProjectFollowUpSummary(existing);
-    }
-
-    const project = await tx.project.findUnique({
-      where: { id: projectId },
-      select: {
-        id: true,
-        customer: true,
-        description: true,
-        estimateDate: true,
-      },
-    });
-
-    if (!project) {
-      throw new AppError(404, 'Project not found', 'PROJECT_NOT_FOUND');
-    }
-
-    const anchorDate = startOfUtcDay(project.estimateDate ?? new Date());
-
-    const created = await tx.estimateFollowUpSequence.create({
-      data: {
-        projectId,
-        status: EstimateFollowUpSequenceStatus.ACTIVE,
-        tasks: {
-          create: FOLLOW_UP_DAY_OFFSETS.map(([kind, offset]) => ({
-            projectId,
-            kind,
-            dueDate: addUtcDays(anchorDate, offset),
-            draftSubject: buildDraftSubject(project.customer, kind),
-            draftBody: buildDraftBody(project, kind),
-          })),
-        },
-      },
-      include: {
-        tasks: {
-          orderBy: { dueDate: 'asc' },
-        },
-      },
-    });
-
-    return mapProjectFollowUpSummary(created);
-  });
+  return client.$transaction(async (tx) =>
+    ensureEstimateFollowUpSequenceTx(tx, projectId, _userId)
+  );
 }
 
 export async function completeFollowUpTask(taskId: string, userId: string) {

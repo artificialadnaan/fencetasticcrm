@@ -210,6 +210,25 @@ describe('follow-up.service', () => {
     expect(result.tasks).toHaveLength(4);
   });
 
+  it('can ensure a sequence against an injected transaction client without nesting a transaction', async () => {
+    prismaMock.tx.estimateFollowUpSequence.findFirst.mockResolvedValue(null);
+    prismaMock.tx.project.findUnique.mockResolvedValue({
+      id: 'project-1',
+      customer: 'Jane Doe',
+      description: 'Cedar privacy fence',
+      estimateDate: new Date('2026-04-07T15:30:00.000Z'),
+    });
+    prismaMock.tx.estimateFollowUpSequence.create.mockResolvedValue(buildSequenceRow());
+
+    const { ensureEstimateFollowUpSequenceTx } = await import('../services/follow-up.service');
+    const result = await ensureEstimateFollowUpSequenceTx(prismaMock.tx, 'project-1', 'user-1');
+
+    expect(prismaMock.prisma.$transaction).not.toHaveBeenCalled();
+    expect(prismaMock.tx.$executeRawUnsafe).toHaveBeenCalledTimes(1);
+    expect(prismaMock.tx.estimateFollowUpSequence.create).toHaveBeenCalledTimes(1);
+    expect(result.sequence?.status).toBe(EstimateFollowUpSequenceStatus.ACTIVE);
+  });
+
   it('requires lost reason code and notes when closing as LOST', async () => {
     prismaMock.tx.estimateFollowUpSequence.findUnique.mockResolvedValue(
       buildSequenceRow()

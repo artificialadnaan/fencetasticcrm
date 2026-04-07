@@ -2,7 +2,17 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PaymentMethod, ProjectStatus, FenceType } from '@fencetastic/shared';
 
 const createAutoTransactionMock = vi.fn();
-const ensureEstimateFollowUpSequenceMock = vi.fn();
+const ensureEstimateFollowUpSequenceTxMock = vi.fn();
+const txProjectCreateMock = vi.fn();
+const txProjectFindUniqueMock = vi.fn();
+const txProjectUpdateMock = vi.fn();
+const txSubcontractorAggregateMock = vi.fn();
+const txTransactionAggregateMock = vi.fn();
+const txQueryRawMock = vi.fn();
+const txAimannDebtFindFirstMock = vi.fn();
+const txAimannDebtCreateMock = vi.fn();
+const txCommissionSnapshotCreateMock = vi.fn();
+const txCommissionSnapshotUpsertMock = vi.fn();
 
 // Mock Prisma before importing service
 vi.mock('../lib/prisma', () => ({
@@ -30,19 +40,25 @@ vi.mock('../lib/prisma', () => ({
       findUnique: vi.fn(),
     },
     $transaction: vi.fn((fn: (tx: unknown) => Promise<unknown>) => fn({
+      $queryRaw: txQueryRawMock,
       project: {
-        findUnique: vi.fn(),
-        update: vi.fn(),
+        create: txProjectCreateMock,
+        findUnique: txProjectFindUniqueMock,
+        update: txProjectUpdateMock,
       },
       subcontractorPayment: {
-        aggregate: vi.fn(),
+        aggregate: txSubcontractorAggregateMock,
+      },
+      transaction: {
+        aggregate: txTransactionAggregateMock,
       },
       aimannDebtLedger: {
-        findFirst: vi.fn(),
-        create: vi.fn(),
+        findFirst: txAimannDebtFindFirstMock,
+        create: txAimannDebtCreateMock,
       },
       commissionSnapshot: {
-        create: vi.fn(),
+        create: txCommissionSnapshotCreateMock,
+        upsert: txCommissionSnapshotUpsertMock,
       },
     })),
   },
@@ -53,8 +69,8 @@ vi.mock('../services/transaction.service', () => ({
 }));
 
 vi.mock('../services/follow-up.service', () => ({
-  ensureEstimateFollowUpSequence: (...args: unknown[]) =>
-    ensureEstimateFollowUpSequenceMock(...args),
+  ensureEstimateFollowUpSequenceTx: (...args: unknown[]) =>
+    ensureEstimateFollowUpSequenceTxMock(...args),
 }));
 
 import { prisma } from '../lib/prisma';
@@ -65,7 +81,7 @@ import { prisma } from '../lib/prisma';
 describe('Project Service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    ensureEstimateFollowUpSequenceMock.mockResolvedValue({
+    ensureEstimateFollowUpSequenceTxMock.mockResolvedValue({
       id: 'sequence-1',
       projectId: 'p1',
       status: 'ACTIVE',
@@ -171,11 +187,12 @@ describe('Project Service', () => {
 
   describe('createProject', () => {
     it('auto-calculates moneyReceived for credit card payments (97%)', async () => {
-      vi.mocked(prisma.project.create).mockResolvedValue({
+      txProjectCreateMock.mockResolvedValue({
         id: 'p1',
         projectTotal: { toNumber: () => 10000 },
         moneyReceived: { toNumber: () => 9700 },
         paymentMethod: 'CREDIT_CARD',
+        status: ProjectStatus.OPEN,
       } as never);
 
       const { createProject } = await import('../services/project.service');
@@ -192,16 +209,17 @@ describe('Project Service', () => {
         installDate: '2026-04-15',
       }, 'user-1');
 
-      const createCall = vi.mocked(prisma.project.create).mock.calls[0][0];
+      const createCall = txProjectCreateMock.mock.calls[0][0];
       expect(Number(createCall.data.moneyReceived)).toBe(9700);
     });
 
     it('sets moneyReceived equal to projectTotal for cash/check', async () => {
-      vi.mocked(prisma.project.create).mockResolvedValue({
+      txProjectCreateMock.mockResolvedValue({
         id: 'p1',
         projectTotal: { toNumber: () => 5000 },
         moneyReceived: { toNumber: () => 5000 },
         paymentMethod: 'CASH',
+        status: ProjectStatus.OPEN,
       } as never);
 
       const { createProject } = await import('../services/project.service');
@@ -218,12 +236,12 @@ describe('Project Service', () => {
         installDate: '2026-04-20',
       }, 'user-1');
 
-      const createCall = vi.mocked(prisma.project.create).mock.calls[0][0];
+      const createCall = txProjectCreateMock.mock.calls[0][0];
       expect(Number(createCall.data.moneyReceived)).toBe(5000);
     });
 
     it('captures estimateDate automatically when created in ESTIMATE', async () => {
-      vi.mocked(prisma.project.create).mockResolvedValue({
+      txProjectCreateMock.mockResolvedValue({
         id: 'p-estimate',
         status: ProjectStatus.ESTIMATE,
       } as never);
@@ -243,12 +261,12 @@ describe('Project Service', () => {
         installDate: '2026-04-20',
       }, 'user-1');
 
-      const createCall = vi.mocked(prisma.project.create).mock.calls[0][0];
+      const createCall = txProjectCreateMock.mock.calls[0][0];
       expect(createCall.data.estimateDate).toBeInstanceOf(Date);
     });
 
     it('creates a follow-up sequence when an ESTIMATE project is created', async () => {
-      vi.mocked(prisma.project.create).mockResolvedValue({
+      txProjectCreateMock.mockResolvedValue({
         id: 'p-estimate',
         status: ProjectStatus.ESTIMATE,
       } as never);
@@ -268,16 +286,33 @@ describe('Project Service', () => {
         installDate: '2026-04-20',
       }, 'user-1');
 
-      expect(ensureEstimateFollowUpSequenceMock).toHaveBeenCalledWith('p-estimate', 'user-1');
-      expect(ensureEstimateFollowUpSequenceMock).toHaveBeenCalledTimes(1);
+      expect(ensureEstimateFollowUpSequenceTxMock).toHaveBeenCalledTimes(1);
+      expect(ensureEstimateFollowUpSequenceTxMock.mock.calls[0][1]).toBe('p-estimate');
+      expect(ensureEstimateFollowUpSequenceTxMock.mock.calls[0][2]).toBe('user-1');
     });
 
     it('captures completedDate automatically when created in COMPLETED', async () => {
-      vi.mocked(prisma.project.create).mockResolvedValue({
+      txProjectCreateMock.mockResolvedValue({
         id: 'p-complete',
         status: ProjectStatus.COMPLETED,
       } as never);
-      vi.mocked(prisma.$transaction).mockResolvedValueOnce(undefined as never);
+      txProjectFindUniqueMock.mockResolvedValue({
+        id: 'p-complete',
+        customer: 'Finished Job',
+        projectTotal: { toNumber: () => 9000 },
+        paymentMethod: PaymentMethod.CASH,
+        materialsCost: { toNumber: () => 2000 },
+        forecastedExpenses: { toNumber: () => 3200 },
+      } as never);
+      txSubcontractorAggregateMock.mockResolvedValue({
+        _sum: { amountOwed: null },
+      } as never);
+      txTransactionAggregateMock.mockResolvedValue({
+        _sum: { amount: null },
+        _count: { _all: 0 },
+      } as never);
+      txQueryRawMock.mockResolvedValue([]);
+      txCommissionSnapshotUpsertMock.mockResolvedValue({ id: 'snapshot-1' } as never);
 
       const { createProject } = await import('../services/project.service');
       await createProject({
@@ -294,8 +329,37 @@ describe('Project Service', () => {
         installDate: '2026-04-10',
       }, 'user-1');
 
-      const createCall = vi.mocked(prisma.project.create).mock.calls[0][0];
+      const createCall = txProjectCreateMock.mock.calls[0][0];
       expect(createCall.data.completedDate).toBeInstanceOf(Date);
+    });
+
+    it('fails the create when transactional follow-up ensure fails for an estimate', async () => {
+      txProjectCreateMock.mockResolvedValue({
+        id: 'p-estimate',
+        status: ProjectStatus.ESTIMATE,
+      } as never);
+      ensureEstimateFollowUpSequenceTxMock.mockRejectedValue(new Error('follow-up failed'));
+
+      const { createProject } = await import('../services/project.service');
+
+      await expect(
+        createProject({
+          customer: 'Estimate Lead',
+          address: '101 Quote St',
+          description: 'Estimate stage',
+          fenceType: FenceType.WOOD,
+          status: ProjectStatus.ESTIMATE,
+          projectTotal: 2500,
+          paymentMethod: PaymentMethod.CHECK,
+          forecastedExpenses: 1000,
+          materialsCost: 500,
+          contractDate: '2026-04-01',
+          installDate: '2026-04-20',
+        }, 'user-1')
+      ).rejects.toThrow('follow-up failed');
+
+      expect(txProjectCreateMock).toHaveBeenCalledTimes(1);
+      expect(ensureEstimateFollowUpSequenceTxMock).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -563,7 +627,7 @@ describe('Project Service', () => {
         createdAt: new Date('2026-04-01'),
         updatedAt: new Date('2026-04-05'),
       } as never);
-      vi.mocked(prisma.project.update).mockResolvedValue({
+      txProjectUpdateMock.mockResolvedValue({
         id: 'p-open',
         status: ProjectStatus.ESTIMATE,
       } as never);
@@ -573,8 +637,9 @@ describe('Project Service', () => {
         status: ProjectStatus.ESTIMATE,
       });
 
-      expect(ensureEstimateFollowUpSequenceMock).toHaveBeenCalledWith('p-open', 'user-1');
-      expect(ensureEstimateFollowUpSequenceMock).toHaveBeenCalledTimes(1);
+      expect(ensureEstimateFollowUpSequenceTxMock).toHaveBeenCalledTimes(1);
+      expect(ensureEstimateFollowUpSequenceTxMock.mock.calls[0][1]).toBe('p-open');
+      expect(ensureEstimateFollowUpSequenceTxMock.mock.calls[0][2]).toBe('user-1');
     });
 
     it('rechecks follow-up sequence existence when an estimate project is resaved', async () => {
@@ -609,7 +674,7 @@ describe('Project Service', () => {
         createdAt: new Date('2026-04-01'),
         updatedAt: new Date('2026-04-05'),
       } as never);
-      vi.mocked(prisma.project.update).mockResolvedValue({
+      txProjectUpdateMock.mockResolvedValue({
         id: 'p-estimate',
         status: ProjectStatus.ESTIMATE,
       } as never);
@@ -619,8 +684,59 @@ describe('Project Service', () => {
         notes: 'still estimate',
       });
 
-      expect(ensureEstimateFollowUpSequenceMock).toHaveBeenCalledWith('p-estimate', 'user-1');
-      expect(ensureEstimateFollowUpSequenceMock).toHaveBeenCalledTimes(1);
+      expect(ensureEstimateFollowUpSequenceTxMock).toHaveBeenCalledTimes(1);
+      expect(ensureEstimateFollowUpSequenceTxMock.mock.calls[0][1]).toBe('p-estimate');
+      expect(ensureEstimateFollowUpSequenceTxMock.mock.calls[0][2]).toBe('user-1');
+    });
+
+    it('fails the update when transactional follow-up ensure fails for an estimate', async () => {
+      vi.mocked(prisma.project.findUnique).mockResolvedValue({
+        id: 'p-estimate',
+        customer: 'Estimate Lead',
+        status: ProjectStatus.ESTIMATE,
+        paymentMethod: PaymentMethod.CASH,
+        projectTotal: { toNumber: () => 5000 },
+        customerPaid: { toNumber: () => 0 },
+        forecastedExpenses: { toNumber: () => 1000 },
+        materialsCost: { toNumber: () => 500 },
+        contractDate: new Date('2026-04-01'),
+        installDate: new Date('2026-04-10'),
+        completedDate: null,
+        estimateDate: new Date('2026-04-05'),
+        followUpDate: null,
+        description: 'Estimate project',
+        fenceType: FenceType.WOOD,
+        moneyReceived: { toNumber: () => 5000 },
+        linearFeet: null,
+        rateTemplateId: null,
+        subcontractor: null,
+        notes: 'resaved',
+        commissionOwed: { toNumber: () => 0 },
+        commissionPaid: { toNumber: () => 0 },
+        memesCommission: { toNumber: () => 0 },
+        aimannsCommission: { toNumber: () => 0 },
+        createdById: 'user-1',
+        isDeleted: false,
+        deletedAt: null,
+        createdAt: new Date('2026-04-01'),
+        updatedAt: new Date('2026-04-05'),
+      } as never);
+      txProjectUpdateMock.mockResolvedValue({
+        id: 'p-estimate',
+        status: ProjectStatus.ESTIMATE,
+      } as never);
+      ensureEstimateFollowUpSequenceTxMock.mockRejectedValue(new Error('follow-up failed'));
+
+      const { updateProject } = await import('../services/project.service');
+
+      await expect(
+        updateProject('p-estimate', {
+          notes: 'still estimate',
+        })
+      ).rejects.toThrow('follow-up failed');
+
+      expect(txProjectUpdateMock).toHaveBeenCalledTimes(1);
+      expect(ensureEstimateFollowUpSequenceTxMock).toHaveBeenCalledTimes(1);
     });
 
     it('regenerates completed project snapshots after auto expense transactions are created', async () => {

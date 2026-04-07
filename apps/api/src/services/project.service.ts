@@ -15,7 +15,7 @@ import {
 } from '@fencetastic/shared';
 import { AppError } from '../middleware/error-handler';
 import { createAutoTransaction } from './transaction.service';
-import { ensureEstimateFollowUpSequence } from './follow-up.service';
+import { ensureEstimateFollowUpSequenceTx } from './follow-up.service';
 
 // Helper: convert Prisma Decimal to number
 function d(val: Prisma.Decimal | null | undefined): number {
@@ -503,51 +503,50 @@ export async function createProject(dto: CreateProjectDTO, createdById: string) 
     completedDate: dto.completedDate,
   });
 
-  const project = await prisma.project.create({
-    data: {
-      customer: dto.customer,
-      address: dto.address,
-      description: dto.description,
-      fenceType: dto.fenceType,
-      status,
-      projectTotal: dto.projectTotal,
-      paymentMethod: dto.paymentMethod,
-      moneyReceived,
-      customerPaid: 0,
-      forecastedExpenses: dto.forecastedExpenses,
-      materialsCost: dto.materialsCost,
-      contractDate: new Date(dto.contractDate),
-      installDate: new Date(dto.installDate),
-      completedDate: lifecycleDates.completedDate ? new Date(lifecycleDates.completedDate) : null,
-      estimateDate: lifecycleDates.estimateDate ? new Date(lifecycleDates.estimateDate) : null,
-      followUpDate: dto.followUpDate ? new Date(dto.followUpDate) : null,
-      linearFeet: dto.linearFeet ?? null,
-      rateTemplateId: dto.rateTemplateId ?? null,
-      subcontractor: dto.subcontractor ?? null,
-      notes: dto.notes ?? null,
-      commissionOwed: dto.commissionOwed ?? null,
-      commissionPaid: dto.commissionPaid ?? null,
-      memesCommission: dto.memesCommission ?? null,
-      aimannsCommission: dto.aimannsCommission ?? null,
-      createdById,
-    },
-  });
+  return prisma.$transaction(
+    async (tx) => {
+      const project = await tx.project.create({
+        data: {
+          customer: dto.customer,
+          address: dto.address,
+          description: dto.description,
+          fenceType: dto.fenceType,
+          status,
+          projectTotal: dto.projectTotal,
+          paymentMethod: dto.paymentMethod,
+          moneyReceived,
+          customerPaid: 0,
+          forecastedExpenses: dto.forecastedExpenses,
+          materialsCost: dto.materialsCost,
+          contractDate: new Date(dto.contractDate),
+          installDate: new Date(dto.installDate),
+          completedDate: lifecycleDates.completedDate ? new Date(lifecycleDates.completedDate) : null,
+          estimateDate: lifecycleDates.estimateDate ? new Date(lifecycleDates.estimateDate) : null,
+          followUpDate: dto.followUpDate ? new Date(dto.followUpDate) : null,
+          linearFeet: dto.linearFeet ?? null,
+          rateTemplateId: dto.rateTemplateId ?? null,
+          subcontractor: dto.subcontractor ?? null,
+          notes: dto.notes ?? null,
+          commissionOwed: dto.commissionOwed ?? null,
+          commissionPaid: dto.commissionPaid ?? null,
+          memesCommission: dto.memesCommission ?? null,
+          aimannsCommission: dto.aimannsCommission ?? null,
+          createdById,
+        },
+      });
 
-  if (project.status === ProjectStatus.ESTIMATE) {
-    await ensureEstimateFollowUpSequence(project.id, createdById);
-  }
+      if (project.status === ProjectStatus.ESTIMATE) {
+        await ensureEstimateFollowUpSequenceTx(tx, project.id, createdById);
+      }
 
-  // If created directly as COMPLETED, generate snapshot immediately
-  if (status === ProjectStatus.COMPLETED) {
-    await prisma.$transaction(
-      async (tx) => {
+      if (project.status === ProjectStatus.COMPLETED) {
         await generateCommissionSnapshot(project.id, tx);
-      },
-      { isolationLevel: 'Serializable' }
-    );
-  }
+      }
 
-  return { id: project.id };
+      return { id: project.id };
+    },
+    { isolationLevel: 'Serializable' }
+  );
 }
 
 export async function updateProject(projectId: string, dto: UpdateProjectDTO) {
@@ -689,19 +688,22 @@ export async function updateProject(projectId: string, dto: UpdateProjectDTO) {
 
   if (isAlreadyCompleted && financialFieldChanged) {
     const updated = await prisma.$transaction(
-      async (tx) =>
-        tx.project.update({
+      async (tx) => {
+        const updatedProject = await tx.project.update({
           where: { id: projectId },
           data: updateData,
-        }),
+        });
+
+        if (updatedProject.status === ProjectStatus.ESTIMATE) {
+          // updateProject does not currently know the acting updater, so sequence ownership
+          // still falls back to the project's original creator until the signature is expanded.
+          await ensureEstimateFollowUpSequenceTx(tx, updatedProject.id, current.createdById);
+        }
+
+        return updatedProject;
+      },
       { isolationLevel: 'Serializable' }
     );
-
-    if (updated.status === ProjectStatus.ESTIMATE) {
-      // updateProject does not currently know the acting updater, so sequence ownership
-      // still falls back to the project's original creator until the signature is expanded.
-      await ensureEstimateFollowUpSequence(updated.id, current.createdById);
-    }
 
     for (const td of trackedDeltas) {
       const delta = td.newVal - td.oldVal;
@@ -721,16 +723,23 @@ export async function updateProject(projectId: string, dto: UpdateProjectDTO) {
   }
 
   // Normal update (not completed, no snapshot needed)
-  const updated = await prisma.project.update({
-    where: { id: projectId },
-    data: updateData,
-  });
+  const updated = await prisma.$transaction(
+    async (tx) => {
+      const updatedProject = await tx.project.update({
+        where: { id: projectId },
+        data: updateData,
+      });
 
-  if (updated.status === ProjectStatus.ESTIMATE) {
-    // updateProject does not currently know the acting updater, so sequence ownership
-    // still falls back to the project's original creator until the signature is expanded.
-    await ensureEstimateFollowUpSequence(updated.id, current.createdById);
-  }
+      if (updatedProject.status === ProjectStatus.ESTIMATE) {
+        // updateProject does not currently know the acting updater, so sequence ownership
+        // still falls back to the project's original creator until the signature is expanded.
+        await ensureEstimateFollowUpSequenceTx(tx, updatedProject.id, current.createdById);
+      }
+
+      return updatedProject;
+    },
+    { isolationLevel: 'Serializable' }
+  );
 
   for (const td of trackedDeltas) {
     const delta = td.newVal - td.oldVal;
