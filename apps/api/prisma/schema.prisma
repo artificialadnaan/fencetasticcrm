@@ -14,8 +14,9 @@ model User {
   passwordHash String   @map("password_hash")
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  projects     Project[]
-  projectNotes ProjectNote[]
+  projects               Project[]
+  projectNotes           ProjectNote[]
+  completedFollowUpTasks  EstimateFollowUpTask[]
 
   @@map("users")
 }
@@ -61,6 +62,8 @@ model Project {
   transactions           Transaction[]
   workOrders             WorkOrder[]
   calendarEvents         CalendarEvent[]
+  followUpSequences      EstimateFollowUpSequence[]
+  followUpTasks          EstimateFollowUpTask[]
 
   @@map("projects")
 }
@@ -91,6 +94,46 @@ model ProjectNote {
   author  User    @relation(fields: [authorId], references: [id])
 
   @@map("project_notes")
+}
+
+model EstimateFollowUpSequence {
+  id             String                           @id @default(uuid()) @db.Uuid
+  projectId      String                           @map("project_id") @db.Uuid
+  status         EstimateFollowUpSequenceStatus    @default(ACTIVE)
+  startedAt      DateTime                         @default(now()) @map("started_at") @db.Timestamptz
+  closedAt       DateTime?                        @map("closed_at") @db.Timestamptz
+  closedSummary  String?                          @map("closed_summary") @db.Text
+  lostReasonCode EstimateFollowUpLostReasonCode?   @map("lost_reason_code")
+  lostReasonNotes String?                         @map("lost_reason_notes") @db.Text
+  createdAt      DateTime                         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime                         @updatedAt @map("updated_at") @db.Timestamptz
+
+  project Project @relation(fields: [projectId], references: [id])
+  tasks   EstimateFollowUpTask[]
+
+  @@map("estimate_follow_up_sequences")
+}
+
+model EstimateFollowUpTask {
+  id               String                     @id @default(uuid()) @db.Uuid
+  sequenceId       String                     @map("sequence_id") @db.Uuid
+  projectId        String                     @map("project_id") @db.Uuid
+  kind             EstimateFollowUpTaskKind
+  dueDate          DateTime                   @map("due_date") @db.Timestamptz
+  status           EstimateFollowUpTaskStatus  @default(PENDING)
+  draftSubject     String?                    @map("draft_subject")
+  draftBody        String?                    @map("draft_body") @db.Text
+  completedAt      DateTime?                  @map("completed_at") @db.Timestamptz
+  completedByUserId String?                   @map("completed_by_user_id") @db.Uuid
+  notes            String?                    @db.Text
+  createdAt        DateTime                   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime                   @updatedAt @map("updated_at") @db.Timestamptz
+
+  sequence        EstimateFollowUpSequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  project         Project                  @relation(fields: [projectId], references: [id])
+  completedByUser User?                    @relation(fields: [completedByUserId], references: [id])
+
+  @@map("estimate_follow_up_tasks")
 }
 
 model RateTemplate {
@@ -259,4 +302,35 @@ enum ExpenseFrequency {
   MONTHLY
   QUARTERLY
   ANNUAL
+}
+
+enum EstimateFollowUpSequenceStatus {
+  ACTIVE
+  WON
+  LOST
+  CLOSED
+}
+
+enum EstimateFollowUpTaskKind {
+  DAY_1
+  DAY_3
+  DAY_7
+  DAY_14
+}
+
+enum EstimateFollowUpTaskStatus {
+  PENDING
+  COMPLETED
+  SKIPPED
+}
+
+enum EstimateFollowUpLostReasonCode {
+  PRICE
+  NO_RESPONSE
+  CHOSE_COMPETITOR
+  TIMING
+  FINANCING
+  SCOPE_MISMATCH
+  DUPLICATE_BAD_LEAD
+  OTHER
 }

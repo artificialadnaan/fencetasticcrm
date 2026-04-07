@@ -47,6 +47,37 @@ export enum ExpenseFrequency {
   ANNUAL = 'ANNUAL',
 }
 
+export enum EstimateFollowUpSequenceStatus {
+  ACTIVE = 'ACTIVE',
+  WON = 'WON',
+  LOST = 'LOST',
+  CLOSED = 'CLOSED',
+}
+
+export enum EstimateFollowUpTaskKind {
+  DAY_1 = 'DAY_1',
+  DAY_3 = 'DAY_3',
+  DAY_7 = 'DAY_7',
+  DAY_14 = 'DAY_14',
+}
+
+export enum EstimateFollowUpTaskStatus {
+  PENDING = 'PENDING',
+  COMPLETED = 'COMPLETED',
+  SKIPPED = 'SKIPPED',
+}
+
+export enum EstimateFollowUpLostReasonCode {
+  PRICE = 'PRICE',
+  NO_RESPONSE = 'NO_RESPONSE',
+  CHOSE_COMPETITOR = 'CHOSE_COMPETITOR',
+  TIMING = 'TIMING',
+  FINANCING = 'FINANCING',
+  SCOPE_MISMATCH = 'SCOPE_MISMATCH',
+  DUPLICATE_BAD_LEAD = 'DUPLICATE_BAD_LEAD',
+  OTHER = 'OTHER',
+}
+
 // --- Domain Models ---
 
 export interface User {
@@ -85,6 +116,35 @@ export interface Project {
   createdById: string;
   isDeleted: boolean;
   deletedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EstimateFollowUpSequence {
+  id: string;
+  projectId: string;
+  status: EstimateFollowUpSequenceStatus;
+  startedAt: string;
+  closedAt: string | null;
+  closedSummary: string | null;
+  lostReasonCode: EstimateFollowUpLostReasonCode | null;
+  lostReasonNotes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EstimateFollowUpTask {
+  id: string;
+  sequenceId: string;
+  projectId: string;
+  kind: EstimateFollowUpTaskKind;
+  dueDate: string;
+  status: EstimateFollowUpTaskStatus;
+  draftSubject: string | null;
+  draftBody: string | null;
+  completedAt: string | null;
+  completedByUserId: string | null;
+  notes: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -566,6 +626,22 @@ export interface DashboardFollowUp {
   address: string;
   status: string;
   followUpDate: string;
+}
+
+export interface DashboardFollowUpTask {
+  id: string;
+  projectId: string;
+  customer: string;
+  address: string;
+  status: EstimateFollowUpTaskStatus;
+  dueDate: string;
+  kind: EstimateFollowUpTaskKind;
+}
+
+export interface ProjectFollowUpSummary {
+  sequence: EstimateFollowUpSequence | null;
+  tasks: EstimateFollowUpTask[];
+  nextPendingTask: EstimateFollowUpTask | null;
 }
 
 export interface DashboardActivityItem {
