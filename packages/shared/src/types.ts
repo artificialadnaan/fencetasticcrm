@@ -149,6 +149,12 @@ export interface EstimateFollowUpTask {
   updatedAt: string;
 }
 
+export interface ProjectFollowUpSummary {
+  sequence: EstimateFollowUpSequence | null;
+  tasks: EstimateFollowUpTask[];
+  nextPendingTask: EstimateFollowUpTask | null;
+}
+
 export interface SubcontractorPayment {
   id: string;
   projectId: string;
@@ -636,12 +642,6 @@ export interface DashboardFollowUpTask {
   status: ProjectStatus;
   dueDate: string;
   kind: EstimateFollowUpTaskKind;
-}
-
-export interface ProjectFollowUpSummary {
-  sequence: EstimateFollowUpSequence | null;
-  tasks: EstimateFollowUpTask[];
-  nextPendingTask: EstimateFollowUpTask | null;
 }
 
 export interface DashboardActivityItem {
