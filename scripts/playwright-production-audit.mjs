@@ -99,12 +99,12 @@ async function main() {
     log('setup', `Starting audit run ${runId}`);
 
     await loginWithButton(page, 'Adnaan');
-    await waitForText(page, 'Overview of your fencing projects and financials.');
+    await waitForText(page, 'Live view of revenue, pipeline, follow-ups, and install readiness.');
 
     log('dashboard', 'Verified dashboard loads');
 
     await page.getByRole('link', { name: 'Projects', exact: true }).click();
-    await waitForText(page, 'Manage all your fencing projects.');
+    await waitForText(page, 'Search the live project pipeline, switch status tabs, and export the current filtered view.');
 
     await page.getByRole('button', { name: /new project/i }).click();
     await page.locator('#customer').fill(`${runId} Customer`);
@@ -127,7 +127,7 @@ async function main() {
     await page.locator('label:has-text("Payment Method")').locator('..').locator('[role="combobox"]').click();
     await pageOption(page, 'Check').click();
     await page.getByRole('button', { name: /create project/i }).click();
-    await page.getByPlaceholder('Search customer or address...').fill(runId);
+    await page.getByPlaceholder('Search customer or address...').first().fill(runId);
     await waitForText(page, `${runId} Customer`);
     const createdProjects = await apiRequest(token, 'GET', `/projects?page=1&limit=20&search=${encodeURIComponent(runId)}`);
     const createdProject = (createdProjects.json?.data ?? []).find((item) => item.customer === `${runId} Customer`);
@@ -204,8 +204,8 @@ async function main() {
     log('work-order', 'Saved work order with fence, gate, and label');
 
     await page.getByRole('link', { name: 'Calendar', exact: true }).click();
-    await waitForText(page, 'Schedule installs, estimates, and follow-ups.');
-    await page.getByRole('button', { name: /add event/i }).click();
+    await waitForText(page, 'Schedule installs, estimates, and follow-ups with a live month view and direct project lookup.');
+    await page.getByRole('button', { name: /add event/i }).first().click();
     const eventDialog = page.locator('[role="dialog"]').filter({ hasText: 'Add Calendar Event' }).first();
     await eventDialog.locator('#event-title').fill(`${runId} Calendar Event`);
     await eventDialog.locator('#event-date').fill('2026-04-15');
@@ -216,15 +216,15 @@ async function main() {
     log('calendar', 'Created calendar event');
 
     await page.goto(`${WEB_URL}/finances`);
-    await waitForText(page, 'Track income, expenses, and profit');
+    await waitForText(page, 'Live view of revenue, pipeline spend, and ledger activity.');
     await page.getByRole('button', { name: /add transaction/i }).click();
     const txDialog = page.locator('[role="dialog"]').filter({ hasText: 'Add Transaction' }).first();
     await txDialog.locator('input[type="number"]').fill('88.88');
     await txDialog.locator('input[type="date"]').fill('2026-04-04');
-    await txDialog.locator('input[placeholder="e.g. Materials, Labor, Revenue"]').fill(`Audit ${runId}`);
-    await txDialog.locator('input[placeholder="Brief description"]').fill(`Finance ${runId}`);
-    await txDialog.locator('input[placeholder="Vendor or customer name"]').fill('Playwright Audit');
-    await txDialog.getByRole('button', { name: /^save$/i }).click();
+    await txDialog.locator('input[placeholder="Materials, labor, revenue..."]').fill(`Audit ${runId}`);
+    await txDialog.locator('input[placeholder="Short description"]').fill(`Finance ${runId}`);
+    await txDialog.locator('textarea[placeholder="Vendor or customer name"]').fill('Playwright Audit');
+    await txDialog.getByRole('button', { name: /save transaction/i }).click();
     await waitForText(page, `Finance ${runId}`);
     log('finances', 'Created finance transaction');
 
