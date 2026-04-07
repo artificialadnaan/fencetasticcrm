@@ -1,595 +1,217 @@
-import { useState, useRef } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { Download, Plus, Search, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import {
-  useReactTable,
-  getCoreRowModel,
-  flexRender,
-  createColumnHelper,
-  type ColumnDef,
-} from '@tanstack/react-table';
-import { Download, Search } from 'lucide-react';
+  PROJECT_STATUS_META,
+  PROJECT_STATUS_ORDER,
+  ProjectStatus,
+  type ProjectListQuery,
+} from '@fencetastic/shared';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { api } from '@/lib/api';
-import { formatCurrency, formatDate } from '@/lib/formatters';
+import { Input } from '@/components/ui/input';
+import { CreateProjectDialog } from '@/components/projects/create-project-dialog';
 import { useGridProjects } from '@/hooks/use-grid-projects';
-import type { GridProjectRow } from '@fencetastic/shared';
-import { PROJECT_STATUS_META, PROJECT_STATUS_ORDER, ProjectStatus } from '@fencetastic/shared';
-
-// ─── Editable Cell ───────────────────────────────────────────────────────────
-
-interface EditableCellProps {
-  value: string | number | null;
-  rowId: string;
-  field: string;
-  isNumber?: boolean;
-  refetch: () => void;
-  display?: string;
-}
-
-function EditableCell({ value, rowId, field, isNumber = false, refetch, display }: EditableCellProps) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const startEdit = () => {
-    setDraft(value != null ? String(value) : '');
-    setEditing(true);
-    setTimeout(() => inputRef.current?.focus(), 0);
-  };
-
-  const cancel = () => setEditing(false);
-
-  const save = async () => {
-    setEditing(false);
-    const payload: Record<string, unknown> = {
-      [field]: isNumber ? (draft === '' ? null : Number(draft)) : draft,
-    };
-    try {
-      await api.patch(`/projects/${rowId}`, payload);
-      refetch();
-    } catch (err) {
-      console.error('Failed to save cell', err);
-      alert('Failed to save. The field may be locked on completed projects.');
-    }
-  };
-
-  if (editing) {
-    return (
-      <input
-        ref={inputRef}
-        className="w-full min-w-[80px] border border-blue-400 rounded px-1 py-0.5 text-xs focus:outline-none"
-        value={draft}
-        onChange={e => setDraft(e.target.value)}
-        onBlur={save}
-        onKeyDown={e => {
-          if (e.key === 'Enter') { e.currentTarget.blur(); }
-          if (e.key === 'Escape') { cancel(); }
-        }}
-      />
-    );
-  }
-
-  return (
-    <span
-      className="cursor-pointer hover:bg-blue-50 rounded px-1 py-0.5 block min-w-[60px] whitespace-nowrap"
-      onClick={startEdit}
-    >
-      {display ?? (value != null ? String(value) : '—')}
-    </span>
-  );
-}
-
-// ─── Status helpers ───────────────────────────────────────────────────────────
-
-const STATUS_LABELS: Record<ProjectStatus, string> = Object.fromEntries(
-  PROJECT_STATUS_ORDER.map((status) => [status, PROJECT_STATUS_META[status].label])
-) as Record<ProjectStatus, string>;
-
-const STATUS_BADGE_CLASS: Record<ProjectStatus, string> = Object.fromEntries(
-  PROJECT_STATUS_ORDER.map((status) => [status, PROJECT_STATUS_META[status].badgeClassName])
-) as Record<ProjectStatus, string>;
-
-const ROW_BG: Record<ProjectStatus, string> = Object.fromEntries(
-  PROJECT_STATUS_ORDER.map((status) => [status, PROJECT_STATUS_META[status].rowClassName])
-) as Record<ProjectStatus, string>;
+import { usePageShell } from '@/components/layout/page-shell';
+import { api } from '@/lib/api';
+import { exportProjects } from '@/components/projects/redesign/projects-export';
+import { GridViewSummaryStrip } from '@/components/projects/redesign-grid/grid-view-summary';
+import { GridViewTable } from '@/components/projects/redesign-grid/grid-view-table';
 
 const STATUS_TABS: Array<{ label: string; value: ProjectStatus | 'ALL' }> = [
-  { label: 'Estimate', value: ProjectStatus.ESTIMATE },
-  { label: 'Open', value: ProjectStatus.OPEN },
-  { label: 'In Progress', value: ProjectStatus.IN_PROGRESS },
-  { label: 'Completed', value: ProjectStatus.COMPLETED },
-  { label: 'Closed', value: ProjectStatus.CLOSED },
-  { label: 'Warranty', value: ProjectStatus.WARRANTY },
+  ...PROJECT_STATUS_ORDER.map((status) => ({
+    label: PROJECT_STATUS_META[status].shortLabel,
+    value: status,
+  })),
   { label: 'All', value: 'ALL' },
 ];
 
-// ─── Column helper ────────────────────────────────────────────────────────────
-
-const columnHelper = createColumnHelper<GridProjectRow>();
-
-function buildColumns(refetch: () => void): ColumnDef<GridProjectRow, unknown>[] {
-  return [
-    // Checkbox
-    {
-      id: 'select',
-      size: 40,
-      header: ({ table }) => (
-        <input
-          type="checkbox"
-          checked={table.getIsAllRowsSelected()}
-          onChange={table.getToggleAllRowsSelectedHandler()}
-          className="cursor-pointer"
-        />
-      ),
-      cell: ({ row }) => (
-        <input
-          type="checkbox"
-          checked={row.getIsSelected()}
-          onChange={row.getToggleSelectedHandler()}
-          className="cursor-pointer"
-        />
-      ),
-    },
-    columnHelper.accessor('installDate', {
-      header: 'Install Date',
-      size: 110,
-      cell: info => <span className="whitespace-nowrap">{formatDate(info.getValue())}</span>,
-    }),
-    columnHelper.accessor('status', {
-      header: 'Status',
-      size: 120,
-      cell: info => {
-        const s = info.getValue();
-        return (
-          <Badge className={`${STATUS_BADGE_CLASS[s]} border-0 text-xs whitespace-nowrap`}>
-            {STATUS_LABELS[s]}
-          </Badge>
-        );
-      },
-    }),
-    columnHelper.accessor('contractDate', {
-      header: 'Contract Date',
-      size: 115,
-      cell: info => <span className="whitespace-nowrap">{formatDate(info.getValue())}</span>,
-    }),
-    columnHelper.accessor('notes', {
-      header: 'Notes',
-      size: 160,
-      cell: info => (
-        <EditableCell
-          value={info.getValue()}
-          rowId={info.row.original.id}
-          field="notes"
-          refetch={refetch}
-        />
-      ),
-    }),
-    columnHelper.accessor('subcontractor', {
-      header: 'SUB',
-      size: 120,
-      cell: info => (
-        <EditableCell
-          value={info.getValue()}
-          rowId={info.row.original.id}
-          field="subcontractor"
-          refetch={refetch}
-        />
-      ),
-    }),
-    columnHelper.accessor('customer', {
-      header: 'Customer',
-      size: 140,
-      cell: info => <span className="whitespace-nowrap font-medium">{info.getValue()}</span>,
-    }),
-    columnHelper.accessor('address', {
-      header: 'Address',
-      size: 180,
-      cell: info => <span className="whitespace-nowrap">{info.getValue()}</span>,
-    }),
-    columnHelper.accessor('description', {
-      header: 'Description',
-      size: 160,
-      cell: info => <span className="whitespace-nowrap">{info.getValue()}</span>,
-    }),
-    columnHelper.accessor('projectTotal', {
-      header: 'Project Total',
-      size: 120,
-      cell: info => <span className="whitespace-nowrap tabular-nums">{formatCurrency(info.getValue())}</span>,
-    }),
-    columnHelper.accessor('moneyReceived', {
-      header: 'Money Received',
-      size: 130,
-      cell: info => <span className="whitespace-nowrap tabular-nums">{formatCurrency(info.getValue())}</span>,
-    }),
-    columnHelper.accessor('customerPaid', {
-      header: 'Customer Paid',
-      size: 120,
-      cell: info => (
-        <EditableCell
-          value={info.getValue()}
-          rowId={info.row.original.id}
-          field="customerPaid"
-          isNumber
-          refetch={refetch}
-          display={formatCurrency(info.getValue())}
-        />
-      ),
-    }),
-    columnHelper.accessor('paymentMethod', {
-      header: 'Pmt',
-      size: 90,
-      cell: info => <span className="whitespace-nowrap text-xs">{info.getValue()}</span>,
-    }),
-    columnHelper.accessor('outstandingReceivables', {
-      header: 'Outstanding Recv.',
-      size: 140,
-      cell: info => <span className="whitespace-nowrap tabular-nums">{formatCurrency(info.getValue())}</span>,
-    }),
-    columnHelper.accessor('forecastedExpenses', {
-      header: 'Forecasted Exp.',
-      size: 130,
-      cell: info => (
-        <EditableCell
-          value={info.getValue()}
-          rowId={info.row.original.id}
-          field="forecastedExpenses"
-          isNumber
-          refetch={refetch}
-          display={formatCurrency(info.getValue())}
-        />
-      ),
-    }),
-    columnHelper.accessor('materialsCost', {
-      header: 'Materials',
-      size: 110,
-      cell: info => (
-        <EditableCell
-          value={info.getValue()}
-          rowId={info.row.original.id}
-          field="materialsCost"
-          isNumber
-          refetch={refetch}
-          display={formatCurrency(info.getValue())}
-        />
-      ),
-    }),
-    columnHelper.accessor('subPayment1', {
-      header: 'Sub Pmt 1',
-      size: 110,
-      cell: info => <span className="whitespace-nowrap tabular-nums">{formatCurrency(info.getValue())}</span>,
-    }),
-    columnHelper.accessor('subPayment2', {
-      header: 'Sub Pmt 2',
-      size: 110,
-      cell: info => <span className="whitespace-nowrap tabular-nums">{formatCurrency(info.getValue())}</span>,
-    }),
-    columnHelper.accessor('commissionOwed', {
-      header: 'Commission Owed',
-      size: 140,
-      cell: info => (
-        <EditableCell
-          value={info.getValue()}
-          rowId={info.row.original.id}
-          field="commissionOwed"
-          isNumber
-          refetch={refetch}
-          display={formatCurrency(info.getValue())}
-        />
-      ),
-    }),
-    columnHelper.accessor('commissionPaid', {
-      header: 'Commission Paid',
-      size: 135,
-      cell: info => (
-        <EditableCell
-          value={info.getValue()}
-          rowId={info.row.original.id}
-          field="commissionPaid"
-          isNumber
-          refetch={refetch}
-          display={formatCurrency(info.getValue())}
-        />
-      ),
-    }),
-    columnHelper.accessor('outstandingPayables', {
-      header: 'Outstanding Pay.',
-      size: 135,
-      cell: info => <span className="whitespace-nowrap tabular-nums">{formatCurrency(info.getValue())}</span>,
-    }),
-    columnHelper.accessor('profitDollar', {
-      header: '$ Profit',
-      size: 110,
-      cell: info => {
-        const v = info.getValue();
-        return (
-          <span className={`whitespace-nowrap tabular-nums font-semibold ${v >= 0 ? 'text-green-700' : 'text-red-600'}`}>
-            {formatCurrency(v)}
-          </span>
-        );
-      },
-    }),
-    columnHelper.accessor('profitPercent', {
-      header: '% Profit',
-      size: 90,
-      cell: info => {
-        const v = info.getValue();
-        return (
-          <span className={`whitespace-nowrap tabular-nums font-semibold ${v >= 0 ? 'text-green-700' : 'text-red-600'}`}>
-            {v.toFixed(1)}%
-          </span>
-        );
-      },
-    }),
-    columnHelper.accessor('memesCommission', {
-      header: "Meme's Comm",
-      size: 120,
-      cell: info => (
-        <EditableCell
-          value={info.getValue()}
-          rowId={info.row.original.id}
-          field="memesCommission"
-          isNumber
-          refetch={refetch}
-          display={formatCurrency(info.getValue())}
-        />
-      ),
-    }),
-    columnHelper.accessor('aimannsCommission', {
-      header: "Aimann's Comm",
-      size: 125,
-      cell: info => (
-        <EditableCell
-          value={info.getValue()}
-          rowId={info.row.original.id}
-          field="aimannsCommission"
-          isNumber
-          refetch={refetch}
-          display={formatCurrency(info.getValue())}
-        />
-      ),
-    }),
-    columnHelper.accessor('netProfitDollar', {
-      header: 'NET $',
-      size: 110,
-      cell: info => {
-        const v = info.getValue();
-        return (
-          <span className={`whitespace-nowrap tabular-nums font-semibold ${v >= 0 ? 'text-green-700' : 'text-red-600'}`}>
-            {formatCurrency(v)}
-          </span>
-        );
-      },
-    }),
-    columnHelper.accessor('netProfitPercent', {
-      header: 'NET %',
-      size: 90,
-      cell: info => {
-        const v = info.getValue();
-        return (
-          <span className={`whitespace-nowrap tabular-nums font-semibold ${v >= 0 ? 'text-green-700' : 'text-red-600'}`}>
-            {v.toFixed(1)}%
-          </span>
-        );
-      },
-    }),
-  ] as ColumnDef<GridProjectRow, unknown>[];
-}
-
-// ─── Totals row ───────────────────────────────────────────────────────────────
-
-const TOTALS_COLS: Array<keyof GridProjectRow> = [
-  'projectTotal',
-  'moneyReceived',
-  'customerPaid',
-  'outstandingReceivables',
-  'forecastedExpenses',
-  'materialsCost',
-  'subPayment1',
-  'subPayment2',
-  'commissionOwed',
-  'commissionPaid',
-  'outstandingPayables',
-  'profitDollar',
-  'memesCommission',
-  'aimannsCommission',
-  'netProfitDollar',
-];
-
-function sumCol(data: GridProjectRow[], col: keyof GridProjectRow): number {
-  return data.reduce((acc, row) => acc + (Number(row[col]) || 0), 0);
-}
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
+const DEFAULT_QUERY: ProjectListQuery = {
+  page: 1,
+  limit: 100,
+  sortBy: 'installDate',
+  sortDir: 'desc',
+};
 
 export default function ProjectGridPage() {
-  const [activeTab, setActiveTab] = useState<ProjectStatus | 'ALL'>('ALL');
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  const [rowSelection, setRowSelection] = useState({});
-
-  const query = {
-    page,
-    limit: 100,
-    ...(activeTab !== 'ALL' ? { status: activeTab } : {}),
-    ...(search ? { search } : {}),
-  };
+  const navigate = useNavigate();
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [query, setQuery] = useState<ProjectListQuery>(DEFAULT_QUERY);
+  const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
 
   const { data, pagination, isLoading, error, refetch } = useGridProjects(query);
 
-  const columns = buildColumns(refetch);
+  const activeStatus = query.status ?? 'ALL';
+  const hasActiveFilters = Boolean(query.search || query.status || query.dateFrom || query.dateTo);
+  const selectedCount = Object.keys(rowSelection).length;
 
-  const table = useReactTable({
-    data,
-    columns,
-    state: { rowSelection },
-    onRowSelectionChange: setRowSelection,
-    getCoreRowModel: getCoreRowModel(),
-    getRowId: row => row.id,
-  });
+  const handleSearchChange = useCallback((search: string) => {
+    setQuery((prev) => ({
+      ...prev,
+      search: search.trim() ? search : undefined,
+      page: 1,
+    }));
+  }, []);
 
-  const handleExport = async () => {
+  const handleStatusChange = useCallback((value: ProjectStatus | 'ALL') => {
+    setQuery((prev) => ({
+      ...prev,
+      status: value === 'ALL' ? undefined : value,
+      page: 1,
+    }));
+  }, []);
+
+  const handlePageChange = useCallback((page: number) => {
+    setQuery((prev) => ({ ...prev, page }));
+  }, []);
+
+  const handleClearFilters = useCallback(() => {
+    setQuery(DEFAULT_QUERY);
+  }, []);
+
+  const handleOpenProject = useCallback(
+    (projectId: string) => {
+      navigate(`/projects/${projectId}`);
+    },
+    [navigate]
+  );
+
+  const handleExport = useCallback(async () => {
     try {
-      const res = await api.get('/projects/export', { responseType: 'blob' });
-      const url = URL.createObjectURL(res.data);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'projects.xlsx';
-      a.click();
+      const blob = await exportProjects(query, api);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = 'projects.xlsx';
+      anchor.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Export failed', err);
+      console.error('Failed to export grid projects', err);
     }
-  };
+  }, [query.dateFrom, query.dateTo, query.search, query.sortBy, query.sortDir, query.status]);
 
-  // Totals
-  const totals = TOTALS_COLS.reduce<Record<string, number>>((acc, col) => {
-    acc[col] = sumCol(data, col);
-    return acc;
-  }, {});
+  const searchSlot = useMemo(
+    () => (
+      <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="relative w-full sm:w-[320px]">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            value={query.search ?? ''}
+            onChange={(event) => handleSearchChange(event.target.value)}
+            placeholder="Search customer, address, or subcontractor..."
+            className="h-10 rounded-2xl border-black/10 bg-white/80 pl-10 shadow-sm placeholder:text-slate-400"
+          />
+        </div>
+
+        {hasActiveFilters && (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={handleClearFilters}
+            className="h-10 rounded-2xl border border-black/5 bg-white/60 px-4 text-slate-700 hover:bg-white"
+          >
+            <X className="h-4 w-4" />
+            Reset
+          </Button>
+        )}
+      </div>
+    ),
+    [handleClearFilters, handleSearchChange, hasActiveFilters, query.search]
+  );
+
+  const primaryActions = useMemo(
+    () => (
+      <Button
+        type="button"
+        onClick={() => setIsCreateOpen(true)}
+        className="rounded-2xl bg-slate-950 px-4 text-white hover:bg-slate-800"
+      >
+        <Plus className="h-4 w-4" />
+        Add New
+      </Button>
+    ),
+    []
+  );
+
+  const secondaryActions = useMemo(
+    () => (
+      <Button
+        type="button"
+        variant="outline"
+        onClick={handleExport}
+        className="rounded-2xl border-black/10 bg-white/70 px-4 shadow-sm"
+      >
+        <Download className="h-4 w-4" />
+        Export
+      </Button>
+    ),
+    [handleExport]
+  );
+
+  usePageShell({
+    eyebrow: 'Command Center',
+    title: 'Grid View',
+    subtitle: 'Spreadsheet-first project workspace with inline edits, filters, totals, and fast detail access.',
+    searchSlot,
+    primaryActions,
+    secondaryActions,
+  });
 
   return (
-    <div className="flex flex-col h-full p-4 gap-3">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <h1 className="text-xl font-bold text-gray-900">Projects Grid</h1>
-        <Button variant="outline" size="sm" onClick={handleExport}>
-          <Download className="h-4 w-4 mr-1" />
-          Export Excel
-        </Button>
-      </div>
+    <>
+      <CreateProjectDialog
+        open={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+        onCreated={refetch}
+      />
 
-      {/* Tabs */}
-      <div className="flex gap-1 border-b border-gray-200 flex-wrap">
-        {STATUS_TABS.map(tab => (
-          <button
-            key={tab.value}
-            onClick={() => { setActiveTab(tab.value); setPage(1); }}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === tab.value
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Search */}
-      <div className="relative w-72">
-        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400 pointer-events-none" />
-        <input
-          type="text"
-          placeholder="Search projects..."
-          value={search}
-          onChange={e => { setSearch(e.target.value); setPage(1); }}
-          className="w-full pl-8 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-
-      {/* Table */}
-      {error && (
-        <div className="text-red-600 text-sm bg-red-50 border border-red-200 rounded p-3">{error}</div>
-      )}
-      {isLoading ? (
-        <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">Loading...</div>
-      ) : (
-        <div className="flex-1 overflow-auto border border-gray-200 rounded-lg" style={{ maxHeight: 'calc(100vh - 280px)' }}>
-          <table className="text-xs border-collapse min-w-max">
-            <thead className="sticky top-0 bg-gray-50 z-10">
-              {table.getHeaderGroups().map(hg => (
-                <tr key={hg.id}>
-                  {hg.headers.map(header => (
-                    <th
-                      key={header.id}
-                      style={{ width: header.getSize(), minWidth: header.getSize() }}
-                      className="px-2 py-2 text-left text-xs font-semibold text-gray-600 border-b border-r border-gray-200 whitespace-nowrap"
-                    >
-                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                    </th>
-                  ))}
-                </tr>
-              ))}
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-100">
-              {table.getRowModel().rows.map(row => (
-                <tr
-                  key={row.id}
-                  className={`hover:bg-gray-50 ${ROW_BG[row.original.status] ?? ''}`}
+      <div className="space-y-6">
+        <div className="rounded-[28px] border border-black/5 bg-white/55 p-2 shadow-sm">
+          <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Project status filters">
+            {STATUS_TABS.map((tab) => {
+              const isActive = activeStatus === tab.value;
+              return (
+                <button
+                  key={tab.value}
+                  type="button"
+                  aria-pressed={isActive}
+                  onClick={() => handleStatusChange(tab.value)}
+                  className={[
+                    'rounded-2xl px-4 py-2 text-sm font-medium transition-all duration-200',
+                    isActive
+                      ? 'bg-slate-950 text-white shadow-[0_10px_24px_rgba(15,23,42,0.18)]'
+                      : 'text-slate-600 hover:bg-white hover:text-slate-950',
+                  ].join(' ')}
                 >
-                  {row.getVisibleCells().map(cell => (
-                    <td
-                      key={cell.id}
-                      style={{ width: cell.column.getSize(), minWidth: cell.column.getSize() }}
-                      className="px-2 py-1.5 border-r border-gray-100 align-middle"
-                    >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-
-              {/* Totals row */}
-              {data.length > 0 && (
-                <tr className="bg-gray-100 font-semibold border-t-2 border-gray-300">
-                  {table.getAllColumns().map((col, idx) => {
-                    if (idx === 0) {
-                      return (
-                        <td key={col.id} className="px-2 py-2 text-xs text-gray-700 border-r border-gray-200 whitespace-nowrap">
-                          Totals ({data.length})
-                        </td>
-                      );
-                    }
-                    const colId = col.id as keyof GridProjectRow;
-                    if (TOTALS_COLS.includes(colId)) {
-                      const val = totals[colId] ?? 0;
-                      const isProfit = colId === 'profitDollar' || colId === 'netProfitDollar';
-                      return (
-                        <td
-                          key={col.id}
-                          className={`px-2 py-2 text-xs tabular-nums border-r border-gray-200 whitespace-nowrap ${
-                            isProfit ? (val >= 0 ? 'text-green-700' : 'text-red-600') : 'text-gray-800'
-                          }`}
-                        >
-                          {formatCurrency(val)}
-                        </td>
-                      );
-                    }
-                    return <td key={col.id} className="px-2 py-2 border-r border-gray-200" />;
-                  })}
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Pagination */}
-      {pagination && pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm text-gray-600">
-          <span>
-            Page {pagination.page} of {pagination.totalPages} &mdash; {pagination.total} projects
-          </span>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={pagination.page <= 1}
-              onClick={() => setPage(p => p - 1)}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={pagination.page >= pagination.totalPages}
-              onClick={() => setPage(p => p + 1)}
-            >
-              Next
-            </Button>
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
         </div>
-      )}
-    </div>
+
+        <GridViewSummaryStrip
+          projects={data}
+          pagination={pagination}
+          isLoading={isLoading}
+          error={error}
+          selectedCount={selectedCount}
+        />
+
+        <GridViewTable
+          projects={data}
+          pagination={pagination}
+          isLoading={isLoading}
+          error={error}
+          refetch={refetch}
+          onPageChange={handlePageChange}
+          onRetry={refetch}
+          onClearFilters={handleClearFilters}
+          onOpenProject={handleOpenProject}
+          rowSelection={rowSelection}
+          onRowSelectionChange={setRowSelection}
+          selectedCount={selectedCount}
+        />
+      </div>
+    </>
   );
 }
