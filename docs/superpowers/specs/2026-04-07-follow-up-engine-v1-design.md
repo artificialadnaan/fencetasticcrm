@@ -73,6 +73,16 @@ Closing rules:
 - `LOST` requires a lost-reason code and free-text note, then closes the sequence and skips future pending tasks
 - `CLOSED` closes the sequence without classifying as won/lost and skips future pending tasks
 
+In v1, sequence closure does not introduce new project-level statuses. `WON`, `LOST`, and `CLOSED` are follow-up sequence outcomes only.
+
+Project-status handling in v1:
+
+- closing a sequence as `WON` does not automatically mutate `Project.status`
+- closing a sequence as `LOST` does not automatically mutate `Project.status`
+- closing a sequence as `CLOSED` does not automatically mutate `Project.status`
+
+Users may still change `Project.status` separately through the existing project workflows. This keeps the first release compatible with the current `ProjectStatus` enum and avoids mixing estimate follow-up outcomes with broader project lifecycle state.
+
 Approved lost-reason codes:
 
 - `PRICE`
@@ -125,7 +135,7 @@ Fields:
 - `status`: `ACTIVE | WON | LOST | CLOSED`
 - `startedAt`
 - `closedAt`
-- `closedReason`
+- `closedSummary`
 - `lostReasonCode`
 - `lostReasonNotes`
 - `createdAt`
@@ -137,6 +147,8 @@ Rules:
 - sequence is created when a project enters `ESTIMATE`
 - sequence owns all scheduled follow-up tasks
 - closed sequences are immutable except for read access
+- active-sequence uniqueness must be enforced inside a transaction at the service layer because the current stack does not have a partial unique database constraint modeled for "one active row per project"
+- `closedSummary` is an optional free-text user note about why the sequence was closed; it does not duplicate the enum status
 
 ### EstimateFollowUpTask
 
@@ -291,7 +303,18 @@ Calendar should show each pending scheduled task as a follow-up event on its due
 
 `Project.followUpDate` remains in the database for now but is no longer the canonical source for dashboard or calendar follow-up visibility.
 
-V1 may continue writing `followUpDate` opportunistically for compatibility if needed, but all business logic and UI reads must come from follow-up sequence/task state.
+V1 should remove or replace user-facing single-date follow-up editing on the primary estimate management surfaces touched by this feature:
+
+- remove the legacy editable `followUpDate` control from the project detail follow-up workflow
+- remove the legacy `followUpDate` input from the create-project dialog
+
+This prevents the user from seeing two competing follow-up models at once.
+
+`Project.followUpDate` may still be populated internally for transitional compatibility if needed, but:
+
+- it must not drive business logic
+- it must not drive dashboard or calendar follow-up visibility
+- it should not be presented as the primary follow-up control in v1
 
 ## Error Handling
 
