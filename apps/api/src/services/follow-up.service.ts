@@ -10,26 +10,6 @@ import {
 import { prisma } from '../lib/prisma';
 import { AppError } from '../middleware/error-handler';
 
-type FollowUpDelegate = {
-  findFirst: (args: Record<string, unknown>) => Promise<unknown>;
-  findUnique: (args: Record<string, unknown>) => Promise<unknown>;
-  create: (args: Record<string, unknown>) => Promise<unknown>;
-  update: (args: Record<string, unknown>) => Promise<unknown>;
-  updateMany?: (args: Record<string, unknown>) => Promise<unknown>;
-};
-
-type FollowUpTx = {
-  project: {
-    findUnique: (args: Record<string, unknown>) => Promise<unknown>;
-  };
-  estimateFollowUpSequence: FollowUpDelegate;
-  estimateFollowUpTask: Required<Pick<FollowUpDelegate, 'findUnique' | 'update' | 'updateMany'>>;
-};
-
-type FollowUpPrismaClient = FollowUpTx & {
-  $transaction: <T>(callback: (tx: FollowUpTx) => Promise<T>) => Promise<T>;
-};
-
 type FollowUpProjectRow = {
   id: string;
   customer: string;
@@ -71,6 +51,104 @@ type FollowUpSequenceRow = {
   tasks: FollowUpTaskRow[];
 };
 
+type FollowUpProjectDelegate = {
+  findUnique: (args: {
+    where: { id: string };
+    select: { id: true; customer: true; description: true; estimateDate: true };
+  }) => Promise<FollowUpProjectRow | null>;
+};
+
+type FollowUpSequenceDelegate = {
+  findFirst: (args: {
+    where: { projectId: string; status: EstimateFollowUpSequenceStatus };
+    include: { tasks: { orderBy: { dueDate: 'asc' } } };
+  }) => Promise<FollowUpSequenceRow | null>;
+  findUnique: (args: {
+    where: { id: string };
+    include: { tasks: { orderBy: { dueDate: 'asc' } } };
+  }) => Promise<FollowUpSequenceRow | null>;
+  create: (args: {
+    data: {
+      projectId: string;
+      status: EstimateFollowUpSequenceStatus.ACTIVE;
+      tasks: {
+        create: Array<{
+          projectId: string;
+          kind: EstimateFollowUpTaskKind;
+          dueDate: Date;
+          draftSubject: string;
+          draftBody: string;
+        }>;
+      };
+    };
+    include: { tasks: { orderBy: { dueDate: 'asc' } } };
+  }) => Promise<FollowUpSequenceRow>;
+  update: (args: {
+    where: { id: string };
+    data: {
+      status: CloseEstimateFollowUpSequenceInput['status'];
+      closedAt: Date;
+      closedSummary: string | null;
+      lostReasonCode: EstimateFollowUpLostReasonCode | null;
+      lostReasonNotes: string | null;
+    };
+    include: { tasks: { orderBy: { dueDate: 'asc' } } };
+  }) => Promise<FollowUpSequenceRow>;
+};
+
+type FollowUpTaskDelegate = {
+  findUnique: (args: {
+    where: { id: string };
+    include: {
+      sequence: {
+        select: {
+          id: true;
+          status: true;
+        };
+      };
+    };
+  }) => Promise<FollowUpTaskRow | null>;
+  update: (args: {
+    where: { id: string };
+    data:
+      | {
+          status: EstimateFollowUpTaskStatus.COMPLETED;
+          completedAt: Date;
+          completedByUserId: string;
+        }
+      | {
+          draftSubject?: string;
+          draftBody?: string;
+          notes?: string | null;
+        };
+  }) => Promise<FollowUpTaskRow>;
+  updateMany: (args: {
+    where: {
+      sequenceId: string;
+      status: EstimateFollowUpTaskStatus.PENDING;
+      dueDate: {
+        gt: Date;
+      };
+    };
+    data: {
+      status: EstimateFollowUpTaskStatus.SKIPPED;
+    };
+  }) => Promise<{ count: number }>;
+};
+
+type FollowUpTx = {
+  $executeRawUnsafe: (query: string, ...values: Array<string | number>) => Promise<unknown>;
+  project: {
+    findUnique: FollowUpProjectDelegate['findUnique'];
+  };
+  estimateFollowUpSequence: FollowUpSequenceDelegate;
+  estimateFollowUpTask: FollowUpTaskDelegate;
+};
+
+type FollowUpPrismaClient = FollowUpTx & {
+  $transaction: <T>(callback: (tx: FollowUpTx) => Promise<T>) => Promise<T>;
+};
+
 export type UpdateEstimateFollowUpTaskInput = {
   draftSubject?: string;
   draftBody?: string;
@@ -105,19 +183,23 @@ function addUtcDays(value: Date, days: number) {
   return next;
 }
 
+function formatDateOnly(value: Date) {
+  return value.toISOString().slice(0, 10);
+}
+
 function toIsoString(value: Date | null) {
   return value ? value.toISOString() : null;
 }
 
 function buildDraftBody(project: FollowUpProjectRow, kind: EstimateFollowUpTaskKind) {
   const estimateDate = project.estimateDate
-    ? startOfUtcDay(project.estimateDate).toISOString().slice(0, 10)
+    ? formatDateOnly(startOfUtcDay(project.estimateDate))
     : 'recently';
 
   return [
     `Hi ${project.customer},`,
     '',
-    `Following up on your ${project.description.toLowerCase()} estimate from ${estimateDate}.`,
+    `Following up on your ${project.description} estimate from ${estimateDate}.`,
     `This is your ${kind.replace('_', ' ').toLowerCase()} follow-up from Fencetastic.`,
     '',
     'Let us know if you have any questions or if you would like to move forward.',
@@ -130,7 +212,7 @@ function mapTask(row: FollowUpTaskRow): EstimateFollowUpTask {
     sequenceId: row.sequenceId,
     projectId: row.projectId,
     kind: row.kind,
-    dueDate: row.dueDate.toISOString(),
+    dueDate: formatDateOnly(row.dueDate),
     status: row.status,
     draftSubject: row.draftSubject,
     draftBody: row.draftBody,
@@ -195,20 +277,31 @@ function getFollowUpClient() {
   return prisma as unknown as FollowUpPrismaClient;
 }
 
+async function acquireSequenceCreationLock(tx: FollowUpTx, projectId: string) {
+  await tx.$executeRawUnsafe(
+    'SELECT pg_advisory_xact_lock($1, hashtext($2))',
+    6202,
+    projectId
+  );
+}
+
+// userId is retained to keep the Task 2 service signature aligned with project-lifecycle callers.
 export async function ensureEstimateFollowUpSequence(projectId: string, _userId: string) {
   const client = getFollowUpClient();
 
   return client.$transaction(async (tx) => {
+    await acquireSequenceCreationLock(tx, projectId);
+
     const existing = await tx.estimateFollowUpSequence.findFirst({
       where: { projectId, status: EstimateFollowUpSequenceStatus.ACTIVE },
       include: { tasks: { orderBy: { dueDate: 'asc' } } },
     });
 
     if (existing) {
-      return mapProjectFollowUpSummary(existing as FollowUpSequenceRow);
+      return mapProjectFollowUpSummary(existing);
     }
 
-    const project = (await tx.project.findUnique({
+    const project = await tx.project.findUnique({
       where: { id: projectId },
       select: {
         id: true,
@@ -216,7 +309,7 @@ export async function ensureEstimateFollowUpSequence(projectId: string, _userId:
         description: true,
         estimateDate: true,
       },
-    })) as FollowUpProjectRow | null;
+    });
 
     if (!project) {
       throw new AppError(404, 'Project not found', 'PROJECT_NOT_FOUND');
@@ -234,7 +327,7 @@ export async function ensureEstimateFollowUpSequence(projectId: string, _userId:
             kind,
             dueDate: addUtcDays(anchorDate, offset),
             draftSubject: buildDraftSubject(project.customer, kind),
-            draftBody: buildDraftBody(project as FollowUpProjectRow, kind),
+            draftBody: buildDraftBody(project, kind),
           })),
         },
       },
@@ -245,7 +338,7 @@ export async function ensureEstimateFollowUpSequence(projectId: string, _userId:
       },
     });
 
-    return mapProjectFollowUpSummary(created as FollowUpSequenceRow);
+    return mapProjectFollowUpSummary(created);
   });
 }
 
@@ -268,7 +361,7 @@ export async function completeFollowUpTask(taskId: string, userId: string) {
     throw new AppError(404, 'Follow-up task not found', 'FOLLOW_UP_TASK_NOT_FOUND');
   }
 
-  requireMutableSequence((existing as FollowUpTaskRow).sequence?.status ?? EstimateFollowUpSequenceStatus.ACTIVE);
+  requireMutableSequence(existing.sequence?.status ?? EstimateFollowUpSequenceStatus.ACTIVE);
 
   const updated = await client.estimateFollowUpTask.update({
     where: { id: taskId },
@@ -279,7 +372,7 @@ export async function completeFollowUpTask(taskId: string, userId: string) {
     },
   });
 
-  return mapTask(updated as FollowUpTaskRow);
+  return mapTask(updated);
 }
 
 export async function updateFollowUpTask(taskId: string, input: UpdateEstimateFollowUpTaskInput) {
@@ -301,7 +394,7 @@ export async function updateFollowUpTask(taskId: string, input: UpdateEstimateFo
     throw new AppError(404, 'Follow-up task not found', 'FOLLOW_UP_TASK_NOT_FOUND');
   }
 
-  requireMutableSequence((existing as FollowUpTaskRow).sequence?.status ?? EstimateFollowUpSequenceStatus.ACTIVE);
+  requireMutableSequence(existing.sequence?.status ?? EstimateFollowUpSequenceStatus.ACTIVE);
 
   const updated = await client.estimateFollowUpTask.update({
     where: { id: taskId },
@@ -312,7 +405,7 @@ export async function updateFollowUpTask(taskId: string, input: UpdateEstimateFo
     },
   });
 
-  return mapTask(updated as FollowUpTaskRow);
+  return mapTask(updated);
 }
 
 export async function closeFollowUpSequence(
@@ -338,7 +431,7 @@ export async function closeFollowUpSequence(
       throw new AppError(404, 'Follow-up sequence not found', 'FOLLOW_UP_SEQUENCE_NOT_FOUND');
     }
 
-    requireMutableSequence((existing as FollowUpSequenceRow).status);
+    requireMutableSequence(existing.status);
 
     await tx.estimateFollowUpTask.updateMany({
       where: {
@@ -371,6 +464,6 @@ export async function closeFollowUpSequence(
       },
     });
 
-    return mapProjectFollowUpSummary(updated as FollowUpSequenceRow);
+    return mapProjectFollowUpSummary(updated);
   });
 }

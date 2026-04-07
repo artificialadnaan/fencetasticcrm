@@ -8,6 +8,7 @@ import {
 
 const prismaMock = vi.hoisted(() => {
   const tx = {
+    $executeRawUnsafe: vi.fn(),
     project: {
       findUnique: vi.fn(),
     },
@@ -27,6 +28,7 @@ const prismaMock = vi.hoisted(() => {
   return {
     tx,
     prisma: {
+      $executeRawUnsafe: tx.$executeRawUnsafe,
       project: tx.project,
       estimateFollowUpSequence: tx.estimateFollowUpSequence,
       estimateFollowUpTask: tx.estimateFollowUpTask,
@@ -67,6 +69,10 @@ type TaskRow = {
   notes: string | null;
   createdAt: Date;
   updatedAt: Date;
+  sequence?: {
+    id: string;
+    status: EstimateFollowUpSequenceStatus;
+  } | null;
 };
 
 function buildTaskRow(overrides: Partial<TaskRow> = {}): TaskRow {
@@ -148,6 +154,7 @@ describe('follow-up.service', () => {
     const createCall = prismaMock.tx.estimateFollowUpSequence.create.mock.calls[0][0];
     const createdTasks = createCall.data.tasks.create;
 
+    expect(prismaMock.tx.$executeRawUnsafe).toHaveBeenCalledTimes(1);
     expect(result.sequence?.status).toBe(EstimateFollowUpSequenceStatus.ACTIVE);
     expect(createdTasks.map((task: { kind: EstimateFollowUpTaskKind }) => task.kind)).toEqual([
       EstimateFollowUpTaskKind.DAY_1,
@@ -165,13 +172,14 @@ describe('follow-up.service', () => {
     ]);
     expect(createdTasks[0].dueDate.toISOString()).toBe('2026-04-08T00:00:00.000Z');
     expect(createdTasks[0].dueDate.getTime()).not.toBe(estimateDate.getTime());
+    expect(createdTasks[0].draftBody).toContain('Cedar privacy fence estimate');
     expect(result.tasks.map((task) => task.kind)).toEqual([
       EstimateFollowUpTaskKind.DAY_1,
       EstimateFollowUpTaskKind.DAY_3,
       EstimateFollowUpTaskKind.DAY_7,
       EstimateFollowUpTaskKind.DAY_14,
     ]);
-    expect(result.tasks.map((task) => task.dueDate.slice(0, 10))).toEqual([
+    expect(result.tasks.map((task) => task.dueDate)).toEqual([
       '2026-04-08',
       '2026-04-10',
       '2026-04-14',
@@ -291,5 +299,67 @@ describe('follow-up.service', () => {
     expect(result.status).toBe(EstimateFollowUpTaskStatus.COMPLETED);
     expect(result.completedAt).not.toBeNull();
     expect(result.completedByUserId).toBe('user-9');
+  });
+
+  it('updates follow-up task draft fields and notes', async () => {
+    prismaMock.tx.estimateFollowUpTask.findUnique.mockResolvedValue(
+      buildTaskRow({
+        sequence: {
+          id: 'sequence-1',
+          status: EstimateFollowUpSequenceStatus.ACTIVE,
+        },
+      })
+    );
+    prismaMock.tx.estimateFollowUpTask.update.mockResolvedValue(
+      buildTaskRow({
+        draftSubject: 'Updated subject',
+        draftBody: 'Updated body',
+        notes: 'Updated notes',
+      })
+    );
+
+    const { updateFollowUpTask } = await import('../services/follow-up.service');
+    const result = await updateFollowUpTask('task-1', {
+      draftSubject: 'Updated subject',
+      draftBody: 'Updated body',
+      notes: 'Updated notes',
+    });
+
+    expect(prismaMock.tx.estimateFollowUpTask.update).toHaveBeenCalledWith({
+      where: { id: 'task-1' },
+      data: {
+        draftSubject: 'Updated subject',
+        draftBody: 'Updated body',
+        notes: 'Updated notes',
+      },
+    });
+    expect(result.draftSubject).toBe('Updated subject');
+    expect(result.draftBody).toBe('Updated body');
+    expect(result.notes).toBe('Updated notes');
+  });
+
+  it('rejects follow-up task updates when the sequence is closed', async () => {
+    prismaMock.tx.estimateFollowUpTask.findUnique.mockResolvedValue(
+      buildTaskRow({
+        sequence: {
+          id: 'sequence-1',
+          status: EstimateFollowUpSequenceStatus.CLOSED,
+        },
+      })
+    );
+
+    const { updateFollowUpTask } = await import('../services/follow-up.service');
+
+    await expect(
+      updateFollowUpTask('task-1', {
+        draftSubject: 'Will not apply',
+      })
+    ).rejects.toMatchObject({
+      name: 'AppError',
+      statusCode: 400,
+      code: 'FOLLOW_UP_SEQUENCE_CLOSED',
+    });
+
+    expect(prismaMock.tx.estimateFollowUpTask.update).not.toHaveBeenCalled();
   });
 });
