@@ -697,6 +697,12 @@ export async function updateProject(projectId: string, dto: UpdateProjectDTO) {
       { isolationLevel: 'Serializable' }
     );
 
+    if (updated.status === ProjectStatus.ESTIMATE) {
+      // updateProject does not currently know the acting updater, so sequence ownership
+      // still falls back to the project's original creator until the signature is expanded.
+      await ensureEstimateFollowUpSequence(updated.id, current.createdById);
+    }
+
     for (const td of trackedDeltas) {
       const delta = td.newVal - td.oldVal;
       if (delta !== 0) {
@@ -720,8 +726,10 @@ export async function updateProject(projectId: string, dto: UpdateProjectDTO) {
     data: updateData,
   });
 
-  if (isMovingToEstimate) {
-    await ensureEstimateFollowUpSequence(projectId, current.createdById);
+  if (updated.status === ProjectStatus.ESTIMATE) {
+    // updateProject does not currently know the acting updater, so sequence ownership
+    // still falls back to the project's original creator until the signature is expanded.
+    await ensureEstimateFollowUpSequence(updated.id, current.createdById);
   }
 
   for (const td of trackedDeltas) {

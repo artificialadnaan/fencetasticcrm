@@ -531,7 +531,7 @@ describe('Project Service', () => {
   });
 
   describe('updateProject', () => {
-    it('creates a follow-up sequence when a project transitions into ESTIMATE', async () => {
+    it('ensures a follow-up sequence exists when an update persists ESTIMATE status', async () => {
       vi.mocked(prisma.project.findUnique).mockResolvedValue({
         id: 'p-open',
         customer: 'Open Lead',
@@ -565,6 +565,7 @@ describe('Project Service', () => {
       } as never);
       vi.mocked(prisma.project.update).mockResolvedValue({
         id: 'p-open',
+        status: ProjectStatus.ESTIMATE,
       } as never);
 
       const { updateProject } = await import('../services/project.service');
@@ -576,7 +577,7 @@ describe('Project Service', () => {
       expect(ensureEstimateFollowUpSequenceMock).toHaveBeenCalledTimes(1);
     });
 
-    it('does not create a second active sequence when an estimate project is resaved', async () => {
+    it('rechecks follow-up sequence existence when an estimate project is resaved', async () => {
       vi.mocked(prisma.project.findUnique).mockResolvedValue({
         id: 'p-estimate',
         customer: 'Estimate Lead',
@@ -610,6 +611,7 @@ describe('Project Service', () => {
       } as never);
       vi.mocked(prisma.project.update).mockResolvedValue({
         id: 'p-estimate',
+        status: ProjectStatus.ESTIMATE,
       } as never);
 
       const { updateProject } = await import('../services/project.service');
@@ -617,7 +619,8 @@ describe('Project Service', () => {
         notes: 'still estimate',
       });
 
-      expect(ensureEstimateFollowUpSequenceMock).not.toHaveBeenCalled();
+      expect(ensureEstimateFollowUpSequenceMock).toHaveBeenCalledWith('p-estimate', 'user-1');
+      expect(ensureEstimateFollowUpSequenceMock).toHaveBeenCalledTimes(1);
     });
 
     it('regenerates completed project snapshots after auto expense transactions are created', async () => {
