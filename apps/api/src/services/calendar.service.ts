@@ -1,3 +1,7 @@
+import {
+  EstimateFollowUpSequenceStatus,
+  EstimateFollowUpTaskStatus,
+} from '@fencetastic/shared';
 import { prisma } from '../lib/prisma';
 
 export interface CalendarEvent {
@@ -18,6 +22,52 @@ const EVENT_COLORS = {
   completed: '#6B7280', // gray
 } as const;
 
+type CalendarFollowUpTaskRow = {
+  id: string;
+  projectId: string;
+  dueDate: Date;
+  notes: string | null;
+  project: {
+    id: string;
+    customer: string;
+  };
+};
+
+type CalendarFollowUpTaskClient = {
+  estimateFollowUpTask: {
+    findMany: (args: {
+      where: {
+        status: EstimateFollowUpTaskStatus;
+        dueDate: {
+          gte: Date;
+          lt: Date;
+        };
+        sequence: {
+          status: EstimateFollowUpSequenceStatus;
+        };
+        project: {
+          isDeleted: false;
+        };
+      };
+      select: {
+        id: true;
+        projectId: true;
+        dueDate: true;
+        notes: true;
+        project: {
+          select: {
+            id: true;
+            customer: true;
+          };
+        };
+      };
+      orderBy: {
+        dueDate: 'asc';
+      };
+    }) => Promise<CalendarFollowUpTaskRow[]>;
+  };
+};
+
 function toDateStr(date: Date): string {
   return date.toISOString().split('T')[0];
 }
@@ -28,28 +78,60 @@ export async function getCalendarEvents(
 ): Promise<CalendarEvent[]> {
   const startDate = new Date(start);
   const endDate = new Date(end);
+  const followUpTaskClient = prisma as unknown as CalendarFollowUpTaskClient;
   // Extend end by 1 day to make the range inclusive
   endDate.setDate(endDate.getDate() + 1);
 
-  const projects = await prisma.project.findMany({
-    where: {
-      isDeleted: false,
-      OR: [
-        { estimateDate: { gte: startDate, lt: endDate } },
-        { followUpDate: { gte: startDate, lt: endDate } },
-        { installDate: { gte: startDate, lt: endDate } },
-        { completedDate: { gte: startDate, lt: endDate } },
-      ],
-    },
-    select: {
-      id: true,
-      customer: true,
-      estimateDate: true,
-      followUpDate: true,
-      installDate: true,
-      completedDate: true,
-    },
-  });
+  const [projects, followUpTasks, customEvents] = await Promise.all([
+    prisma.project.findMany({
+      where: {
+        isDeleted: false,
+        OR: [
+          { estimateDate: { gte: startDate, lt: endDate } },
+          { installDate: { gte: startDate, lt: endDate } },
+          { completedDate: { gte: startDate, lt: endDate } },
+        ],
+      },
+      select: {
+        id: true,
+        customer: true,
+        estimateDate: true,
+        installDate: true,
+        completedDate: true,
+      },
+    }),
+    followUpTaskClient.estimateFollowUpTask.findMany({
+      where: {
+        status: EstimateFollowUpTaskStatus.PENDING,
+        dueDate: { gte: startDate, lt: endDate },
+        sequence: {
+          status: EstimateFollowUpSequenceStatus.ACTIVE,
+        },
+        project: {
+          isDeleted: false,
+        },
+      },
+      select: {
+        id: true,
+        projectId: true,
+        dueDate: true,
+        notes: true,
+        project: {
+          select: {
+            id: true,
+            customer: true,
+          },
+        },
+      },
+      orderBy: { dueDate: 'asc' },
+    }),
+    prisma.calendarEvent.findMany({
+      where: {
+        date: { gte: startDate, lt: endDate },
+      },
+      include: { project: { select: { customer: true } } },
+    }),
+  ]);
 
   const events: CalendarEvent[] = [];
 
@@ -65,22 +147,6 @@ export async function getCalendarEvents(
           type: 'estimate',
           projectId: project.id,
           color: EVENT_COLORS.estimate,
-          notes: null,
-        });
-      }
-    }
-
-    if (project.followUpDate) {
-      const dateStr = toDateStr(project.followUpDate);
-      if (dateStr >= start && dateStr <= end) {
-        events.push({
-          id: `followup-${project.id}`,
-          title: `${project.customer} — Follow-Up`,
-          start: dateStr,
-          end: dateStr,
-          type: 'followup',
-          projectId: project.id,
-          color: EVENT_COLORS.followup,
           notes: null,
         });
       }
@@ -119,13 +185,19 @@ export async function getCalendarEvents(
     }
   }
 
-  // Fetch standalone calendar events
-  const customEvents = await prisma.calendarEvent.findMany({
-    where: {
-      date: { gte: startDate, lt: endDate },
-    },
-    include: { project: { select: { customer: true } } },
-  });
+  for (const task of followUpTasks) {
+    const dateStr = toDateStr(task.dueDate);
+    events.push({
+      id: `followup-${task.id}`,
+      title: `${task.project.customer} — Follow-Up`,
+      start: dateStr,
+      end: dateStr,
+      type: 'followup',
+      projectId: task.projectId,
+      color: EVENT_COLORS.followup,
+      notes: task.notes,
+    });
+  }
 
   for (const ce of customEvents) {
     events.push({

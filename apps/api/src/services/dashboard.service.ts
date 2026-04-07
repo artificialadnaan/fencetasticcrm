@@ -1,6 +1,10 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
-import { ProjectStatus } from '@fencetastic/shared';
+import {
+  EstimateFollowUpSequenceStatus,
+  EstimateFollowUpTaskStatus,
+  ProjectStatus,
+} from '@fencetastic/shared';
 
 // Helper: Prisma Decimal → number
 function d(val: Prisma.Decimal | null | undefined): number {
@@ -33,6 +37,48 @@ export interface FollowUpProject {
   status: string;
   followUpDate: string;
 }
+
+type DashboardFollowUpTaskRow = {
+  id: string;
+  dueDate: Date;
+  project: {
+    id: string;
+    customer: string;
+    address: string;
+    status: string;
+  };
+};
+
+type DashboardFollowUpTaskClient = {
+  estimateFollowUpTask: {
+    findMany: (args: {
+      where: {
+        status: EstimateFollowUpTaskStatus;
+        dueDate: { lte: Date };
+        sequence: {
+          status: EstimateFollowUpSequenceStatus;
+        };
+        project: {
+          isDeleted: false;
+        };
+      };
+      select: {
+        id: true;
+        dueDate: true;
+        project: {
+          select: {
+            id: true;
+            customer: true;
+            address: true;
+            status: true;
+          };
+        };
+      };
+      orderBy: Array<{ projectId: 'asc' } | { dueDate: 'asc' }>;
+      distinct: ['projectId'];
+    }) => Promise<DashboardFollowUpTaskRow[]>;
+  };
+};
 
 export interface RecentActivityItem {
   id: string;
@@ -68,7 +114,7 @@ export interface DashboardData {
 export async function getDashboardData(): Promise<DashboardData> {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const todayStr = toDateString(now);
+  const followUpTaskClient = prisma as unknown as DashboardFollowUpTaskClient;
 
   // Build 6-month trailing date range
   const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
@@ -135,24 +181,35 @@ export async function getDashboardData(): Promise<DashboardData> {
       _count: { id: true },
     }),
 
-    // Today's and overdue follow-ups (ESTIMATE/OPEN only)
+    // Today's and overdue follow-ups from active pending follow-up tasks
     (() => {
       const endOfToday = new Date(now);
       endOfToday.setHours(23, 59, 59, 999);
-      return prisma.project.findMany({
+      return followUpTaskClient.estimateFollowUpTask.findMany({
         where: {
-          isDeleted: false,
-          followUpDate: { lte: endOfToday },
-          status: { in: [ProjectStatus.ESTIMATE, ProjectStatus.OPEN] },
+          status: EstimateFollowUpTaskStatus.PENDING,
+          dueDate: { lte: endOfToday },
+          sequence: {
+            status: EstimateFollowUpSequenceStatus.ACTIVE,
+          },
+          project: {
+            isDeleted: false,
+          },
         },
         select: {
           id: true,
-          customer: true,
-          address: true,
-          status: true,
-          followUpDate: true,
+          dueDate: true,
+          project: {
+            select: {
+              id: true,
+              customer: true,
+              address: true,
+              status: true,
+            },
+          },
         },
-        orderBy: { followUpDate: 'asc' },
+        orderBy: [{ projectId: 'asc' }, { dueDate: 'asc' }],
+        distinct: ['projectId'],
       });
     })(),
 
@@ -242,11 +299,11 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   // Today's follow-ups
   const todaysFollowUps: FollowUpProject[] = followUpProjects.map((p) => ({
-    id: p.id,
-    customer: p.customer,
-    address: p.address,
-    status: p.status,
-    followUpDate: p.followUpDate ? toDateString(p.followUpDate) : todayStr,
+    id: p.project.id,
+    customer: p.project.customer,
+    address: p.project.address,
+    status: p.project.status,
+    followUpDate: toDateString(p.dueDate),
   }));
 
   // Recent activity
