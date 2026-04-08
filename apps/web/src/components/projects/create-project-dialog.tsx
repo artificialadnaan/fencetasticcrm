@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -175,6 +176,9 @@ export function CreateProjectDialog({ onCreated, open: controlledOpen, onOpenCha
       <DialogContent className="max-w-2xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>Create New Project</DialogTitle>
+          <DialogDescription>
+            Enter the core project details to create a new estimate or job.
+          </DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[70vh] pr-4">
           <form onSubmit={handleSubmit} className="space-y-4 pb-4">

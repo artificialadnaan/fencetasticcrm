@@ -1,5 +1,7 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import { Simulate } from 'react-dom/test-utils';
+import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   EstimateFollowUpLostReasonCode,
@@ -8,11 +10,19 @@ import {
   EstimateFollowUpTaskStatus,
   type ProjectFollowUpSummary,
 } from '@fencetastic/shared';
+import ProjectDetailPage from '@/pages/project-detail';
+import { CreateProjectDialog } from './create-project-dialog';
 import { FollowUpPanel } from './follow-up-panel';
 
 const apiGetMock = vi.fn();
 const apiPatchMock = vi.fn();
 const apiPostMock = vi.fn();
+const navigateMock = vi.fn();
+const useProjectMock = vi.fn();
+const useSubcontractorsMock = vi.fn();
+const useNotesMock = vi.fn();
+const useAuthMock = vi.fn();
+const useRateTemplatesMock = vi.fn();
 
 vi.mock('@/lib/api', () => ({
   api: {
@@ -21,6 +31,35 @@ vi.mock('@/lib/api', () => ({
     post: (...args: unknown[]) => apiPostMock(...args),
   },
 }));
+
+vi.mock('@/hooks/use-project', () => ({
+  useProject: (...args: unknown[]) => useProjectMock(...args),
+}));
+
+vi.mock('@/hooks/use-subcontractors', () => ({
+  useSubcontractors: (...args: unknown[]) => useSubcontractorsMock(...args),
+}));
+
+vi.mock('@/hooks/use-notes', () => ({
+  useNotes: (...args: unknown[]) => useNotesMock(...args),
+}));
+
+vi.mock('@/lib/auth-context', () => ({
+  useAuth: (...args: unknown[]) => useAuthMock(...args),
+}));
+
+vi.mock('@/hooks/use-rate-templates', () => ({
+  useRateTemplates: (...args: unknown[]) => useRateTemplatesMock(...args),
+}));
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => navigateMock,
+    useParams: () => ({ id: 'project-1' }),
+  };
+});
 
 function makeSummary(): ProjectFollowUpSummary {
   return {
@@ -122,6 +161,62 @@ async function flushEffects() {
   });
 }
 
+function changeField(
+  element: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement,
+  value: string
+) {
+  element.value = value;
+  Simulate.change(element);
+}
+
+function makeProjectDetail() {
+  return {
+    id: 'project-1',
+    customer: 'Acme Fence',
+    address: '123 Oak St',
+    description: 'Wood privacy fence',
+    fenceType: 'WOOD',
+    status: 'ESTIMATE',
+    projectTotal: 5000,
+    paymentMethod: 'CHECK',
+    moneyReceived: 0,
+    customerPaid: 0,
+    forecastedExpenses: 2200,
+    materialsCost: 1200,
+    contractDate: '2026-04-01',
+    installDate: '2026-04-15',
+    completedDate: null,
+    estimateDate: '2026-04-08',
+    followUpDate: '2026-04-09',
+    linearFeet: 120,
+    rateTemplateId: null,
+    subcontractor: null,
+    notes: null,
+    commissionOwed: null,
+    commissionPaid: null,
+    memesCommission: null,
+    aimannsCommission: null,
+    createdById: 'user-1',
+    isDeleted: false,
+    deletedAt: null,
+    createdAt: '2026-04-01T00:00:00.000Z',
+    updatedAt: '2026-04-08T00:00:00.000Z',
+    subcontractorPayments: [],
+    projectNotes: [],
+    commissionSnapshot: null,
+    commissionPreview: {
+      moneyReceived: 0,
+      totalExpenses: 2200,
+      adnaanCommission: 0,
+      memeCommission: 0,
+      grossProfit: 2800,
+      aimannDeduction: 0,
+      netProfit: 2800,
+      profitPercent: 56,
+    },
+  } as const;
+}
+
 describe('FollowUpPanel', () => {
   let container: HTMLDivElement;
   let root: Root;
@@ -133,6 +228,35 @@ describe('FollowUpPanel', () => {
     apiGetMock.mockReset();
     apiPatchMock.mockReset();
     apiPostMock.mockReset();
+    navigateMock.mockReset();
+    useProjectMock.mockReset();
+    useSubcontractorsMock.mockReset();
+    useNotesMock.mockReset();
+    useAuthMock.mockReset();
+    useRateTemplatesMock.mockReset();
+    useSubcontractorsMock.mockReturnValue({
+      data: [],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      addSub: vi.fn(),
+      updateSub: vi.fn(),
+      deleteSub: vi.fn(),
+    });
+    useNotesMock.mockReturnValue({
+      data: [],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      createNote: vi.fn(),
+      updateNote: vi.fn(),
+      deleteNote: vi.fn(),
+      uploadPhoto: vi.fn(),
+    });
+    useAuthMock.mockReturnValue({
+      user: { id: 'user-1', name: 'Adnaan', email: 'adnaan@fencetastic.com' },
+    });
+    useRateTemplatesMock.mockReturnValue({ templates: [] });
   });
 
   afterEach(() => {
@@ -160,6 +284,98 @@ describe('FollowUpPanel', () => {
     expect(container.textContent).toContain('Day 3');
     expect(container.textContent).toContain('Day 7');
     expect(container.textContent).toContain('Day 14');
+  });
+
+  it('preserves unsaved draft edits and close inputs when another task save refreshes the summary', async () => {
+    apiGetMock.mockResolvedValue({ data: { data: makeSummary() } });
+    apiPatchMock.mockResolvedValue({
+      data: {
+        data: {
+          ...makeSummary().tasks[1],
+          draftSubject: 'Saved task 2 subject',
+          draftBody: 'Saved task 2 body',
+          notes: 'Saved task 2 notes',
+        },
+      },
+    });
+
+    await act(async () => {
+      root.render(<FollowUpPanel projectId="project-1" />);
+    });
+    await flushEffects();
+
+    const firstTaskCard = container.querySelector('[data-task-id="task-1"]');
+    const secondTaskCard = container.querySelector('[data-task-id="task-2"]');
+    const firstTaskSubject = firstTaskCard?.querySelector('input[name="draftSubject"]') as HTMLInputElement | null;
+    const outcomeSelect = container.querySelector('select[name="closeStatus"]') as HTMLSelectElement | null;
+    const summaryInput = container.querySelector('textarea[name="closedSummary"]') as HTMLTextAreaElement | null;
+
+    expect(firstTaskCard).not.toBeNull();
+    expect(secondTaskCard).not.toBeNull();
+    expect(firstTaskSubject).not.toBeNull();
+    expect(outcomeSelect).not.toBeNull();
+    expect(summaryInput).not.toBeNull();
+
+    await act(async () => {
+      if (firstTaskSubject) {
+        changeField(firstTaskSubject, 'Unsaved task 1 subject');
+      }
+      if (outcomeSelect) {
+        changeField(outcomeSelect, EstimateFollowUpSequenceStatus.LOST);
+      }
+      if (summaryInput) {
+        changeField(summaryInput, 'Customer requested more time');
+      }
+    });
+
+    const reasonSelect = container.querySelector('select[name="lostReasonCode"]') as HTMLSelectElement | null;
+    const lostNotesInput = container.querySelector('textarea[name="lostReasonNotes"]') as HTMLTextAreaElement | null;
+    const secondTaskSaveButton = Array.from(secondTaskCard?.querySelectorAll('button') ?? []).find((button) =>
+      button.textContent?.includes('Save Draft')
+    );
+
+    expect(reasonSelect).not.toBeNull();
+    expect(lostNotesInput).not.toBeNull();
+    expect(secondTaskSaveButton).not.toBeUndefined();
+
+    await act(async () => {
+      if (reasonSelect) {
+        changeField(reasonSelect, EstimateFollowUpLostReasonCode.TIMING);
+      }
+      if (lostNotesInput) {
+        changeField(lostNotesInput, 'Asked to revisit in June');
+      }
+    });
+
+    await act(async () => {
+      secondTaskSaveButton?.dispatchEvent(
+        new MouseEvent('click', {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+        })
+      );
+    });
+    await flushEffects();
+
+    expect(apiPatchMock).toHaveBeenCalledWith('/follow-ups/tasks/task-2', {
+      draftSubject: 'Second follow-up',
+      draftBody: 'Wanted to check back in.',
+      notes: '',
+    });
+    expect(firstTaskSubject?.value).toBe('Unsaved task 1 subject');
+    expect((container.querySelector('select[name="closeStatus"]') as HTMLSelectElement | null)?.value).toBe(
+      EstimateFollowUpSequenceStatus.LOST
+    );
+    expect((container.querySelector('textarea[name="closedSummary"]') as HTMLTextAreaElement | null)?.value).toBe(
+      'Customer requested more time'
+    );
+    expect((container.querySelector('select[name="lostReasonCode"]') as HTMLSelectElement | null)?.value).toBe(
+      EstimateFollowUpLostReasonCode.TIMING
+    );
+    expect((container.querySelector('textarea[name="lostReasonNotes"]') as HTMLTextAreaElement | null)?.value).toBe(
+      'Asked to revisit in June'
+    );
   });
 
   it('requires both lost reason code and notes before closing as LOST', async () => {
@@ -204,9 +420,7 @@ describe('FollowUpPanel', () => {
 
     await act(async () => {
       if (summaryInput) {
-        summaryInput.value = 'Customer chose another contractor';
-        summaryInput.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
-        summaryInput.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+        changeField(summaryInput, 'Customer chose another contractor');
       }
     });
     await act(async () => {
@@ -226,15 +440,12 @@ describe('FollowUpPanel', () => {
 
     await act(async () => {
       if (reasonSelect) {
-        reasonSelect.value = EstimateFollowUpLostReasonCode.CHOSE_COMPETITOR;
-        reasonSelect.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+        changeField(reasonSelect, EstimateFollowUpLostReasonCode.CHOSE_COMPETITOR);
       }
     });
     await act(async () => {
       if (notesInput) {
-        notesInput.value = 'Went with a lower bid';
-        notesInput.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
-        notesInput.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+        changeField(notesInput, 'Went with a lower bid');
       }
     });
     await act(async () => {
@@ -299,23 +510,17 @@ describe('FollowUpPanel', () => {
 
     await act(async () => {
       if (subjectInput) {
-        subjectInput.value = 'Updated subject';
-        subjectInput.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
-        subjectInput.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+        changeField(subjectInput, 'Updated subject');
       }
     });
     await act(async () => {
       if (bodyInput) {
-        bodyInput.value = 'Updated draft body';
-        bodyInput.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
-        bodyInput.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+        changeField(bodyInput, 'Updated draft body');
       }
     });
     await act(async () => {
       if (notesInput) {
-        notesInput.value = 'Updated task notes';
-        notesInput.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
-        notesInput.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+        changeField(notesInput, 'Updated task notes');
       }
     });
     await act(async () => {
@@ -336,5 +541,123 @@ describe('FollowUpPanel', () => {
 
     expect(apiPostMock).toHaveBeenCalledWith('/follow-ups/tasks/task-1/complete');
     expect(taskCard?.textContent).toContain('COMPLETED');
+  });
+});
+
+describe('Task 5 integrations', () => {
+  let container: HTMLDivElement;
+  let root: Root;
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+    apiGetMock.mockReset();
+    apiPatchMock.mockReset();
+    apiPostMock.mockReset();
+    navigateMock.mockReset();
+    useProjectMock.mockReset();
+    useSubcontractorsMock.mockReset();
+    useNotesMock.mockReset();
+    useAuthMock.mockReset();
+    useRateTemplatesMock.mockReset();
+    useProjectMock.mockReturnValue({
+      project: makeProjectDetail(),
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    useSubcontractorsMock.mockReturnValue({
+      data: [],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      addSub: vi.fn(),
+      updateSub: vi.fn(),
+      deleteSub: vi.fn(),
+    });
+    useNotesMock.mockReturnValue({
+      data: [],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      createNote: vi.fn(),
+      updateNote: vi.fn(),
+      deleteNote: vi.fn(),
+      uploadPhoto: vi.fn(),
+    });
+    useAuthMock.mockReturnValue({
+      user: { id: 'user-1', name: 'Adnaan', email: 'adnaan@fencetastic.com' },
+    });
+    useRateTemplatesMock.mockReturnValue({ templates: [] });
+  });
+
+  afterEach(() => {
+    act(() => {
+      root.unmount();
+    });
+    container.remove();
+  });
+
+  it('renders the project detail Follow-Up tab and no longer exposes the legacy follow-up date editor', async () => {
+    apiGetMock.mockImplementation((url: string) => {
+      if (url.startsWith('/transactions?projectId=project-1&type=INCOME')) {
+        return Promise.resolve({ data: { data: [] } });
+      }
+      if (url.startsWith('/transactions?projectId=project-1&type=EXPENSE')) {
+        return Promise.resolve({ data: { data: [] } });
+      }
+      if (url === '/follow-ups/projects/project-1') {
+        return Promise.resolve({ data: { data: makeSummary() } });
+      }
+      return Promise.reject(new Error(`Unexpected GET ${url}`));
+    });
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <ProjectDetailPage />
+        </MemoryRouter>
+      );
+    });
+    await flushEffects();
+
+    expect(container.textContent).not.toContain('Follow-Up Date');
+
+    const followUpTab = Array.from(container.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('Follow-Up')
+    );
+    expect(followUpTab).not.toBeUndefined();
+
+    await act(async () => {
+      followUpTab?.dispatchEvent(
+        new MouseEvent('click', {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+        })
+      );
+    });
+    await flushEffects();
+
+    expect(container.textContent).toContain('Sequence Status');
+    expect(apiGetMock).toHaveBeenCalledWith('/follow-ups/projects/project-1');
+  });
+
+  it('no longer exposes the legacy followUpDate input in the create project dialog', async () => {
+    await act(async () => {
+      root.render(
+        <CreateProjectDialog
+          onCreated={vi.fn()}
+          open
+          onOpenChange={vi.fn()}
+        />
+      );
+    });
+    await flushEffects();
+
+    expect(document.querySelector('#estimateDate')).not.toBeNull();
+    expect(document.querySelector('#followUpDate')).toBeNull();
+    expect(document.body.textContent).not.toContain('Follow-Up Date');
   });
 });

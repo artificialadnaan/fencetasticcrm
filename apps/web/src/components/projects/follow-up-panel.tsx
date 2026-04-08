@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   EstimateFollowUpLostReasonCode,
   EstimateFollowUpSequenceStatus,
   EstimateFollowUpTaskStatus,
+  type EstimateFollowUpSequence,
   type EstimateFollowUpTask,
 } from '@fencetastic/shared';
 import { useFollowUpSequence } from '@/hooks/use-follow-up-sequence';
@@ -20,6 +21,16 @@ interface TaskDraftState {
   draftSubject: string;
   draftBody: string;
   notes: string;
+}
+
+interface CloseFormState {
+  closeStatus:
+    | EstimateFollowUpSequenceStatus.WON
+    | EstimateFollowUpSequenceStatus.LOST
+    | EstimateFollowUpSequenceStatus.CLOSED;
+  closedSummary: string;
+  lostReasonCode: EstimateFollowUpLostReasonCode | '';
+  lostReasonNotes: string;
 }
 
 const TASK_KIND_LABELS: Record<string, string> = {
@@ -51,6 +62,60 @@ function buildDraftMap(tasks: EstimateFollowUpTask[]) {
   }, {});
 }
 
+function buildCloseFormState(sequence: EstimateFollowUpSequence): CloseFormState {
+  return {
+    closeStatus:
+      sequence.status === EstimateFollowUpSequenceStatus.ACTIVE
+        ? EstimateFollowUpSequenceStatus.WON
+        : sequence.status,
+    closedSummary: sequence.closedSummary ?? '',
+    lostReasonCode: sequence.lostReasonCode ?? '',
+    lostReasonNotes: sequence.lostReasonNotes ?? '',
+  };
+}
+
+function isDraftSynced(current: TaskDraftState, previousServer: TaskDraftState) {
+  return (
+    current.draftSubject === previousServer.draftSubject
+    && current.draftBody === previousServer.draftBody
+    && current.notes === previousServer.notes
+  );
+}
+
+function reconcileDrafts(
+  currentDrafts: Record<string, TaskDraftState>,
+  previousServerDrafts: Record<string, TaskDraftState> | null,
+  nextServerDrafts: Record<string, TaskDraftState>
+) {
+  if (!previousServerDrafts) {
+    return nextServerDrafts;
+  }
+
+  return Object.fromEntries(
+    Object.entries(nextServerDrafts).map(([taskId, nextServerDraft]) => {
+      const currentDraft = currentDrafts[taskId];
+      const previousServerDraft = previousServerDrafts[taskId];
+
+      if (!currentDraft || !previousServerDraft) {
+        return [taskId, nextServerDraft];
+      }
+
+      return [
+        taskId,
+        isDraftSynced(currentDraft, previousServerDraft) ? nextServerDraft : currentDraft,
+      ];
+    })
+  );
+}
+
+function reconcileValue<T>(currentValue: T, previousServerValue: T | undefined, nextServerValue: T) {
+  if (previousServerValue === undefined) {
+    return nextServerValue;
+  }
+
+  return Object.is(currentValue, previousServerValue) ? nextServerValue : currentValue;
+}
+
 export function FollowUpPanel({ projectId }: FollowUpPanelProps) {
   const {
     summary,
@@ -71,20 +136,67 @@ export function FollowUpPanel({ projectId }: FollowUpPanelProps) {
   const [lostReasonCode, setLostReasonCode] = useState<EstimateFollowUpLostReasonCode | ''>('');
   const [lostReasonNotes, setLostReasonNotes] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
+  const syncedDraftsRef = useRef<Record<string, TaskDraftState> | null>(null);
+  const syncedCloseFormRef = useRef<CloseFormState | null>(null);
+  const syncedSequenceIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (summary) {
-      setDrafts(buildDraftMap(summary.tasks));
-      setCloseStatus(
-        summary.sequence?.status === EstimateFollowUpSequenceStatus.ACTIVE
-          ? EstimateFollowUpSequenceStatus.WON
-          : EstimateFollowUpSequenceStatus.CLOSED
-      );
-      setClosedSummary(summary.sequence?.closedSummary ?? '');
-      setLostReasonCode(summary.sequence?.lostReasonCode ?? '');
-      setLostReasonNotes(summary.sequence?.lostReasonNotes ?? '');
+    if (!summary?.sequence) {
+      return;
+    }
+
+    const nextServerDrafts = buildDraftMap(summary.tasks);
+    setDrafts((currentDrafts) =>
+      reconcileDrafts(currentDrafts, syncedDraftsRef.current, nextServerDrafts)
+    );
+    syncedDraftsRef.current = nextServerDrafts;
+
+    const nextCloseFormState = buildCloseFormState(summary.sequence);
+    const isNewSequence = syncedSequenceIdRef.current !== summary.sequence.id;
+
+    setCloseStatus((currentValue) =>
+      isNewSequence
+        ? nextCloseFormState.closeStatus
+        : reconcileValue(
+            currentValue,
+            syncedCloseFormRef.current?.closeStatus,
+            nextCloseFormState.closeStatus
+          )
+    );
+    setClosedSummary((currentValue) =>
+      isNewSequence
+        ? nextCloseFormState.closedSummary
+        : reconcileValue(
+            currentValue,
+            syncedCloseFormRef.current?.closedSummary,
+            nextCloseFormState.closedSummary
+          )
+    );
+    setLostReasonCode((currentValue) =>
+      isNewSequence
+        ? nextCloseFormState.lostReasonCode
+        : reconcileValue(
+            currentValue,
+            syncedCloseFormRef.current?.lostReasonCode,
+            nextCloseFormState.lostReasonCode
+          )
+    );
+    setLostReasonNotes((currentValue) =>
+      isNewSequence
+        ? nextCloseFormState.lostReasonNotes
+        : reconcileValue(
+            currentValue,
+            syncedCloseFormRef.current?.lostReasonNotes,
+            nextCloseFormState.lostReasonNotes
+          )
+    );
+
+    if (isNewSequence) {
       setValidationError(null);
     }
+
+    syncedCloseFormRef.current = nextCloseFormState;
+    syncedSequenceIdRef.current = summary.sequence.id;
   }, [summary]);
 
   const sequence = summary?.sequence ?? null;
@@ -257,13 +369,6 @@ export function FollowUpPanel({ projectId }: FollowUpPanelProps) {
                       name="draftSubject"
                       value={draft.draftSubject}
                       onChange={(event) => handleDraftChange(task.id, 'draftSubject', event.target.value)}
-                      onInput={(event) =>
-                        handleDraftChange(
-                          task.id,
-                          'draftSubject',
-                          (event.target as HTMLInputElement).value
-                        )
-                      }
                       disabled={isSequenceClosed}
                     />
                   </div>
@@ -277,13 +382,6 @@ export function FollowUpPanel({ projectId }: FollowUpPanelProps) {
                       name="draftBody"
                       value={draft.draftBody}
                       onChange={(event) => handleDraftChange(task.id, 'draftBody', event.target.value)}
-                      onInput={(event) =>
-                        handleDraftChange(
-                          task.id,
-                          'draftBody',
-                          (event.target as HTMLTextAreaElement).value
-                        )
-                      }
                       disabled={isSequenceClosed}
                       rows={4}
                     />
@@ -298,13 +396,6 @@ export function FollowUpPanel({ projectId }: FollowUpPanelProps) {
                       name="notes"
                       value={draft.notes}
                       onChange={(event) => handleDraftChange(task.id, 'notes', event.target.value)}
-                      onInput={(event) =>
-                        handleDraftChange(
-                          task.id,
-                          'notes',
-                          (event.target as HTMLTextAreaElement).value
-                        )
-                      }
                       disabled={isSequenceClosed}
                       rows={3}
                     />
@@ -389,9 +480,6 @@ export function FollowUpPanel({ projectId }: FollowUpPanelProps) {
                   name="closedSummary"
                   value={closedSummary}
                   onChange={(event) => setClosedSummary(event.target.value)}
-                  onInput={(event) =>
-                    setClosedSummary((event.target as HTMLTextAreaElement).value)
-                  }
                   rows={3}
                 />
               </div>
@@ -429,9 +517,6 @@ export function FollowUpPanel({ projectId }: FollowUpPanelProps) {
                       name="lostReasonNotes"
                       value={lostReasonNotes}
                       onChange={(event) => setLostReasonNotes(event.target.value)}
-                      onInput={(event) =>
-                        setLostReasonNotes((event.target as HTMLTextAreaElement).value)
-                      }
                       rows={3}
                     />
                   </div>
