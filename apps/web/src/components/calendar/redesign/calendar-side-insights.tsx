@@ -1,5 +1,5 @@
 import { CalendarClock, CheckCircle2, MapPinned, PencilLine, Sparkles } from 'lucide-react';
-import { format, startOfDay, addDays } from 'date-fns';
+import { addDays, endOfMonth, format, isWithinInterval, startOfDay, startOfMonth } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { CalendarEventView } from './calendar-types';
@@ -30,12 +30,18 @@ export function CalendarSideInsights({
     .sort((a, b) => a.start.localeCompare(b.start))
     .slice(0, 4);
 
-  const installCount = events.filter((event) => event.type === 'install').length;
-  const followUpCount = events.filter((event) => event.type === 'followup').length;
-  const estimateCount = events.filter((event) => event.type === 'estimate').length;
-  const projectLinkedCount = events.filter((event) => event.projectId).length;
+  const monthStart = startOfMonth(currentDate);
+  const monthEnd = endOfMonth(currentDate);
+  const monthEvents = events.filter((event) =>
+    isWithinInterval(new Date(`${event.start}T00:00:00`), { start: monthStart, end: monthEnd })
+  );
 
-  const total = Math.max(events.length, 1);
+  const installCount = monthEvents.filter((event) => event.type === 'install').length;
+  const followUpCount = monthEvents.filter((event) => event.type === 'followup').length;
+  const estimateCount = monthEvents.filter((event) => event.type === 'estimate').length;
+  const projectLinkedCount = monthEvents.filter((event) => event.projectId).length;
+
+  const total = Math.max(monthEvents.length, 1);
 
   return (
     <aside className="space-y-5">
@@ -122,14 +128,14 @@ export function CalendarSideInsights({
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-              Event Mix
+              Month Mix
             </p>
             <h3 className="mt-3 text-xl font-semibold tracking-[-0.04em] text-slate-950">
-              Visible schedule load
+              {format(currentDate, 'MMMM')} schedule load
             </h3>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700">
-            {events.length} events
+            {monthEvents.length} events
           </div>
         </div>
 

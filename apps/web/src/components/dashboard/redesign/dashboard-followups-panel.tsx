@@ -1,7 +1,19 @@
 import { BellDot } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { PROJECT_STATUS_META, type DashboardFollowUpTask, type ProjectStatus } from '@fencetastic/shared';
+import {
+  PROJECT_STATUS_META,
+  type DashboardFollowUpTask,
+  type EstimateFollowUpTaskKind,
+  type ProjectStatus,
+} from '@fencetastic/shared';
 import { formatDate } from '@/lib/formatters';
+
+const TASK_KIND_LABELS: Record<EstimateFollowUpTaskKind, string> = {
+  DAY_1: 'Day 1',
+  DAY_3: 'Day 3',
+  DAY_7: 'Day 7',
+  DAY_14: 'Day 14',
+};
 
 interface DashboardFollowupsPanelProps {
   followUps: DashboardFollowUpTask[];
@@ -61,10 +73,22 @@ export function DashboardFollowupsPanel({
                     {statusMeta?.shortLabel ?? followUp.status}
                   </span>
                 </div>
-                <p className="mt-4 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
-                  Due date
-                </p>
-                <p className="mt-1 text-sm text-slate-800">{formatDate(followUp.dueDate)}</p>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+                      Follow-up
+                    </p>
+                    <p className="mt-1 text-sm text-slate-800">
+                      {TASK_KIND_LABELS[followUp.kind] ?? followUp.kind}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+                      Due date
+                    </p>
+                    <p className="mt-1 text-sm text-slate-800">{formatDate(followUp.dueDate)}</p>
+                  </div>
+                </div>
               </Link>
             );
           })}
