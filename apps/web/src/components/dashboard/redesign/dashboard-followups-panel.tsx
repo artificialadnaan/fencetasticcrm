@@ -1,10 +1,10 @@
 import { BellDot } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { PROJECT_STATUS_META, type DashboardFollowUp, type ProjectStatus } from '@fencetastic/shared';
+import { PROJECT_STATUS_META, type DashboardFollowUpTask, type ProjectStatus } from '@fencetastic/shared';
 import { formatDate } from '@/lib/formatters';
 
 interface DashboardFollowupsPanelProps {
-  followUps: DashboardFollowUp[];
+  followUps: DashboardFollowUpTask[];
   isLoading: boolean;
 }
 
@@ -49,7 +49,7 @@ export function DashboardFollowupsPanel({
             return (
               <Link
                 key={followUp.id}
-                to={`/projects/${followUp.id}`}
+                to={`/projects/${followUp.projectId}`}
                 className="block rounded-[24px] border border-black/5 bg-white/80 px-4 py-4 transition-transform duration-200 hover:-translate-y-0.5 hover:bg-white"
               >
                 <div className="flex items-start justify-between gap-4">
@@ -62,9 +62,9 @@ export function DashboardFollowupsPanel({
                   </span>
                 </div>
                 <p className="mt-4 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
-                  Follow-up date
+                  Due date
                 </p>
-                <p className="mt-1 text-sm text-slate-800">{formatDate(followUp.followUpDate)}</p>
+                <p className="mt-1 text-sm text-slate-800">{formatDate(followUp.dueDate)}</p>
               </Link>
             );
           })}

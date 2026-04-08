@@ -150,6 +150,24 @@ describe('follow-up routes', () => {
     expect(res.json).toHaveBeenCalledWith({ data: summary });
   });
 
+  it('rejects invalid project ids at the route boundary', async () => {
+    const route = await getRoute('/projects/:projectId', 'get');
+    const res = await runRoute(route, {
+      params: { projectId: 'not-a-uuid' },
+      body: {},
+      query: {},
+      headers: { authorization: 'Bearer token' },
+    });
+
+    expect(ensureEstimateFollowUpSequenceMock).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'VALIDATION_ERROR',
+      })
+    );
+  });
+
   it('updates draft subject/body and notes from PATCH /api/follow-ups/tasks/:taskId', async () => {
     const taskId = '550e8400-e29b-41d4-a716-446655440003';
     const payload = {
@@ -176,6 +194,25 @@ describe('follow-up routes', () => {
 
     expect(updateFollowUpTaskMock).toHaveBeenCalledWith(taskId, payload);
     expect(res.json).toHaveBeenCalledWith({ data: updatedTask });
+  });
+
+  it('rejects empty PATCH bodies for follow-up task updates', async () => {
+    const taskId = '550e8400-e29b-41d4-a716-446655440003';
+    const route = await getRoute('/tasks/:taskId', 'patch');
+    const res = await runRoute(route, {
+      params: { taskId },
+      body: {},
+      query: {},
+      headers: { authorization: 'Bearer token' },
+    });
+
+    expect(updateFollowUpTaskMock).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'VALIDATION_ERROR',
+      })
+    );
   });
 
   it('completes a follow-up task from POST /api/follow-ups/tasks/:taskId/complete', async () => {

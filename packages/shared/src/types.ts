@@ -670,7 +670,7 @@ export interface DashboardData {
   };
   monthlyRevenueExpenses: MonthlyRevenueExpense[];
   projectTypeBreakdown: ProjectTypeBreakdown[];
-  todaysFollowUps: DashboardFollowUp[];
+  todaysFollowUps: DashboardFollowUpTask[];
   recentActivity: DashboardActivityItem[];
   upcomingInstalls: DashboardUpcomingInstall[];
 }
