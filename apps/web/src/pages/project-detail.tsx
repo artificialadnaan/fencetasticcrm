@@ -31,6 +31,7 @@ import { StatusBadge } from '@/components/projects/status-badge';
 import { NotesTimeline } from '@/components/projects/notes-timeline';
 import { PhotoGallery } from '@/components/projects/photo-gallery';
 import { SubcontractorTable } from '@/components/projects/subcontractor-table';
+import { FollowUpPanel } from '@/components/projects/follow-up-panel';
 import { PROJECT_STATUS_META, PROJECT_STATUS_ORDER, ProjectStatus } from '@fencetastic/shared';
 import type { Transaction } from '@fencetastic/shared';
 import {
@@ -72,6 +73,7 @@ const INCOME_CATEGORIES = ['Customer Payment', 'Deposit', 'Partial Payment', 'Fi
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
+  { id: 'follow-up', label: 'Follow-Up' },
   { id: 'payments', label: 'Payments' },
   { id: 'expenses', label: 'Expenses' },
   { id: 'commission', label: 'Commission' },
@@ -594,15 +596,6 @@ export default function ProjectDetailPage() {
                   onSave={(v) => handleFieldSave('estimateDate', v)}
                 />
               </FieldRow>
-              <FieldRow label="Follow-Up Date">
-                <EditableField
-                  label="Follow-Up Date"
-                  value={project.followUpDate}
-                  type="date"
-                  formatDisplay={(v) => formatDate(v as string | null)}
-                  onSave={(v) => handleFieldSave('followUpDate', v)}
-                />
-              </FieldRow>
               <FieldRow label="Completed Date">
                 <EditableField
                   label="Completed Date"
@@ -638,6 +631,11 @@ export default function ProjectDetailPage() {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* --- FOLLOW-UP TAB --- */}
+      {activeTab === 'follow-up' && (
+        <FollowUpPanel projectId={id ?? project.id} />
       )}
 
       {/* --- PAYMENTS TAB --- */}

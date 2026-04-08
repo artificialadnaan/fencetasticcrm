@@ -62,7 +62,6 @@ export function CreateProjectDialog({ onCreated, open: controlledOpen, onOpenCha
   const [contractDate, setContractDate] = useState('');
   const [installDate, setInstallDate] = useState(defaultInstallDate ?? '');
   const [estimateDate, setEstimateDate] = useState('');
-  const [followUpDate, setFollowUpDate] = useState('');
   const [linearFeet, setLinearFeet] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [subcontractor, setSubcontractor] = useState('');
@@ -89,7 +88,6 @@ export function CreateProjectDialog({ onCreated, open: controlledOpen, onOpenCha
     setContractDate('');
     setInstallDate(defaultInstallDate ?? '');
     setEstimateDate('');
-    setFollowUpDate('');
     setLinearFeet('');
     setSelectedTemplateId('');
     setSubcontractor('');
@@ -144,7 +142,6 @@ export function CreateProjectDialog({ onCreated, open: controlledOpen, onOpenCha
         contractDate,
         installDate,
         estimateDate: estimateDate || null,
-        followUpDate: followUpDate || null,
         linearFeet: linearFeet ? parseFloat(linearFeet) : null,
         rateTemplateId: selectedTemplateId && selectedTemplateId !== 'NONE' ? selectedTemplateId : null,
         subcontractor: subcontractor || null,
@@ -295,10 +292,6 @@ export function CreateProjectDialog({ onCreated, open: controlledOpen, onOpenCha
               <div className="space-y-2">
                 <Label htmlFor="estimateDate">Estimate Date</Label>
                 <Input id="estimateDate" type="date" value={estimateDate} onChange={(e) => setEstimateDate(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="followUpDate">Follow-Up Date</Label>
-                <Input id="followUpDate" type="date" value={followUpDate} onChange={(e) => setFollowUpDate(e.target.value)} />
               </div>
             </div>
 
