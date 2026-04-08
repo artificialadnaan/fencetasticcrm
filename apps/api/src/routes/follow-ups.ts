@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response, Router } from 'express';
-import { z, type ZodSchema } from 'zod';
+import { z } from 'zod';
 import {
   EstimateFollowUpLostReasonCode,
   EstimateFollowUpSequenceStatus,
@@ -15,18 +15,25 @@ import {
 
 export const followUpRouter = Router();
 
-function validateParams(schema: ZodSchema) {
+function validationErrorResponse(
+  res: Response,
+  errors: Array<{ path: Array<string | number>; message: string }>
+) {
+  res.status(400).json({
+    message: 'Validation error',
+    code: 'VALIDATION_ERROR',
+    errors: errors.map((error) => ({
+      field: error.path.join('.'),
+      message: error.message,
+    })),
+  });
+}
+
+function validateParams<T extends z.ZodTypeAny>(schema: T) {
   return (req: Request, res: Response, next: NextFunction): void => {
     const parsed = schema.safeParse(req.params);
     if (!parsed.success) {
-      res.status(400).json({
-        message: 'Validation error',
-        code: 'VALIDATION_ERROR',
-        errors: parsed.error.errors.map((error) => ({
-          field: error.path.join('.'),
-          message: error.message,
-        })),
-      });
+      validationErrorResponse(res, parsed.error.errors);
       return;
     }
 
@@ -76,7 +83,28 @@ const closeSequenceSchema = z
     lostReasonCode: z.nativeEnum(EstimateFollowUpLostReasonCode).nullable().optional(),
     lostReasonNotes: z.string().nullable().optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((value, ctx) => {
+    if (value.status !== EstimateFollowUpSequenceStatus.LOST) {
+      return;
+    }
+
+    if (!value.lostReasonCode) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['lostReasonCode'],
+        message: 'lostReasonCode is required when status is LOST',
+      });
+    }
+
+    if (!value.lostReasonNotes?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['lostReasonNotes'],
+        message: 'lostReasonNotes is required when status is LOST',
+      });
+    }
+  });
 
 followUpRouter.get(
   '/projects/:projectId',

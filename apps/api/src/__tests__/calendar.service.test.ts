@@ -28,8 +28,17 @@ describe('calendar.service follow-up reads', () => {
     vi.clearAllMocks();
   });
 
-  it('returns calendar follow-up events from pending follow-up tasks instead of project.followUpDate', async () => {
-    prismaMock.prisma.project.findMany.mockResolvedValue([]);
+  it('returns calendar follow-up events from pending follow-up tasks and ignores legacy project.followUpDate', async () => {
+    prismaMock.prisma.project.findMany.mockResolvedValue([
+      {
+        id: 'project-legacy',
+        customer: 'Legacy Lead',
+        estimateDate: null,
+        installDate: null,
+        completedDate: null,
+        followUpDate: new Date('2026-04-12T00:00:00.000Z'),
+      },
+    ]);
     prismaMock.prisma.estimateFollowUpTask.findMany.mockResolvedValue([
       {
         id: 'task-1',
@@ -46,6 +55,57 @@ describe('calendar.service follow-up reads', () => {
           id: 'project-1',
           customer: 'Jane Doe',
           isDeleted: false,
+        },
+      },
+      {
+        id: 'task-skipped',
+        projectId: 'project-2',
+        kind: EstimateFollowUpTaskKind.DAY_3,
+        dueDate: new Date('2026-04-11T00:00:00.000Z'),
+        status: EstimateFollowUpTaskStatus.SKIPPED,
+        notes: 'Should be excluded',
+        sequence: {
+          id: 'sequence-2',
+          status: EstimateFollowUpSequenceStatus.ACTIVE,
+        },
+        project: {
+          id: 'project-2',
+          customer: 'Skipped Lead',
+          isDeleted: false,
+        },
+      },
+      {
+        id: 'task-closed',
+        projectId: 'project-3',
+        kind: EstimateFollowUpTaskKind.DAY_3,
+        dueDate: new Date('2026-04-12T00:00:00.000Z'),
+        status: EstimateFollowUpTaskStatus.PENDING,
+        notes: 'Closed sequence',
+        sequence: {
+          id: 'sequence-3',
+          status: EstimateFollowUpSequenceStatus.CLOSED,
+        },
+        project: {
+          id: 'project-3',
+          customer: 'Closed Lead',
+          isDeleted: false,
+        },
+      },
+      {
+        id: 'task-deleted',
+        projectId: 'project-4',
+        kind: EstimateFollowUpTaskKind.DAY_14,
+        dueDate: new Date('2026-04-13T00:00:00.000Z'),
+        status: EstimateFollowUpTaskStatus.PENDING,
+        notes: 'Deleted project',
+        sequence: {
+          id: 'sequence-4',
+          status: EstimateFollowUpSequenceStatus.ACTIVE,
+        },
+        project: {
+          id: 'project-4',
+          customer: 'Deleted Lead',
+          isDeleted: true,
         },
       },
     ]);
@@ -81,5 +141,7 @@ describe('calendar.service follow-up reads', () => {
       color: '#F59E0B',
       notes: 'Call after lunch',
     });
+    expect(result).toHaveLength(1);
+    expect(result.find((event) => event.id === 'followup-project-legacy')).toBeUndefined();
   });
 });

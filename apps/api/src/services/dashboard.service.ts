@@ -1,7 +1,9 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import {
+  type DashboardFollowUpTask,
   EstimateFollowUpSequenceStatus,
+  EstimateFollowUpTaskKind,
   EstimateFollowUpTaskStatus,
   ProjectStatus,
 } from '@fencetastic/shared';
@@ -30,22 +32,21 @@ export interface ProjectTypeBreakdown {
   count: number;
 }
 
-export interface FollowUpProject {
-  id: string;
-  customer: string;
-  address: string;
-  status: string;
-  followUpDate: string;
-}
-
 type DashboardFollowUpTaskRow = {
   id: string;
+  projectId: string;
+  kind: EstimateFollowUpTaskKind;
   dueDate: Date;
+  status: EstimateFollowUpTaskStatus;
+  sequence: {
+    status: EstimateFollowUpSequenceStatus;
+  };
   project: {
     id: string;
     customer: string;
     address: string;
-    status: string;
+    status: ProjectStatus;
+    isDeleted: boolean;
   };
 };
 
@@ -64,21 +65,58 @@ type DashboardFollowUpTaskClient = {
       };
       select: {
         id: true;
+        projectId: true;
+        kind: true;
         dueDate: true;
+        status: true;
+        sequence: {
+          select: {
+            status: true;
+          };
+        };
         project: {
           select: {
             id: true;
             customer: true;
             address: true;
             status: true;
+            isDeleted: true;
           };
         };
       };
-      orderBy: Array<{ projectId: 'asc' } | { dueDate: 'asc' }>;
-      distinct: ['projectId'];
+      orderBy: Array<{ dueDate: 'asc' } | { projectId: 'asc' }>;
     }) => Promise<DashboardFollowUpTaskRow[]>;
   };
 };
+
+function isDashboardFollowUpTaskVisible(task: DashboardFollowUpTaskRow) {
+  return (
+    task.status === EstimateFollowUpTaskStatus.PENDING
+    && task.sequence.status === EstimateFollowUpSequenceStatus.ACTIVE
+    && !task.project.isDeleted
+  );
+}
+
+function selectEarliestPendingFollowUps(tasks: DashboardFollowUpTaskRow[]): DashboardFollowUpTaskRow[] {
+  const earliestByProject = new Map<string, DashboardFollowUpTaskRow>();
+
+  for (const task of tasks) {
+    if (!isDashboardFollowUpTaskVisible(task)) {
+      continue;
+    }
+
+    const existing = earliestByProject.get(task.projectId);
+    if (!existing || task.dueDate.getTime() < existing.dueDate.getTime()) {
+      earliestByProject.set(task.projectId, task);
+    }
+  }
+
+  return [...earliestByProject.values()].sort((left, right) => {
+    const dueDateDiff = left.dueDate.getTime() - right.dueDate.getTime();
+    if (dueDateDiff !== 0) return dueDateDiff;
+    return left.projectId.localeCompare(right.projectId);
+  });
+}
 
 export interface RecentActivityItem {
   id: string;
@@ -106,7 +144,7 @@ export interface DashboardData {
   };
   monthlyRevenueExpenses: MonthlyRevenueExpense[];
   projectTypeBreakdown: ProjectTypeBreakdown[];
-  todaysFollowUps: FollowUpProject[];
+  todaysFollowUps: DashboardFollowUpTask[];
   recentActivity: RecentActivityItem[];
   upcomingInstalls: UpcomingInstall[];
 }
@@ -198,18 +236,26 @@ export async function getDashboardData(): Promise<DashboardData> {
         },
         select: {
           id: true,
+          projectId: true,
+          kind: true,
           dueDate: true,
+          status: true,
+          sequence: {
+            select: {
+              status: true,
+            },
+          },
           project: {
             select: {
               id: true,
               customer: true,
               address: true,
               status: true,
+              isDeleted: true,
             },
           },
         },
-        orderBy: [{ projectId: 'asc' }, { dueDate: 'asc' }],
-        distinct: ['projectId'],
+        orderBy: [{ dueDate: 'asc' }, { projectId: 'asc' }],
       });
     })(),
 
@@ -298,13 +344,16 @@ export async function getDashboardData(): Promise<DashboardData> {
   }));
 
   // Today's follow-ups
-  const todaysFollowUps: FollowUpProject[] = followUpProjects.map((p) => ({
-    id: p.project.id,
-    customer: p.project.customer,
-    address: p.project.address,
-    status: p.project.status,
-    followUpDate: toDateString(p.dueDate),
-  }));
+  const todaysFollowUps: DashboardFollowUpTask[] = selectEarliestPendingFollowUps(followUpProjects)
+    .map((task) => ({
+      id: task.id,
+      projectId: task.projectId,
+      customer: task.project.customer,
+      address: task.project.address,
+      status: task.project.status,
+      dueDate: toDateString(task.dueDate),
+      kind: task.kind,
+    }));
 
   // Recent activity
   const recentActivity: RecentActivityItem[] = recentNotes

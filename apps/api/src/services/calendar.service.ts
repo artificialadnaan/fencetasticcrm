@@ -1,5 +1,6 @@
 import {
   EstimateFollowUpSequenceStatus,
+  EstimateFollowUpTaskKind,
   EstimateFollowUpTaskStatus,
 } from '@fencetastic/shared';
 import { prisma } from '../lib/prisma';
@@ -25,11 +26,17 @@ const EVENT_COLORS = {
 type CalendarFollowUpTaskRow = {
   id: string;
   projectId: string;
+  kind: EstimateFollowUpTaskKind;
   dueDate: Date;
+  status: EstimateFollowUpTaskStatus;
   notes: string | null;
+  sequence: {
+    status: EstimateFollowUpSequenceStatus;
+  };
   project: {
     id: string;
     customer: string;
+    isDeleted: boolean;
   };
 };
 
@@ -52,12 +59,20 @@ type CalendarFollowUpTaskClient = {
       select: {
         id: true;
         projectId: true;
+        kind: true;
         dueDate: true;
+        status: true;
         notes: true;
+        sequence: {
+          select: {
+            status: true;
+          };
+        };
         project: {
           select: {
             id: true;
             customer: true;
+            isDeleted: true;
           };
         };
       };
@@ -67,6 +82,14 @@ type CalendarFollowUpTaskClient = {
     }) => Promise<CalendarFollowUpTaskRow[]>;
   };
 };
+
+function isCalendarFollowUpTaskVisible(task: CalendarFollowUpTaskRow) {
+  return (
+    task.status === EstimateFollowUpTaskStatus.PENDING
+    && task.sequence.status === EstimateFollowUpSequenceStatus.ACTIVE
+    && !task.project.isDeleted
+  );
+}
 
 function toDateStr(date: Date): string {
   return date.toISOString().split('T')[0];
@@ -114,12 +137,20 @@ export async function getCalendarEvents(
       select: {
         id: true,
         projectId: true,
+        kind: true,
         dueDate: true,
+        status: true,
         notes: true,
+        sequence: {
+          select: {
+            status: true,
+          },
+        },
         project: {
           select: {
             id: true,
             customer: true,
+            isDeleted: true,
           },
         },
       },
@@ -186,6 +217,10 @@ export async function getCalendarEvents(
   }
 
   for (const task of followUpTasks) {
+    if (!isCalendarFollowUpTaskVisible(task)) {
+      continue;
+    }
+
     const dateStr = toDateStr(task.dueDate);
     events.push({
       id: `followup-${task.id}`,
