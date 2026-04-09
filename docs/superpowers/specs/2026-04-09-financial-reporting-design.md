@@ -130,7 +130,7 @@ Period toggle: monthly / quarterly / annual.
 | **Cost of Goods Sold** | For each project in period: Materials (MaterialLineItem totals, fallback `materialsCost`) + Subs (`SubcontractorPayment.amountPaid`) + Other Project Expenses (project-linked Transaction remainders after material split). All rolled into the project's completion month. |
 | **Gross Profit** | Revenue - COGS |
 | **Operating Expenses** | Synthetic monthly operating expenses (within `effectiveFrom`–`effectiveTo`) + non-project-linked expense Transactions by `Transaction.date` |
-| **Commissions** | Sum of `CommissionSnapshot.adnaanCommission + CommissionSnapshot.memeCommission` for snapshots settled in period |
+| **Commissions** | For each project in the period: if settled, use `CommissionSnapshot.adnaanCommission + memeCommission` attributed to the project's completion month (not `settledAt`). If unsettled, compute via `calculateCommission()` and attribute to completion month. This keeps commissions in the same period as revenue and COGS. |
 | **Net Profit** | Gross Profit - Operating Expenses - Commissions |
 
 Visual: Summary table + Recharts bar/line chart showing month-over-month trend.
@@ -287,6 +287,17 @@ No changes needed — Transaction creation already supports `projectId` via the 
 Update `packages/shared/src/types.ts`:
 - Add `subcategory?: string` to `TransactionCreate`, `TransactionUpdate`, and `TransactionListItem` types.
 - Update Zod schemas in `apps/api/src/routes/transactions.ts` for both create and update to accept `subcategory: z.string().max(100).optional()`.
+- Add `effectiveFrom?: string | null` and `effectiveTo?: string | null` to `OperatingExpenseCreate`, `OperatingExpenseUpdate`, and `OperatingExpenseListItem` types.
+
+### Operating Expense Route Changes
+
+Update `apps/api/src/routes/operating-expenses.ts`:
+- POST and PATCH Zod schemas: add `effectiveFrom: z.coerce.date().optional().nullable()` and `effectiveTo: z.coerce.date().optional().nullable()`.
+- GET list response: include `effectiveFrom` and `effectiveTo` in returned objects.
+
+Update Settings page UI:
+- Add optional "Effective From" and "Effective To" date pickers to the operating expense create/edit form.
+- Display date range in the operating expenses table when set.
 
 ### API Validation (Zod)
 
