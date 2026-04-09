@@ -1047,8 +1047,13 @@ export async function getPnlReport(
     else if (exp.frequency === 'ANNUAL') monthlyAmt /= 12;
 
     // Normalize effectiveFrom/To to month boundaries for comparison
-    const expFrom = exp.effectiveFrom ? new Date(exp.effectiveFrom.getFullYear(), exp.effectiveFrom.getMonth(), 1) : from;
-    const expTo = exp.effectiveTo ? new Date(exp.effectiveTo.getFullYear(), exp.effectiveTo.getMonth(), 1) : to;
+    // Null fallbacks also normalized so arbitrary dateFrom/dateTo don't skip months
+    const expFrom = exp.effectiveFrom
+      ? new Date(exp.effectiveFrom.getFullYear(), exp.effectiveFrom.getMonth(), 1)
+      : new Date(from.getFullYear(), from.getMonth(), 1);
+    const expTo = exp.effectiveTo
+      ? new Date(exp.effectiveTo.getFullYear(), exp.effectiveTo.getMonth(), 1)
+      : new Date(to.getFullYear(), to.getMonth(), 1);
 
     for (const [key, row] of buckets) {
       // Parse month key back to date for range check
