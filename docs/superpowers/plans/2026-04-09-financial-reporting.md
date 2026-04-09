@@ -17,15 +17,16 @@
 |------|---------------|
 | `apps/api/prisma/migrations/XXXXXX_add_material_line_items/migration.sql` | Schema migration |
 | `apps/api/src/services/material.service.ts` | MaterialLineItem CRUD + aggregation |
+| `apps/api/src/services/report-commission.helper.ts` | Shared commission calc helper for reports (matches buildCommissionPreview path) |
 | `apps/api/src/routes/materials.ts` | Material API routes + Zod validation |
 | `apps/api/src/services/financial-report.service.ts` | 5 report calculation services |
-| `apps/api/src/routes/financial-reports.ts` | Report API routes + CSV export |
+| `apps/api/src/routes/financial-reports.ts` | Report API routes + CSV/PDF export |
 | `apps/web/src/hooks/use-materials.ts` | React hooks for material CRUD |
 | `apps/web/src/hooks/use-financial-reports.ts` | React hooks for 5 report endpoints |
 | `apps/web/src/components/projects/materials-tab.tsx` | Material entry UI on project detail |
 | `apps/web/src/components/projects/financial-summary-card.tsx` | Project profit/margin card |
 | `apps/web/src/components/reports/pnl-report.tsx` | P&L report component |
-| `apps/web/src/components/reports/job-costing-report.tsx` | Job costing table component |
+| `apps/web/src/components/reports/job-costing-report.tsx` | Job costing table with expandable rows |
 | `apps/web/src/components/reports/commission-report.tsx` | Commission summary component |
 | `apps/web/src/components/reports/expense-report.tsx` | Expense breakdown component |
 | `apps/web/src/components/reports/cash-flow-report.tsx` | Cash flow chart component |
@@ -37,8 +38,10 @@
 | `apps/api/src/index.ts` | Mount material and financial-report routers |
 | `apps/api/src/routes/transactions.ts` | Add subcategory to create/update Zod schemas |
 | `apps/api/src/services/transaction.service.ts` | Pass subcategory through create/update |
-| `apps/api/src/routes/operating-expenses.ts` | Add effectiveFrom/To to Zod schemas |
-| `apps/api/src/services/operating-expense.service.ts` | Pass effectiveFrom/To through CRUD |
+| `apps/api/src/routes/operating-expenses.ts` | Add effectiveFrom/To to Zod schemas; set effectiveTo on deactivation |
+| `apps/api/src/services/operating-expense.service.ts` | Pass effectiveFrom/To through CRUD; auto-set effectiveTo on deactivation |
+| `apps/web/src/components/settings/operating-expenses-section.tsx` | Add effectiveFrom/To date pickers to create/edit form and table display |
+| `apps/web/src/hooks/use-operating-expenses.ts` | Pass effectiveFrom/To through create/update hooks |
 | `packages/shared/src/types.ts` | Add MaterialLineItem types, MaterialCategory enum, update Transaction/OperatingExpense DTOs, add report response types |
 | `apps/web/src/pages/project-detail.tsx` | Add Materials tab + import MaterialsTab and FinancialSummaryCard |
 | `apps/web/src/pages/reports.tsx` | Rebuild with tab navigation and 5 report components |
@@ -846,12 +849,46 @@ Create `apps/api/src/services/financial-report.service.ts`:
 ```typescript
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
-import { calculateCommission } from '@fencetastic/shared';
+import { calculateCommission, PaymentMethod } from '@fencetastic/shared';
 import type {
   PnlReport, PnlRow, JobCostingRow, CommissionSummaryReport,
   CommissionSummaryPerson, ExpenseBreakdownReport, ExpenseByCategoryRow,
   ExpenseByVendorRow, CashFlowRow,
 } from '@fencetastic/shared';
+
+// ─── Shared Commission Helper ────────────────────────────────────────────────
+// Matches the existing buildCommissionPreview() path in project.service.ts:
+// uses amountOwed (not amountPaid) for subs and fetches real Aimann debt balance.
+
+async function getAimannDebtBalance(): Promise<number> {
+  const lastLedger = await prisma.aimannDebtLedger.findFirst({
+    orderBy: { date: 'desc' },
+  });
+  return lastLedger ? d(lastLedger.runningBalance) : 0;
+}
+
+async function computeLiveCommission(project: {
+  projectTotal: Prisma.Decimal;
+  paymentMethod: string;
+  materialsCost: Prisma.Decimal;
+  subcontractorPayments: { amountOwed: Prisma.Decimal }[];
+  materialLineItems?: { totalCost: Prisma.Decimal }[];
+}) {
+  const materialTotal = project.materialLineItems && project.materialLineItems.length > 0
+    ? project.materialLineItems.reduce((s, m) => s + d(m.totalCost), 0)
+    : d(project.materialsCost);
+
+  const subOwedTotal = project.subcontractorPayments.reduce((s, sp) => s + d(sp.amountOwed), 0);
+  const aimannDebtBalance = await getAimannDebtBalance();
+
+  return calculateCommission({
+    projectTotal: d(project.projectTotal),
+    paymentMethod: project.paymentMethod as PaymentMethod,
+    materialsCost: materialTotal,
+    subOwedTotal,
+    aimannDebtBalance,
+  });
+}
 
 function d(val: Prisma.Decimal | null | undefined): number {
   if (!val) return 0;
@@ -894,11 +931,14 @@ export async function getPnlReport(
     },
     include: {
       materialLineItems: { select: { totalCost: true } },
-      subcontractorPayments: { select: { amountPaid: true } },
+      subcontractorPayments: { select: { amountOwed: true, amountPaid: true } },
       transactions: { where: { type: 'EXPENSE' }, select: { amount: true, materialLineItems: { select: { totalCost: true } } } },
       commissionSnapshot: true,
     },
   });
+
+  // Pre-fetch Aimann debt balance once (used for all unsettled commission calcs)
+  const aimannDebtBalance = await getAimannDebtBalance();
 
   // 2. Non-project-linked expense transactions in range
   const nonProjectExpenses = await prisma.transaction.findMany({
@@ -952,7 +992,7 @@ export async function getPnlReport(
       ? p.materialLineItems.reduce((s, m) => s + d(m.totalCost), 0)
       : d(p.materialsCost);
 
-    // Subcontractors
+    // Subcontractors (use amountPaid for COGS — actual money spent)
     const subTotal = p.subcontractorPayments.reduce((s, sp) => s + d(sp.amountPaid), 0);
 
     // Other project expenses (transaction remainder after material split)
@@ -964,17 +1004,18 @@ export async function getPnlReport(
 
     row.cogs += roundMoney(materialTotal + subTotal + otherExpenses);
 
-    // Commissions (completion-based: use snapshot if settled, live calc if not)
+    // Commissions (completion-based: snapshot if settled, live calc if not)
+    // Live calc uses amountOwed + real Aimann debt balance (matches buildCommissionPreview)
     if (p.commissionSnapshot) {
       row.commissions += d(p.commissionSnapshot.adnaanCommission) + d(p.commissionSnapshot.memeCommission);
     } else {
-      const subOwedTotal = p.subcontractorPayments.reduce((s, sp) => s + d(sp.amountPaid), 0);
+      const subOwedTotal = p.subcontractorPayments.reduce((s, sp) => s + d(sp.amountOwed), 0);
       const calc = calculateCommission({
         projectTotal: d(p.projectTotal),
-        paymentMethod: p.paymentMethod as any,
+        paymentMethod: p.paymentMethod as PaymentMethod,
         materialsCost: materialTotal,
         subOwedTotal,
-        aimannDebtBalance: 0,
+        aimannDebtBalance,
       });
       row.commissions += calc.adnaanCommission + calc.memeCommission;
     }
@@ -1007,10 +1048,7 @@ export async function getPnlReport(
     }
   }
 
-  // Calculate derived fields
-  const rows: PnlRow[] = [];
-  const totals = { revenue: 0, cogs: 0, grossProfit: 0, operatingExpenses: 0, commissions: 0, netProfit: 0 };
-
+  // Calculate derived fields for monthly buckets
   for (const row of buckets.values()) {
     row.revenue = roundMoney(row.revenue);
     row.cogs = roundMoney(row.cogs);
@@ -1018,22 +1056,54 @@ export async function getPnlReport(
     row.operatingExpenses = roundMoney(row.operatingExpenses);
     row.commissions = roundMoney(row.commissions);
     row.netProfit = roundMoney(row.grossProfit - row.operatingExpenses - row.commissions);
+  }
 
+  // Group by period (monthly = no-op, quarterly/annual = aggregate monthly buckets)
+  const monthlyRows = Array.from(buckets.values());
+  const rows: PnlRow[] = period === 'monthly' ? monthlyRows : groupByPeriod(monthlyRows, period);
+
+  const totals = { revenue: 0, cogs: 0, grossProfit: 0, operatingExpenses: 0, commissions: 0, netProfit: 0 };
+  for (const row of rows) {
     totals.revenue += row.revenue;
     totals.cogs += row.cogs;
     totals.grossProfit += row.grossProfit;
     totals.operatingExpenses += row.operatingExpenses;
     totals.commissions += row.commissions;
     totals.netProfit += row.netProfit;
-    rows.push(row);
   }
-
-  // Round totals
   for (const key of Object.keys(totals) as (keyof typeof totals)[]) {
     totals[key] = roundMoney(totals[key]);
   }
 
   return { rows, totals };
+}
+
+// Helper: group monthly rows into quarterly or annual periods
+function groupByPeriod(monthlyRows: PnlRow[], period: 'quarterly' | 'annual'): PnlRow[] {
+  const groups = new Map<string, PnlRow>();
+  for (const row of monthlyRows) {
+    const date = new Date(Date.parse('1 ' + row.month));
+    const key = period === 'quarterly'
+      ? `Q${Math.floor(date.getMonth() / 3) + 1} ${date.getFullYear()}`
+      : `${date.getFullYear()}`;
+    const existing = groups.get(key) ?? { month: key, revenue: 0, cogs: 0, grossProfit: 0, operatingExpenses: 0, commissions: 0, netProfit: 0 };
+    existing.revenue += row.revenue;
+    existing.cogs += row.cogs;
+    existing.grossProfit += row.grossProfit;
+    existing.operatingExpenses += row.operatingExpenses;
+    existing.commissions += row.commissions;
+    existing.netProfit += row.netProfit;
+    groups.set(key, existing);
+  }
+  return Array.from(groups.values()).map((r) => ({
+    ...r,
+    revenue: roundMoney(r.revenue),
+    cogs: roundMoney(r.cogs),
+    grossProfit: roundMoney(r.grossProfit),
+    operatingExpenses: roundMoney(r.operatingExpenses),
+    commissions: roundMoney(r.commissions),
+    netProfit: roundMoney(r.netProfit),
+  }));
 }
 ```
 
@@ -1064,7 +1134,7 @@ export async function getJobCostingReport(
     where,
     include: {
       materialLineItems: { select: { totalCost: true } },
-      subcontractorPayments: { select: { amountPaid: true } },
+      subcontractorPayments: { select: { amountOwed: true, amountPaid: true } },
       transactions: {
         where: { type: 'EXPENSE' },
         select: { amount: true, materialLineItems: { select: { totalCost: true } } },
@@ -1073,6 +1143,8 @@ export async function getJobCostingReport(
     },
     orderBy: { contractDate: 'desc' },
   });
+
+  const aimannDebtBalance = await getAimannDebtBalance();
 
   return projects.map((p) => {
     const revenue = d(p.moneyReceived);
@@ -1092,18 +1164,20 @@ export async function getJobCostingReport(
     }
 
     // Commissions: snapshot if settled, live calc if not
+    // Live calc uses amountOwed + real Aimann debt balance (matches buildCommissionPreview)
     let commissionsAdnaan: number;
     let commissionsMeme: number;
     if (p.commissionSnapshot) {
       commissionsAdnaan = d(p.commissionSnapshot.adnaanCommission);
       commissionsMeme = d(p.commissionSnapshot.memeCommission);
     } else {
+      const subOwedTotal = p.subcontractorPayments.reduce((s, sp) => s + d(sp.amountOwed), 0);
       const calc = calculateCommission({
         projectTotal: d(p.projectTotal),
-        paymentMethod: p.paymentMethod as any,
+        paymentMethod: p.paymentMethod as PaymentMethod,
         materialsCost: materials,
-        subOwedTotal: subcontractors,
-        aimannDebtBalance: 0,
+        subOwedTotal,
+        aimannDebtBalance,
       });
       commissionsAdnaan = calc.adnaanCommission;
       commissionsMeme = calc.memeCommission;
@@ -1169,20 +1243,16 @@ export async function getCommissionSummaryReport(
   const from = new Date(dateFrom);
   const to = new Date(dateTo);
 
-  // Settled projects (have snapshots in date range by completion month)
-  const settledProjects = await prisma.project.findMany({
-    where: {
-      isDeleted: false,
-      commissionSnapshot: { isNot: null },
-      OR: [
-        { completedDate: { gte: from, lte: to } },
-        { completedDate: null, contractDate: { gte: from, lte: to } },
-      ],
-    },
-    include: { commissionSnapshot: true },
+  // Settled projects: filter by CommissionSnapshot.settledAt (per spec)
+  const settledSnapshots = await prisma.commissionSnapshot.findMany({
+    where: { settledAt: { gte: from, lte: to } },
+    include: { project: { select: { id: true, customer: true, projectTotal: true, isDeleted: true } } },
   });
+  const settledProjects = settledSnapshots
+    .filter((s) => !s.project.isDeleted)
+    .map((s) => ({ ...s.project, commissionSnapshot: s }));
 
-  // Unsettled projects (no snapshot)
+  // Unsettled projects: shown separately with NO date filter (per spec)
   const unsettledProjects = await prisma.project.findMany({
     where: {
       isDeleted: false,
@@ -1191,9 +1261,11 @@ export async function getCommissionSummaryReport(
     },
     include: {
       materialLineItems: { select: { totalCost: true } },
-      subcontractorPayments: { select: { amountPaid: true } },
+      subcontractorPayments: { select: { amountOwed: true } },
     },
   });
+
+  const aimannDebtBalance = await getAimannDebtBalance();
 
   function buildPerson(
     name: string,
@@ -1234,14 +1306,14 @@ export async function getCommissionSummaryReport(
     const materialTotal = p.materialLineItems.length > 0
       ? p.materialLineItems.reduce((s, m) => s + d(m.totalCost), 0)
       : d(p.materialsCost);
-    const subTotal = p.subcontractorPayments.reduce((s, sp) => s + d(sp.amountPaid), 0);
+    const subOwedTotal = p.subcontractorPayments.reduce((s, sp) => s + d(sp.amountOwed), 0);
 
     const calc = calculateCommission({
       projectTotal: d(p.projectTotal),
-      paymentMethod: p.paymentMethod as any,
+      paymentMethod: p.paymentMethod as PaymentMethod,
       materialsCost: materialTotal,
-      subOwedTotal: subTotal,
-      aimannDebtBalance: 0,
+      subOwedTotal,
+      aimannDebtBalance,
     });
 
     pendingAdnaanRows.push({ projectId: p.id, customer: p.customer, projectTotal: d(p.projectTotal), commission: calc.adnaanCommission });
@@ -1303,41 +1375,61 @@ export async function getExpenseBreakdownReport(
     select: { amountPaid: true, subcontractorName: true, projectId: true },
   });
 
-  // By Category
-  const categoryMap = new Map<string, { subcategories: Map<string, number>; total: number }>();
+  // Operating expenses (synthetic monthly, with effectiveFrom/To)
+  const opExItems = await prisma.operatingExpense.findMany({
+    where: {
+      OR: [
+        { isActive: true },
+        { effectiveTo: { gte: from } },
+      ],
+    },
+  });
 
-  // Materials by MaterialCategory
-  for (const m of materials) {
-    const cat = 'Materials';
-    const sub = m.category;
-    const entry = categoryMap.get(cat) ?? { subcategories: new Map(), total: 0 };
-    const amt = d(m.totalCost);
-    entry.total += amt;
-    entry.subcategories.set(sub, (entry.subcategories.get(sub) ?? 0) + amt);
-    categoryMap.set(cat, entry);
+  // Compute operating expense total for the date range
+  let opExTotal = 0;
+  const monthCount = Math.max(1, Math.round((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24 * 30)));
+  for (const exp of opExItems) {
+    let monthlyAmt = d(exp.amount);
+    if (exp.frequency === 'QUARTERLY') monthlyAmt /= 3;
+    else if (exp.frequency === 'ANNUAL') monthlyAmt /= 12;
+    opExTotal += monthlyAmt * monthCount;
   }
 
-  // Subcontractors
+  // By Category — 4 canonical categories per spec
+  const categoryMap = new Map<string, { subcategories: Map<string, number>; total: number }>();
+
+  // 1. Materials (from MaterialLineItems only — never from Transaction amounts)
+  const materialsEntry = { subcategories: new Map<string, number>(), total: 0 };
+  for (const m of materials) {
+    const amt = d(m.totalCost);
+    materialsEntry.total += amt;
+    materialsEntry.subcategories.set(m.category, (materialsEntry.subcategories.get(m.category) ?? 0) + amt);
+  }
+  if (materialsEntry.total > 0) categoryMap.set('Materials', materialsEntry);
+
+  // 2. Subcontractors
   const subTotal = subPayments.reduce((s, sp) => s + d(sp.amountPaid), 0);
   if (subTotal > 0) {
     categoryMap.set('Subcontractors', { subcategories: new Map(), total: subTotal });
   }
 
-  // Transaction remainder (non-material expenses)
+  // 3. Operating Expenses
+  if (opExTotal > 0) {
+    categoryMap.set('Operating Expenses', { subcategories: new Map(), total: roundMoney(opExTotal) });
+  }
+
+  // 4. Other Expenses (transaction remainders after material split)
+  const otherEntry = { subcategories: new Map<string, number>(), total: 0 };
   for (const txn of transactions) {
     const linkedTotal = txn.materialLineItems.reduce((s, m) => s + d(m.totalCost), 0);
     const remainder = d(txn.amount) - linkedTotal;
     if (remainder > 0.005) {
-      const cat = txn.category || 'Other';
-      const sub = txn.subcategory || '';
-      const entry = categoryMap.get(cat) ?? { subcategories: new Map(), total: 0 };
-      entry.total += remainder;
-      if (sub) {
-        entry.subcategories.set(sub, (entry.subcategories.get(sub) ?? 0) + remainder);
-      }
-      categoryMap.set(cat, entry);
+      otherEntry.total += remainder;
+      const sub = txn.subcategory || txn.category || 'Misc';
+      otherEntry.subcategories.set(sub, (otherEntry.subcategories.get(sub) ?? 0) + remainder);
     }
   }
+  if (otherEntry.total > 0) categoryMap.set('Other Expenses', otherEntry);
 
   const byCategory: ExpenseByCategoryRow[] = Array.from(categoryMap.entries())
     .map(([category, data]) => ({
@@ -1350,19 +1442,25 @@ export async function getExpenseBreakdownReport(
     }))
     .sort((a, b) => b.total - a.total);
 
-  // By Vendor
+  // By Vendor — use transaction remainders (not full amounts) to prevent double-counting
   const vendorMap = new Map<string, { totalSpend: number; projects: Set<string>; categories: Map<string, number> }>();
 
+  // Transaction remainders by vendor
   for (const txn of transactions) {
-    const vendor = txn.payee || 'Unknown';
-    const entry = vendorMap.get(vendor) ?? { totalSpend: 0, projects: new Set(), categories: new Map() };
-    entry.totalSpend += d(txn.amount);
-    if (txn.projectId) entry.projects.add(txn.projectId);
-    const cat = txn.category || 'Other';
-    entry.categories.set(cat, (entry.categories.get(cat) ?? 0) + d(txn.amount));
-    vendorMap.set(vendor, entry);
+    const linkedTotal = txn.materialLineItems.reduce((s, m) => s + d(m.totalCost), 0);
+    const remainder = d(txn.amount) - linkedTotal;
+    if (remainder > 0.005) {
+      const vendor = txn.payee || 'Unknown';
+      const entry = vendorMap.get(vendor) ?? { totalSpend: 0, projects: new Set(), categories: new Map() };
+      entry.totalSpend += remainder;
+      if (txn.projectId) entry.projects.add(txn.projectId);
+      const cat = txn.category || 'Other';
+      entry.categories.set(cat, (entry.categories.get(cat) ?? 0) + remainder);
+      vendorMap.set(vendor, entry);
+    }
   }
 
+  // Material line items by vendor (separate from transaction amounts)
   for (const m of materials) {
     const vendor = m.vendor || 'Unknown';
     const entry = vendorMap.get(vendor) ?? { totalSpend: 0, projects: new Set(), categories: new Map() };
@@ -1430,14 +1528,6 @@ export async function getCashFlowReport(
     },
   });
 
-  let monthlyOpEx = 0;
-  for (const exp of opExItems) {
-    let amt = d(exp.amount);
-    if (exp.frequency === 'QUARTERLY') amt /= 3;
-    else if (exp.frequency === 'ANNUAL') amt /= 12;
-    monthlyOpEx += amt;
-  }
-
   // Build month buckets
   const buckets = new Map<string, { moneyIn: number; moneyOut: number }>();
   const current = new Date(from.getFullYear(), from.getMonth(), 1);
@@ -1470,9 +1560,19 @@ export async function getCashFlowReport(
     }
   }
 
-  // Operating expenses
-  for (const [, bucket] of buckets) {
-    bucket.moneyOut += monthlyOpEx;
+  // Operating expenses — bucket per-month with effectiveFrom/To range check
+  for (const [key, bucket] of buckets) {
+    const monthDate = new Date(Date.parse('1 ' + key));
+    for (const exp of opExItems) {
+      const expFrom = exp.effectiveFrom ?? from;
+      const expTo = exp.effectiveTo ?? to;
+      if (monthDate < expFrom || monthDate > expTo) continue;
+
+      let monthlyAmt = d(exp.amount);
+      if (exp.frequency === 'QUARTERLY') monthlyAmt /= 3;
+      else if (exp.frequency === 'ANNUAL') monthlyAmt /= 12;
+      bucket.moneyOut += monthlyAmt;
+    }
   }
 
   // Build rows with running balance
@@ -1637,12 +1737,12 @@ financialReportRouter.get(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { type } = req.params;
-      const { dateFrom, dateTo } = req.query as unknown as { dateFrom: string; dateTo: string };
+      const { dateFrom, dateTo, period } = req.query as unknown as { dateFrom: string; dateTo: string; period?: string };
 
       let csv = '';
       switch (type) {
         case 'pnl': {
-          const data = await getPnlReport(dateFrom, dateTo, 'monthly');
+          const data = await getPnlReport(dateFrom, dateTo, (period as any) || 'monthly');
           csv = 'Month,Revenue,COGS,Gross Profit,Operating Expenses,Commissions,Net Profit\n';
           csv += data.rows.map((r) =>
             `${r.month},${r.revenue},${r.cogs},${r.grossProfit},${r.operatingExpenses},${r.commissions},${r.netProfit}`
@@ -2097,6 +2197,7 @@ Create `apps/web/src/components/reports/job-costing-report.tsx`:
 - Use `useJobCostingReport(...)` hook
 - Render a TanStack-style table (or shadcn Table) with columns: Customer, Address, Status, Fence Type, Revenue, Materials, Subs, Other, Commission (A), Commission (M), Profit, Margin %
 - Sortable columns (use state for sort field/direction)
+- Click row to expand and show line-item breakdown: MaterialLineItems list (description, category, qty, cost) + SubcontractorPayments + linked Transaction remainders. Fetch detail from `/api/projects/:id/materials` and existing sub/transaction data.
 - Color profit green if positive, red if negative
 - Color margin % with gradient: green > 30%, amber 15-30%, red < 15%
 - Add filter dropdowns for status and fence type
@@ -2292,7 +2393,339 @@ git commit -m "feat: rebuild Reports page with P&L, Job Costing, Commission, Exp
 
 ---
 
-### Task 13: Final Integration Test + Cleanup
+### Task 13: Operating Expense Settings UI + Deactivation Logic
+
+**Files:**
+- Modify: `apps/api/src/services/operating-expense.service.ts`
+- Modify: `apps/web/src/components/settings/operating-expenses-section.tsx`
+- Modify: `apps/web/src/hooks/use-operating-expenses.ts`
+
+- [ ] **Step 1: Auto-set effectiveTo on deactivation**
+
+In `apps/api/src/services/operating-expense.service.ts`, find the deactivation/update logic. When `isActive` is set to `false` and `effectiveTo` is not provided, auto-set `effectiveTo` to today's date:
+
+```typescript
+if (dto.isActive === false && !dto.effectiveTo) {
+  updateData.effectiveTo = new Date();
+}
+```
+
+- [ ] **Step 2: Add effectiveFrom/To to Settings UI form**
+
+In `apps/web/src/components/settings/operating-expenses-section.tsx`:
+
+Add two optional date Input fields to the create/edit form:
+- "Effective From" — `<Input type="date" />` 
+- "Effective To" — `<Input type="date" />`
+
+Display these dates in the operating expenses table when set (show "–" when null).
+
+- [ ] **Step 3: Update hooks to pass effectiveFrom/To**
+
+In `apps/web/src/hooks/use-operating-expenses.ts`, update the create and update mutation functions to include `effectiveFrom` and `effectiveTo` in the POST/PATCH body.
+
+- [ ] **Step 4: Verify and commit**
+
+Run: `cd apps/web && npx tsc --noEmit`
+
+```bash
+git add apps/api/src/services/operating-expense.service.ts apps/web/src/components/settings/operating-expenses-section.tsx apps/web/src/hooks/use-operating-expenses.ts
+git commit -m "feat: add effectiveFrom/To UI to operating expenses settings + auto-set on deactivation"
+```
+
+---
+
+### Task 14: Material Transaction-Link Endpoint + UI
+
+**Files:**
+- Modify: `apps/api/src/routes/materials.ts`
+- Modify: `apps/web/src/components/projects/materials-tab.tsx`
+- Modify: `apps/web/src/hooks/use-materials.ts`
+
+- [ ] **Step 1: Add eligible-transactions endpoint**
+
+Add to `apps/api/src/routes/materials.ts`:
+
+```typescript
+// GET /api/projects/:projectId/materials/eligible-transactions
+// Returns EXPENSE transactions for this project or with null projectId
+materialRouter.get(
+  '/projects/:projectId/materials/eligible-transactions',
+  requireAuth,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const transactions = await prisma.transaction.findMany({
+        where: {
+          type: 'EXPENSE',
+          OR: [
+            { projectId: req.params.projectId },
+            { projectId: null },
+          ],
+        },
+        select: { id: true, description: true, amount: true, date: true, payee: true, category: true },
+        orderBy: { date: 'desc' },
+        take: 100,
+      });
+      res.json({ data: transactions });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+```
+
+- [ ] **Step 2: Add hook for eligible transactions**
+
+Add to `apps/web/src/hooks/use-materials.ts`:
+
+```typescript
+export function useEligibleTransactions(projectId: string) {
+  const [data, setData] = useState<{ id: string; description: string; amount: number; date: string; payee: string | null }[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetch = useCallback(async () => {
+    try {
+      const res = await api.get(`/projects/${projectId}/materials/eligible-transactions`);
+      setData(res.data.data);
+    } catch { /* silent */ }
+    finally { setIsLoading(false); }
+  }, [projectId]);
+
+  useEffect(() => { setIsLoading(true); fetch(); }, [fetch]);
+
+  return { data, isLoading, refetch: fetch };
+}
+```
+
+- [ ] **Step 3: Add transactionId field to materials-tab.tsx form**
+
+In the MaterialsTab add/edit dialog, add an optional "Link to Transaction" Select dropdown that:
+- Uses `useEligibleTransactions(projectId)` to populate options
+- Displays `${txn.description} — ${formatCurrency(txn.amount)} (${txn.date})` per option
+- Sends `transactionId` in the create/update payload
+
+- [ ] **Step 4: Verify and commit**
+
+```bash
+git add apps/api/src/routes/materials.ts apps/web/src/hooks/use-materials.ts apps/web/src/components/projects/materials-tab.tsx
+git commit -m "feat: add transaction linking to material line items"
+```
+
+---
+
+### Task 15: Project Financial Summary Endpoint
+
+**Files:**
+- Modify: `apps/api/src/services/material.service.ts`
+- Modify: `apps/api/src/routes/materials.ts`
+
+- [ ] **Step 1: Extend the project material summary endpoint to return full financial summary**
+
+Update `getProjectMaterialSummary` in `apps/api/src/services/material.service.ts` to return a complete financial summary:
+
+```typescript
+export async function getProjectFinancialSummary(projectId: string) {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    include: {
+      materialLineItems: { select: { totalCost: true } },
+      subcontractorPayments: { select: { amountOwed: true, amountPaid: true } },
+      transactions: {
+        where: { type: 'EXPENSE' },
+        select: { amount: true, materialLineItems: { select: { totalCost: true } } },
+      },
+      commissionSnapshot: true,
+    },
+  });
+
+  if (!project) return null;
+
+  // Materials
+  const materialTotal = project.materialLineItems.length > 0
+    ? project.materialLineItems.reduce((s, m) => s + d(m.totalCost), 0)
+    : d(project.materialsCost);
+
+  // Subs
+  const subTotal = project.subcontractorPayments.reduce((s, sp) => s + d(sp.amountPaid), 0);
+
+  // Other expenses (transaction remainders)
+  let otherExpenses = 0;
+  for (const txn of project.transactions) {
+    const linkedTotal = txn.materialLineItems.reduce((s, m) => s + d(m.totalCost), 0);
+    otherExpenses += d(txn.amount) - linkedTotal;
+  }
+
+  // Commissions
+  let commissionsAdnaan: number;
+  let commissionsMeme: number;
+  if (project.commissionSnapshot) {
+    commissionsAdnaan = d(project.commissionSnapshot.adnaanCommission);
+    commissionsMeme = d(project.commissionSnapshot.memeCommission);
+  } else {
+    const subOwedTotal = project.subcontractorPayments.reduce((s, sp) => s + d(sp.amountOwed), 0);
+    const aimannDebtBalance = await getAimannDebtBalance();
+    const calc = calculateCommission({
+      projectTotal: d(project.projectTotal),
+      paymentMethod: project.paymentMethod as PaymentMethod,
+      materialsCost: materialTotal,
+      subOwedTotal,
+      aimannDebtBalance,
+    });
+    commissionsAdnaan = calc.adnaanCommission;
+    commissionsMeme = calc.memeCommission;
+  }
+
+  const revenue = d(project.moneyReceived);
+  const totalCommissions = commissionsAdnaan + commissionsMeme;
+  const totalCosts = materialTotal + subTotal + otherExpenses + totalCommissions;
+  const profit = roundMoney(revenue - totalCosts);
+  const marginPct = revenue > 0 ? roundMoney((profit / revenue) * 100) : 0;
+
+  return {
+    materials: roundMoney(materialTotal),
+    materialLineItemCount: project.materialLineItems.length,
+    subcontractors: roundMoney(subTotal),
+    otherExpenses: roundMoney(otherExpenses),
+    commissionsAdnaan: roundMoney(commissionsAdnaan),
+    commissionsMeme: roundMoney(commissionsMeme),
+    totalCommissions: roundMoney(totalCommissions),
+    revenue: roundMoney(revenue),
+    profit,
+    marginPct,
+    isLegacyMaterials: project.materialLineItems.length === 0,
+  };
+}
+```
+
+Import `calculateCommission` and `PaymentMethod` from `@fencetastic/shared` at the top of material.service.ts. Add a `getAimannDebtBalance` function (same as in financial-report.service.ts) or extract to a shared helper.
+
+- [ ] **Step 2: Update the summary route**
+
+Update the `/projects/:projectId/materials/summary` route in `apps/api/src/routes/materials.ts` to call `getProjectFinancialSummary` instead of `getProjectMaterialSummary`.
+
+- [ ] **Step 3: Update the Financial Summary Card to use the new endpoint**
+
+The `financial-summary-card.tsx` component should call the summary endpoint and directly render the returned fields — no client-side computation needed.
+
+- [ ] **Step 4: Verify and commit**
+
+```bash
+git add apps/api/src/services/material.service.ts apps/api/src/routes/materials.ts apps/web/src/components/projects/financial-summary-card.tsx
+git commit -m "feat: add project financial summary endpoint with full cost breakdown"
+```
+
+---
+
+### Task 16: PDF Export
+
+**Files:**
+- Modify: `apps/api/src/routes/financial-reports.ts`
+
+- [ ] **Step 1: Add PDF export route**
+
+Add to `apps/api/src/routes/financial-reports.ts`, using `pdfkit` (already a dependency — used in work-orders.ts):
+
+```typescript
+import PDFDocument from 'pdfkit';
+
+// GET /api/reports/:type/pdf — PDF export
+financialReportRouter.get(
+  '/:type/pdf',
+  requireAuth,
+  validateQuery(dateRangeSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { type } = req.params;
+      const { dateFrom, dateTo } = req.query as unknown as { dateFrom: string; dateTo: string };
+
+      const doc = new PDFDocument({ margin: 50 });
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=${type}-report.pdf`);
+      doc.pipe(res);
+
+      // Header
+      doc.fontSize(18).text('Fencetastic Financial Report', { align: 'center' });
+      doc.fontSize(10).text(`${type.replace('-', ' ').toUpperCase()} — ${dateFrom} to ${dateTo}`, { align: 'center' });
+      doc.moveDown(2);
+
+      switch (type) {
+        case 'pnl': {
+          const data = await getPnlReport(dateFrom, dateTo, 'monthly');
+          doc.fontSize(12).text('Profit & Loss', { underline: true });
+          doc.moveDown();
+          for (const row of data.rows) {
+            doc.fontSize(9).text(
+              `${row.month}: Revenue ${row.revenue} | COGS ${row.cogs} | Gross ${row.grossProfit} | OpEx ${row.operatingExpenses} | Comm ${row.commissions} | Net ${row.netProfit}`
+            );
+          }
+          doc.moveDown();
+          doc.fontSize(10).text(`TOTALS: Revenue ${data.totals.revenue} | Net Profit ${data.totals.netProfit}`, { bold: true });
+          break;
+        }
+        case 'job-costing': {
+          const data = await getJobCostingReport(dateFrom, dateTo);
+          doc.fontSize(12).text('Job Costing Report', { underline: true });
+          doc.moveDown();
+          for (const row of data) {
+            doc.fontSize(9).text(
+              `${row.customer} — Rev: ${row.revenue} | Mat: ${row.materials} | Sub: ${row.subcontractors} | Profit: ${row.profit} (${row.marginPct}%)`
+            );
+          }
+          break;
+        }
+        case 'cash-flow': {
+          const data = await getCashFlowReport(dateFrom, dateTo);
+          doc.fontSize(12).text('Cash Flow Report', { underline: true });
+          doc.moveDown();
+          for (const row of data) {
+            doc.fontSize(9).text(
+              `${row.month}: In ${row.moneyIn} | Out ${row.moneyOut} | Net ${row.netCashFlow} | Balance ${row.runningBalance}`
+            );
+          }
+          break;
+        }
+        default: {
+          doc.text('Report type not supported for PDF export.');
+        }
+      }
+
+      doc.end();
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+```
+
+- [ ] **Step 2: Add PDF export button to Reports page UI**
+
+In `apps/web/src/pages/reports.tsx`, add a second export button next to CSV:
+
+```typescript
+<Button
+  variant="outline"
+  size="sm"
+  onClick={() => {
+    const params = new URLSearchParams(dateRange).toString();
+    window.open(`${import.meta.env.VITE_API_URL}/reports/${activeTab}/pdf?${params}`, '_blank');
+  }}
+  className="rounded-2xl border-black/10 bg-white/70 px-4"
+>
+  <Download className="h-4 w-4 mr-1" />
+  Export PDF
+</Button>
+```
+
+- [ ] **Step 3: Verify and commit**
+
+```bash
+git add apps/api/src/routes/financial-reports.ts apps/web/src/pages/reports.tsx
+git commit -m "feat: add PDF export for financial reports using pdfkit"
+```
+
+---
+
+### Task 17: Final Integration Test + Cleanup
 
 - [ ] **Step 1: Run full type check across all packages**
 
@@ -2303,25 +2736,27 @@ npm run build
 
 Expected: All packages build successfully.
 
-- [ ] **Step 2: Run existing tests**
+- [ ] **Step 2: Run all tests**
 
 Run:
 ```bash
-npm run test
+npm run test -w packages/shared && npm run test -w apps/api
 ```
 
-Expected: All existing tests still pass (no regressions).
+Expected: All existing tests still pass (no regressions). If `test:api` script doesn't exist, run `cd apps/api && npx vitest run`.
 
 - [ ] **Step 3: Manual smoke test**
 
 Test these flows in the browser:
-1. Create a project → add materials via Materials tab → verify financial summary card shows correct profit/margin
-2. Go to Reports → P&L tab → verify revenue and costs for the project appear in the correct month
-3. Job Costing → verify the project row shows materials, subs, other expenses, commissions
-4. Commission Summary → verify settled vs pending sections
-5. Expense Breakdown → verify materials appear under "Materials" category by MaterialCategory
-6. Cash Flow → verify income/expense bars and running balance
+1. Create a project → add materials via Materials tab (test inline add + "Add Multiple") → link a material to an expense transaction → verify financial summary card shows correct profit/margin including other expenses
+2. Go to Reports → P&L tab → verify revenue and costs for the project appear in the correct completion month → test quarterly/annual period toggle
+3. Job Costing → verify the project row shows materials, subs, other expenses, commissions → click to expand line-item detail
+4. Commission Summary → verify settled projects filtered by settledAt → verify pending section shows all unsettled projects → verify Aimann deductions only on Adnaan
+5. Expense Breakdown → verify 4 canonical categories (Materials, Subcontractors, Operating Expenses, Other) → verify vendor view doesn't double-count linked materials
+6. Cash Flow → verify income/expense bars and running balance → verify operating expenses only appear in months within their effective date range
 7. Export CSV from any report → verify file downloads with correct data
+8. Export PDF from any report → verify PDF opens with correct data
+9. Settings → Operating Expenses → verify effectiveFrom/To date pickers work → deactivate an expense → verify effectiveTo is auto-set
 
 - [ ] **Step 4: Final commit**
 
