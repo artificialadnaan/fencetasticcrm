@@ -1330,9 +1330,11 @@ export async function getCommissionSummaryReport(
     pendingMemeRows.push({ projectId: p.id, customer: p.customer, projectTotal: d(p.projectTotal), commission: calc.memeCommission });
   }
 
-  // Compute pending Aimann deductions using live calculateCommission path
-  // (aimannDeduction is 25% of grossProfit when debt > 0, per existing logic)
+  // Compute pending Aimann deductions with simulated debt paydown.
+  // Each project's deduction reduces the simulated balance for the next,
+  // so once debt is exhausted, remaining projects get 0 deduction.
   let pendingAimannTotal = 0;
+  let simulatedDebtBalance = aimannDebtBalance;
   for (const p of unsettledProjects) {
     const materialTotal = p.materialLineItems.length > 0
       ? p.materialLineItems.reduce((s, m) => s + d(m.totalCost), 0)
@@ -1343,9 +1345,10 @@ export async function getCommissionSummaryReport(
       paymentMethod: p.paymentMethod as PaymentMethod,
       materialsCost: materialTotal,
       subOwedTotal,
-      aimannDebtBalance,
+      aimannDebtBalance: simulatedDebtBalance,
     });
     pendingAimannTotal += calc.aimannDeduction;
+    simulatedDebtBalance = Math.max(0, simulatedDebtBalance - calc.aimannDeduction);
   }
 
   const pendingAdnaanTotal = roundMoney(pendingAdnaanRows.reduce((s, r) => s + r.commission, 0));
@@ -1601,8 +1604,10 @@ export async function getCashFlowReport(
   for (const [key, bucket] of buckets) {
     const monthDate = new Date(Date.parse('1 ' + key));
     for (const exp of opExItems) {
-      const expFrom = exp.effectiveFrom ?? from;
-      const expTo = exp.effectiveTo ?? to;
+      // Normalize effectiveFrom/To to month boundaries for comparison
+      // An expense starting April 15 should still count for April
+      const expFrom = exp.effectiveFrom ? new Date(exp.effectiveFrom.getFullYear(), exp.effectiveFrom.getMonth(), 1) : from;
+      const expTo = exp.effectiveTo ? new Date(exp.effectiveTo.getFullYear(), exp.effectiveTo.getMonth(), 1) : to;
       if (monthDate < expFrom || monthDate > expTo) continue;
 
       let monthlyAmt = d(exp.amount);
@@ -1792,6 +1797,27 @@ financialReportRouter.get(
           csv += data.map((r) =>
             `"${r.customer}","${r.address}",${r.status},${r.fenceType},${r.revenue},${r.materials},${r.subcontractors},${r.otherExpenses},${r.commissionsAdnaan},${r.commissionsMeme},${r.profit},${r.marginPct}`
           ).join('\n');
+          break;
+        }
+        case 'commissions': {
+          const data = await getCommissionSummaryReport(dateFrom, dateTo);
+          csv = 'Section,Person,Customer,Project Total,Commission,Aimann Deduction,Net Payout\n';
+          for (const row of data.settled.adnaan.rows) {
+            csv += `Settled,Adnaan,"${row.customer}",${row.projectTotal},${row.commission},,\n`;
+          }
+          csv += `Settled,Adnaan,TOTAL,,${data.settled.adnaan.periodTotal},${data.settled.adnaan.aimannDeductions},${data.settled.adnaan.netPayout}\n`;
+          for (const row of data.settled.meme.rows) {
+            csv += `Settled,Meme,"${row.customer}",${row.projectTotal},${row.commission},,\n`;
+          }
+          csv += `Settled,Meme,TOTAL,,${data.settled.meme.periodTotal},0,${data.settled.meme.netPayout}\n`;
+          for (const row of data.pending.adnaan.rows) {
+            csv += `Pending,Adnaan,"${row.customer}",${row.projectTotal},${row.commission},,\n`;
+          }
+          csv += `Pending,Adnaan,TOTAL,,${data.pending.adnaan.periodTotal},${data.pending.adnaan.aimannDeductions},${data.pending.adnaan.netPayout}\n`;
+          for (const row of data.pending.meme.rows) {
+            csv += `Pending,Meme,"${row.customer}",${row.projectTotal},${row.commission},,\n`;
+          }
+          csv += `Pending,Meme,TOTAL,,${data.pending.meme.periodTotal},0,${data.pending.meme.netPayout}\n`;
           break;
         }
         case 'expenses': {
@@ -2730,7 +2756,13 @@ financialReportRouter.get(
           for (const row of data.pending.adnaan.rows) {
             doc.fontSize(9).text(`  ${row.customer}: ${row.commission}`);
           }
-          doc.fontSize(9).text(`  Total: ${data.pending.adnaan.periodTotal} | Net: ${data.pending.adnaan.netPayout}`);
+          doc.fontSize(9).text(`  Total: ${data.pending.adnaan.periodTotal} | Aimann: -${data.pending.adnaan.aimannDeductions} | Net: ${data.pending.adnaan.netPayout}`);
+          doc.moveDown();
+          doc.fontSize(10).text('Pending — Meme', { underline: true });
+          for (const row of data.pending.meme.rows) {
+            doc.fontSize(9).text(`  ${row.customer}: ${row.commission}`);
+          }
+          doc.fontSize(9).text(`  Total: ${data.pending.meme.periodTotal} | Net: ${data.pending.meme.netPayout}`);
           break;
         }
         case 'expenses': {
