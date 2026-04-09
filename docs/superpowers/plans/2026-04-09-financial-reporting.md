@@ -1046,8 +1046,9 @@ export async function getPnlReport(
     if (exp.frequency === 'QUARTERLY') monthlyAmt /= 3;
     else if (exp.frequency === 'ANNUAL') monthlyAmt /= 12;
 
-    const expFrom = exp.effectiveFrom ?? from;
-    const expTo = exp.effectiveTo ?? to;
+    // Normalize effectiveFrom/To to month boundaries for comparison
+    const expFrom = exp.effectiveFrom ? new Date(exp.effectiveFrom.getFullYear(), exp.effectiveFrom.getMonth(), 1) : from;
+    const expTo = exp.effectiveTo ? new Date(exp.effectiveTo.getFullYear(), exp.effectiveTo.getMonth(), 1) : to;
 
     for (const [key, row] of buckets) {
       // Parse month key back to date for range check
@@ -1347,8 +1348,10 @@ export async function getCommissionSummaryReport(
       subOwedTotal,
       aimannDebtBalance: simulatedDebtBalance,
     });
-    pendingAimannTotal += calc.aimannDeduction;
-    simulatedDebtBalance = Math.max(0, simulatedDebtBalance - calc.aimannDeduction);
+    // Cap deduction to remaining debt — calculateCommission doesn't do this internally
+    const cappedDeduction = Math.min(calc.aimannDeduction, simulatedDebtBalance);
+    pendingAimannTotal += cappedDeduction;
+    simulatedDebtBalance = Math.max(0, simulatedDebtBalance - cappedDeduction);
   }
 
   const pendingAdnaanTotal = roundMoney(pendingAdnaanRows.reduce((s, r) => s + r.commission, 0));
@@ -1423,8 +1426,9 @@ export async function getExpenseBreakdownReport(
   const opExCurrent = new Date(from.getFullYear(), from.getMonth(), 1);
   while (opExCurrent <= to) {
     for (const exp of opExItems) {
-      const expFrom = exp.effectiveFrom ?? from;
-      const expTo = exp.effectiveTo ?? to;
+      // Normalize effectiveFrom/To to month boundaries for comparison
+      const expFrom = exp.effectiveFrom ? new Date(exp.effectiveFrom.getFullYear(), exp.effectiveFrom.getMonth(), 1) : from;
+      const expTo = exp.effectiveTo ? new Date(exp.effectiveTo.getFullYear(), exp.effectiveTo.getMonth(), 1) : to;
       if (opExCurrent < expFrom || opExCurrent > expTo) continue;
 
       let monthlyAmt = d(exp.amount);
