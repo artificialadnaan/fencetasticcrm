@@ -7,7 +7,6 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { ProjectStatsData } from '@fencetastic/shared';
 
 const FENCE_TYPE_LABELS: Record<string, string> = {
@@ -52,11 +51,9 @@ export function ProjectStats({ data, isLoading }: ProjectStatsProps) {
     return (
       <div className="grid gap-4 md:grid-cols-2">
         {[1, 2].map((i) => (
-          <Card key={i}>
-            <CardContent className="pt-6">
-              <div className="h-52 animate-pulse rounded bg-muted" />
-            </CardContent>
-          </Card>
+          <section key={i} className="shell-panel rounded-[28px] p-6 md:p-8">
+            <div className="h-52 animate-pulse rounded bg-muted" />
+          </section>
         ))}
       </div>
     );
@@ -73,11 +70,11 @@ export function ProjectStats({ data, isLoading }: ProjectStatsProps) {
   return (
     <div className="grid gap-4 md:grid-cols-2">
       {/* Avg duration by fence type */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base font-semibold">Avg Duration by Fence Type (days)</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <section className="shell-panel rounded-[28px] p-6 md:p-8">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Performance</p>
+        <h2 className="mt-3 text-2xl font-semibold tracking-[-0.05em] text-slate-950">Avg Duration by Fence Type</h2>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">Days from start to completion, by fence type.</p>
+        <div className="mt-6">
           {durationData.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">
               No completed projects with dates
@@ -105,15 +102,15 @@ export function ProjectStats({ data, isLoading }: ProjectStatsProps) {
               </BarChart>
             </ResponsiveContainer>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       {/* Completions per month */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base font-semibold">Completions per Month</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <section className="shell-panel rounded-[28px] p-6 md:p-8">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Throughput</p>
+        <h2 className="mt-3 text-2xl font-semibold tracking-[-0.05em] text-slate-950">Completions per Month</h2>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">Number of projects completed each month.</p>
+        <div className="mt-6">
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={completionData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -134,8 +131,8 @@ export function ProjectStats({ data, isLoading }: ProjectStatsProps) {
               <Bar dataKey="count" fill="#06B6D4" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
     </div>
   );
 }

@@ -1,4 +1,3 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/formatters';
@@ -20,38 +19,39 @@ export function ProjectBreakdownTable({
   onPageChange,
 }: ProjectBreakdownTableProps) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Per-Project Breakdown</CardTitle>
-      </CardHeader>
-      <CardContent className="p-0">
+    <section className="shell-panel rounded-[28px] p-6 md:p-8">
+      <h2 className="text-2xl font-semibold tracking-[-0.05em] text-slate-950">
+        Per-Project Breakdown
+      </h2>
+
+      <div className="mt-6 rounded-[28px] border border-black/5 bg-white/55 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b bg-muted/50">
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Customer</th>
-                <th className="px-4 py-3 text-right font-medium text-muted-foreground">Project Total</th>
-                <th className="px-4 py-3 text-right font-medium text-muted-foreground">Adnaan</th>
-                <th className="px-4 py-3 text-right font-medium text-muted-foreground">Meme</th>
-                <th className="px-4 py-3 text-right font-medium text-muted-foreground">Aimann</th>
-                <th className="px-4 py-3 text-right font-medium text-muted-foreground">Net Profit</th>
-                <th className="px-4 py-3 text-right font-medium text-muted-foreground">Completed</th>
+              <tr className="border-b border-black/5 bg-slate-50/80">
+                <th className="px-4 py-3 text-left font-medium text-slate-500">Customer</th>
+                <th className="px-4 py-3 text-right font-medium text-slate-500">Project Total</th>
+                <th className="px-4 py-3 text-right font-medium text-slate-500">Adnaan</th>
+                <th className="px-4 py-3 text-right font-medium text-slate-500">Meme</th>
+                <th className="px-4 py-3 text-right font-medium text-slate-500">Aimann</th>
+                <th className="px-4 py-3 text-right font-medium text-slate-500">Net Profit</th>
+                <th className="px-4 py-3 text-right font-medium text-slate-500">Completed</th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i} className="border-b">
+                  <tr key={i} className="border-b border-black/5">
                     {Array.from({ length: 7 }).map((_, j) => (
                       <td key={j} className="px-4 py-3">
-                        <div className="h-4 animate-pulse rounded bg-muted" />
+                        <div className="h-4 animate-pulse rounded-[28px] bg-slate-200" />
                       </td>
                     ))}
                   </tr>
                 ))
               ) : data.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
                     No completed projects yet.
                   </td>
                 </tr>
@@ -59,23 +59,23 @@ export function ProjectBreakdownTable({
                 data.map((row, i) => (
                   <tr
                     key={row.projectId}
-                    className={`border-b transition-colors hover:bg-muted/30 ${i % 2 === 0 ? '' : 'bg-muted/10'}`}
+                    className={`border-b border-black/5 transition-colors hover:bg-slate-50/60 ${i % 2 === 0 ? '' : 'bg-slate-50/40'}`}
                   >
-                    <td className="px-4 py-3 font-medium">{row.customer}</td>
-                    <td className="px-4 py-3 text-right">{formatCurrency(row.projectTotal)}</td>
-                    <td className="px-4 py-3 text-right text-green-600 dark:text-green-400">
+                    <td className="px-4 py-3 font-medium text-slate-950">{row.customer}</td>
+                    <td className="px-4 py-3 text-right text-slate-950">{formatCurrency(row.projectTotal)}</td>
+                    <td className="px-4 py-3 text-right text-green-600">
                       {formatCurrency(row.adnaanCommission)}
                     </td>
-                    <td className="px-4 py-3 text-right text-blue-600 dark:text-blue-400">
+                    <td className="px-4 py-3 text-right text-blue-600">
                       {formatCurrency(row.memeCommission)}
                     </td>
-                    <td className="px-4 py-3 text-right text-amber-600 dark:text-amber-400">
+                    <td className="px-4 py-3 text-right text-amber-600">
                       {formatCurrency(row.aimannDeduction)}
                     </td>
-                    <td className="px-4 py-3 text-right font-medium">
+                    <td className="px-4 py-3 text-right font-medium text-slate-950">
                       {formatCurrency(row.netProfit)}
                     </td>
-                    <td className="px-4 py-3 text-right text-muted-foreground">
+                    <td className="px-4 py-3 text-right text-slate-500">
                       {formatDate(row.completedDate)}
                     </td>
                   </tr>
@@ -86,8 +86,8 @@ export function ProjectBreakdownTable({
         </div>
 
         {pagination && pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t">
-            <p className="text-sm text-muted-foreground">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-black/5">
+            <p className="text-sm text-slate-500">
               Page {pagination.page} of {pagination.totalPages} ({pagination.total} projects)
             </p>
             <div className="flex gap-1">
@@ -96,6 +96,7 @@ export function ProjectBreakdownTable({
                 size="sm"
                 disabled={page <= 1}
                 onClick={() => onPageChange(page - 1)}
+                className="rounded-2xl"
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
@@ -104,13 +105,14 @@ export function ProjectBreakdownTable({
                 size="sm"
                 disabled={page >= pagination.totalPages}
                 onClick={() => onPageChange(page + 1)}
+                className="rounded-2xl"
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }

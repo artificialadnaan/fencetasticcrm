@@ -1,4 +1,3 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import { formatCurrency, formatDate } from '@/lib/formatters';
@@ -95,18 +94,15 @@ function BucketTable({
 export function ReceivablesTable({ data, isLoading }: ReceivablesTableProps) {
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base font-semibold">Receivables Aging</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-12 animate-pulse rounded bg-muted" />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <section className="shell-panel rounded-[28px] p-6 md:p-8">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Finance</p>
+        <h2 className="mt-3 text-2xl font-semibold tracking-[-0.05em] text-slate-950">Receivables Aging</h2>
+        <div className="mt-6 space-y-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-12 animate-pulse rounded bg-muted" />
+          ))}
+        </div>
+      </section>
     );
   }
 
@@ -115,38 +111,43 @@ export function ReceivablesTable({ data, isLoading }: ReceivablesTableProps) {
     : false;
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-base font-semibold">Receivables Aging</CardTitle>
+    <section className="shell-panel rounded-[28px] p-6 md:p-8">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Finance</p>
+          <h2 className="mt-3 text-2xl font-semibold tracking-[-0.05em] text-slate-950">Receivables Aging</h2>
+        </div>
         {data && (
-          <span className="text-sm font-bold text-red-400">
+          <span className="text-sm font-bold text-red-400 mt-1">
             Total: {formatCurrency(data.totals.overall)}
           </span>
         )}
-      </CardHeader>
-      <CardContent>
+      </div>
+      <div className="mt-6">
         {!hasAny ? (
           <p className="text-sm text-muted-foreground py-6 text-center">
             No outstanding receivables
           </p>
         ) : (
-          <div className="space-y-6">
-            {BUCKET_CONFIG.map((bucket) => {
-              const projects = data![bucket.key] as ReceivablesProject[];
-              const total = data!.totals[bucket.key];
-              return (
-                <BucketTable
-                  key={bucket.key}
-                  label={bucket.label}
-                  projects={projects}
-                  total={total}
-                  colorClass={bucket.color}
-                />
-              );
-            })}
+          <div className="rounded-[28px] border border-black/5 bg-white/55 overflow-hidden">
+            <div className="p-6 space-y-6">
+              {BUCKET_CONFIG.map((bucket) => {
+                const projects = data![bucket.key] as ReceivablesProject[];
+                const total = data!.totals[bucket.key];
+                return (
+                  <BucketTable
+                    key={bucket.key}
+                    label={bucket.label}
+                    projects={projects}
+                    total={total}
+                    colorClass={bucket.color}
+                  />
+                );
+              })}
+            </div>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }

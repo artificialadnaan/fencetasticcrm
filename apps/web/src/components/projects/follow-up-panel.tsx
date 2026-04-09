@@ -9,7 +9,6 @@ import {
 import { useFollowUpSequence } from '@/hooks/use-follow-up-sequence';
 import { formatDate } from '@/lib/formatters';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -256,29 +255,27 @@ export function FollowUpPanel({ projectId }: FollowUpPanelProps) {
 
   if (isLoading && !summary) {
     return (
-      <Card>
-        <CardContent className="py-8 text-sm text-muted-foreground">
-          Loading follow-up workspace...
-        </CardContent>
-      </Card>
+      <section className="shell-panel rounded-[28px] p-6 md:p-8">
+        <p className="py-8 text-sm text-slate-500">Loading follow-up workspace...</p>
+      </section>
     );
   }
 
   if (error && !summary) {
     return (
-      <Card className="border-destructive">
-        <CardContent className="py-8 text-sm text-destructive">{error}</CardContent>
-      </Card>
+      <section className="shell-panel rounded-[28px] p-6 md:p-8 border-destructive">
+        <p className="py-8 text-sm text-destructive">{error}</p>
+      </section>
     );
   }
 
   if (!summary || !sequence) {
     return (
-      <Card>
-        <CardContent className="py-8 text-sm text-muted-foreground">
+      <section className="shell-panel rounded-[28px] p-6 md:p-8">
+        <p className="py-8 text-sm text-slate-500">
           No follow-up sequence is available for this project.
-        </CardContent>
-      </Card>
+        </p>
+      </section>
     );
   }
 
@@ -291,54 +288,48 @@ export function FollowUpPanel({ projectId }: FollowUpPanelProps) {
       )}
 
       <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Sequence Status</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1 text-sm">
-            <div className="font-semibold">{sequence.status}</div>
-            <div className="text-muted-foreground">Started {formatDate(sequence.startedAt)}</div>
+        <div className="rounded-[24px] border border-black/5 bg-white/70 px-5 py-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Sequence Status</p>
+          <div className="mt-2 space-y-1 text-sm">
+            <div className="font-semibold text-slate-950">{sequence.status}</div>
+            <div className="text-slate-500">Started {formatDate(sequence.startedAt)}</div>
             {sequence.closedAt && (
-              <div className="text-muted-foreground">Closed {formatDate(sequence.closedAt)}</div>
+              <div className="text-slate-500">Closed {formatDate(sequence.closedAt)}</div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Next Pending Task</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1 text-sm">
+        <div className="rounded-[24px] border border-black/5 bg-white/70 px-5 py-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Next Pending Task</p>
+          <div className="mt-2 space-y-1 text-sm">
             {nextPendingTask ? (
               <>
-                <div className="font-semibold">{TASK_KIND_LABELS[nextPendingTask.kind] ?? nextPendingTask.kind}</div>
-                <div>{formatDate(nextPendingTask.dueDate)}</div>
-                <div className="text-muted-foreground">{nextPendingTask.status}</div>
+                <div className="font-semibold text-slate-950">{TASK_KIND_LABELS[nextPendingTask.kind] ?? nextPendingTask.kind}</div>
+                <div className="text-slate-950">{formatDate(nextPendingTask.dueDate)}</div>
+                <div className="text-slate-500">{nextPendingTask.status}</div>
               </>
             ) : (
-              <div className="text-muted-foreground">No pending follow-up tasks remain.</div>
+              <div className="text-slate-500">No pending follow-up tasks remain.</div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Scheduled Tasks</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1 text-sm">
-            <div className="font-semibold">{tasks.length}</div>
-            <div className="text-muted-foreground">
+        <div className="rounded-[24px] border border-black/5 bg-white/70 px-5 py-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Scheduled Tasks</p>
+          <div className="mt-2 space-y-1 text-sm">
+            <div className="font-semibold text-slate-950">{tasks.length}</div>
+            <div className="text-slate-500">
               {tasks.map((task) => TASK_KIND_LABELS[task.kind] ?? task.kind).join(', ')}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Scheduled Tasks</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <section className="shell-panel rounded-[28px] p-6 md:p-8">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Follow-up</p>
+        <h2 className="mt-3 text-2xl font-semibold tracking-[-0.05em] text-slate-950">Scheduled Tasks</h2>
+
+        <div className="mt-6 space-y-4">
           {tasks.map((task) => {
             const draft = drafts[task.id] ?? {
               draftSubject: task.draftSubject,
@@ -348,15 +339,15 @@ export function FollowUpPanel({ projectId }: FollowUpPanelProps) {
             const isTaskPending = task.status === EstimateFollowUpTaskStatus.PENDING;
 
             return (
-              <div key={task.id} data-task-id={task.id} className="rounded-lg border p-4">
+              <div key={task.id} data-task-id={task.id} className="rounded-[24px] border border-black/5 bg-white/70 p-5">
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <h3 className="text-sm font-semibold">
+                    <h3 className="text-sm font-semibold text-slate-950">
                       {TASK_KIND_LABELS[task.kind] ?? task.kind}
                     </h3>
-                    <p className="text-sm text-muted-foreground">Due {formatDate(task.dueDate)}</p>
+                    <p className="text-sm text-slate-500">Due {formatDate(task.dueDate)}</p>
                   </div>
-                  <div className="text-sm font-medium">{task.status}</div>
+                  <div className="text-sm font-medium text-slate-950">{task.status}</div>
                 </div>
 
                 <div className="mt-4 space-y-3">
@@ -404,6 +395,7 @@ export function FollowUpPanel({ projectId }: FollowUpPanelProps) {
                   <div className="flex flex-wrap gap-2">
                     <Button
                       type="button"
+                      className="rounded-2xl border-black/10 bg-white/70"
                       variant="outline"
                       onClick={() => handleSaveDraft(task.id)}
                       disabled={isSequenceClosed || savingTaskId === task.id}
@@ -412,6 +404,7 @@ export function FollowUpPanel({ projectId }: FollowUpPanelProps) {
                     </Button>
                     <Button
                       type="button"
+                      className="rounded-2xl bg-slate-950 px-5 text-white hover:bg-slate-800"
                       onClick={() => completeTask(task.id)}
                       disabled={isSequenceClosed || !isTaskPending || completingTaskId === task.id}
                     >
@@ -422,23 +415,23 @@ export function FollowUpPanel({ projectId }: FollowUpPanelProps) {
               </div>
             );
           })}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Close Sequence</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <section className="shell-panel rounded-[28px] p-6 md:p-8">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Outcome</p>
+        <h2 className="mt-3 text-2xl font-semibold tracking-[-0.05em] text-slate-950">Close Sequence</h2>
+
+        <div className="mt-6 space-y-4">
           {sequence.closedSummary && (
-            <div className="rounded-md bg-muted px-4 py-3 text-sm">
-              <div className="font-medium">Closed Summary</div>
-              <div className="mt-1 text-muted-foreground">{sequence.closedSummary}</div>
+            <div className="rounded-[24px] border border-black/5 bg-slate-100 px-4 py-3 text-sm">
+              <div className="font-medium text-slate-950">Closed Summary</div>
+              <div className="mt-1 text-slate-500">{sequence.closedSummary}</div>
             </div>
           )}
 
           {isSequenceClosed ? (
-            <div className="space-y-1 text-sm text-muted-foreground">
+            <div className="space-y-1 text-sm text-slate-500">
               <div>Outcome: {sequence.status}</div>
               {sequence.lostReasonCode && (
                 <div>Lost reason: {LOST_REASON_LABELS[sequence.lostReasonCode]}</div>
@@ -527,13 +520,18 @@ export function FollowUpPanel({ projectId }: FollowUpPanelProps) {
                 <div className="text-sm text-destructive">{validationError}</div>
               )}
 
-              <Button type="button" onClick={handleCloseSequence} disabled={isClosingSequence}>
+              <Button
+                type="button"
+                className="rounded-2xl bg-slate-950 px-5 text-white hover:bg-slate-800"
+                onClick={handleCloseSequence}
+                disabled={isClosingSequence}
+              >
                 {isClosingSequence ? 'Closing...' : 'Close Sequence'}
               </Button>
             </>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
     </div>
   );
 }

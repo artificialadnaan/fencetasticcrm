@@ -1,4 +1,3 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/formatters';
@@ -25,29 +24,35 @@ export function DebtTracker({
   };
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Aimann Debt Tracker</CardTitle>
-          <Button size="sm" variant="outline" onClick={onAddAdjustment}>
-            <Plus className="h-4 w-4 mr-1" />
-            Adjustment
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <section className="shell-panel rounded-[28px] p-6 md:p-8">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-semibold tracking-[-0.05em] text-slate-950">
+          Aimann Debt Tracker
+        </h2>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={onAddAdjustment}
+          className="rounded-2xl"
+        >
+          <Plus className="h-4 w-4 mr-1" />
+          Adjustment
+        </Button>
+      </div>
+
+      <div className="mt-6 space-y-6">
         {/* Current balance */}
-        <div className="rounded-lg border p-4 flex items-center justify-between">
+        <div className="rounded-[24px] border border-black/5 bg-white/70 px-5 py-4 flex items-center justify-between">
           <div>
-            <p className="text-sm text-muted-foreground">Current Balance</p>
+            <p className="text-xs font-medium uppercase tracking-[0.2em] text-slate-500">
+              Current Balance
+            </p>
             {isLoadingBalance ? (
-              <div className="h-8 w-32 animate-pulse rounded bg-muted mt-1" />
+              <div className="h-8 w-32 animate-pulse rounded-[28px] bg-slate-200 mt-2" />
             ) : (
               <p
-                className={`text-3xl font-bold mt-1 ${
-                  (balance ?? 0) > 0
-                    ? 'text-red-600 dark:text-red-400'
-                    : 'text-green-600 dark:text-green-400'
+                className={`text-3xl font-semibold tracking-[-0.05em] mt-2 ${
+                  (balance ?? 0) > 0 ? 'text-red-600' : 'text-green-600'
                 }`}
               >
                 {formatCurrency(balance ?? 0)}
@@ -55,7 +60,7 @@ export function DebtTracker({
             )}
           </div>
           {!isLoadingBalance && balance != null && balance <= 0 && (
-            <span className="inline-flex items-center rounded-full bg-green-100 dark:bg-green-900/30 px-3 py-1 text-sm font-medium text-green-700 dark:text-green-400">
+            <span className="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-700">
               Paid Off
             </span>
           )}
@@ -63,67 +68,67 @@ export function DebtTracker({
 
         {/* Ledger history */}
         <div>
-          <p className="text-sm font-medium mb-2">Ledger History</p>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="px-3 py-2 text-left font-medium text-muted-foreground">Date</th>
-                  <th className="px-3 py-2 text-left font-medium text-muted-foreground">Note</th>
-                  <th className="px-3 py-2 text-right font-medium text-muted-foreground">Amount</th>
-                  <th className="px-3 py-2 text-right font-medium text-muted-foreground">Running Balance</th>
-                </tr>
-              </thead>
-              <tbody>
-                {isLoadingLedger ? (
-                  Array.from({ length: 4 }).map((_, i) => (
-                    <tr key={i} className="border-b">
-                      {Array.from({ length: 4 }).map((_, j) => (
-                        <td key={j} className="px-3 py-2">
-                          <div className="h-4 animate-pulse rounded bg-muted" />
-                        </td>
-                      ))}
-                    </tr>
-                  ))
-                ) : ledger.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">
-                      No ledger entries yet.
-                    </td>
+          <p className="text-sm font-medium text-slate-950 mb-3">Ledger History</p>
+          <div className="rounded-[28px] border border-black/5 bg-white/55 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-black/5 bg-slate-50/80">
+                    <th className="px-3 py-2 text-left font-medium text-slate-500">Date</th>
+                    <th className="px-3 py-2 text-left font-medium text-slate-500">Note</th>
+                    <th className="px-3 py-2 text-right font-medium text-slate-500">Amount</th>
+                    <th className="px-3 py-2 text-right font-medium text-slate-500">Running Balance</th>
                   </tr>
-                ) : (
-                  ledger.map((entry, i) => (
-                    <tr
-                      key={entry.id}
-                      className={`border-b transition-colors hover:bg-muted/30 ${i % 2 === 0 ? '' : 'bg-muted/10'}`}
-                    >
-                      <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
-                        {formatLedgerDate(entry.date)}
-                      </td>
-                      <td className="px-3 py-2 max-w-xs truncate" title={entry.note}>
-                        {entry.note}
-                      </td>
-                      <td
-                        className={`px-3 py-2 text-right font-medium tabular-nums ${
-                          entry.amount < 0
-                            ? 'text-green-600 dark:text-green-400'
-                            : 'text-red-600 dark:text-red-400'
-                        }`}
-                      >
-                        {entry.amount < 0 ? '-' : '+'}
-                        {formatCurrency(Math.abs(entry.amount))}
-                      </td>
-                      <td className="px-3 py-2 text-right font-medium tabular-nums">
-                        {formatCurrency(entry.runningBalance)}
+                </thead>
+                <tbody>
+                  {isLoadingLedger ? (
+                    Array.from({ length: 4 }).map((_, i) => (
+                      <tr key={i} className="border-b border-black/5">
+                        {Array.from({ length: 4 }).map((_, j) => (
+                          <td key={j} className="px-3 py-2">
+                            <div className="h-4 animate-pulse rounded-[28px] bg-slate-200" />
+                          </td>
+                        ))}
+                      </tr>
+                    ))
+                  ) : ledger.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-3 py-6 text-center text-slate-500">
+                        No ledger entries yet.
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    ledger.map((entry, i) => (
+                      <tr
+                        key={entry.id}
+                        className={`border-b border-black/5 transition-colors hover:bg-slate-50/60 ${i % 2 === 0 ? '' : 'bg-slate-50/40'}`}
+                      >
+                        <td className="px-3 py-2 text-slate-500 whitespace-nowrap">
+                          {formatLedgerDate(entry.date)}
+                        </td>
+                        <td className="px-3 py-2 max-w-xs truncate" title={entry.note}>
+                          {entry.note}
+                        </td>
+                        <td
+                          className={`px-3 py-2 text-right font-medium tabular-nums ${
+                            entry.amount < 0 ? 'text-green-600' : 'text-red-600'
+                          }`}
+                        >
+                          {entry.amount < 0 ? '-' : '+'}
+                          {formatCurrency(Math.abs(entry.amount))}
+                        </td>
+                        <td className="px-3 py-2 text-right font-medium tabular-nums text-slate-950">
+                          {formatCurrency(entry.runningBalance)}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }

@@ -1,4 +1,3 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/formatters';
 import type { CommissionSummary } from '@fencetastic/shared';
 
@@ -19,26 +18,24 @@ function StatCard({
   isLoading: boolean;
 }) {
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {isLoading ? (
-          <div className="space-y-2">
-            <div className="h-7 w-28 animate-pulse rounded bg-muted" />
-            <div className="h-4 w-20 animate-pulse rounded bg-muted" />
+    <div className="rounded-[24px] border border-black/5 bg-white/70 px-5 py-4">
+      <p className="text-xs font-medium uppercase tracking-[0.2em] text-slate-500">{title}</p>
+      {isLoading ? (
+        <div className="space-y-2 mt-2">
+          <div className="h-7 w-28 animate-pulse rounded-[28px] bg-slate-200" />
+          <div className="h-4 w-20 animate-pulse rounded-[28px] bg-slate-200" />
+        </div>
+      ) : (
+        <>
+          <div className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-slate-950">
+            {formatCurrency(mtd)}
           </div>
-        ) : (
-          <>
-            <div className="text-2xl font-bold">{formatCurrency(mtd)}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              YTD: <span className="font-medium text-foreground">{formatCurrency(ytd)}</span>
-            </p>
-          </>
-        )}
-      </CardContent>
-    </Card>
+          <p className="text-xs text-slate-500 mt-1">
+            YTD: <span className="font-medium text-slate-950">{formatCurrency(ytd)}</span>
+          </p>
+        </>
+      )}
+    </div>
   );
 }
 

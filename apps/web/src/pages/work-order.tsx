@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Stage, Layer, Rect, Line, Text as KonvaText, Group, Circle } from 'react-konva';
 import type Konva from 'konva';
 import { useWorkOrder } from '@/hooks/use-work-order';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -780,11 +780,11 @@ export default function WorkOrderPage() {
           <Button variant="ghost" size="icon" onClick={handleRedo} title="Redo">
             <Redo2 className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="sm" onClick={handleSave}>
+          <Button size="sm" className="rounded-2xl bg-slate-950 px-5 text-white hover:bg-slate-800" onClick={handleSave}>
             <Save className="h-4 w-4 mr-1" />
             Save
           </Button>
-          <Button variant="outline" size="sm" onClick={handlePdf}>
+          <Button size="sm" className="rounded-2xl border-black/10 bg-white/70" variant="outline" onClick={handlePdf}>
             <FileDown className="h-4 w-4 mr-1" />
             PDF
           </Button>
@@ -865,10 +865,10 @@ export default function WorkOrderPage() {
           </Stage>
           {/* Label inline input */}
           {pendingLabel && (
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex gap-1 bg-white border rounded-lg shadow-lg p-2">
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex gap-1 bg-white border border-black/10 rounded-2xl shadow-lg p-2">
               <Input
                 autoFocus
-                className="h-8 w-48 text-sm"
+                className="h-8 w-48 text-sm rounded-2xl border-black/10 bg-white shadow-sm"
                 placeholder="Enter label text..."
                 value={labelText}
                 onChange={(e) => setLabelText(e.target.value)}
@@ -882,12 +882,12 @@ export default function WorkOrderPage() {
                   if (e.key === 'Escape') { setPendingLabel(null); setLabelText(''); }
                 }}
               />
-              <Button size="sm" className="h-8" disabled={!labelText.trim()} onClick={() => {
+              <Button size="sm" className="h-8 rounded-2xl bg-slate-950 text-white hover:bg-slate-800" disabled={!labelText.trim()} onClick={() => {
                 pushUndo();
                 setElements((prev) => [...prev, { id: uid(), type: 'text' as const, x: pendingLabel.x, y: pendingLabel.y, text: labelText.trim() }]);
                 setPendingLabel(null); setLabelText('');
               }}>Add</Button>
-              <Button size="sm" variant="outline" className="h-8" onClick={() => { setPendingLabel(null); setLabelText(''); }}>Cancel</Button>
+              <Button size="sm" variant="outline" className="h-8 rounded-2xl border-black/10 bg-white/70" onClick={() => { setPendingLabel(null); setLabelText(''); }}>Cancel</Button>
             </div>
           )}
           {/* Zoom indicator */}
@@ -904,13 +904,12 @@ export default function WorkOrderPage() {
           <div className="p-4 space-y-4">
             {/* Segment properties */}
             {selectedSegment ? (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm">
-                    Segment {selectedSegment.segmentNumber}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
+              <section className="shell-panel rounded-[28px] p-6">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Fence</p>
+                <h2 className="mt-3 text-2xl font-semibold tracking-[-0.05em] text-slate-950">
+                  Segment {selectedSegment.segmentNumber}
+                </h2>
+                <div className="mt-4 space-y-3">
                   {/* Fence Type */}
                   <div>
                     <label className="text-xs font-medium text-muted-foreground">
@@ -920,7 +919,7 @@ export default function WorkOrderPage() {
                       value={selectedSegment.fenceType}
                       onValueChange={(v) => updateSelectedSegment({ fenceType: v })}
                     >
-                      <SelectTrigger className="mt-1">
+                      <SelectTrigger className="mt-1 rounded-2xl border-black/10 bg-white shadow-sm">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -947,7 +946,7 @@ export default function WorkOrderPage() {
                             selectedSegment.style === st ? 'default' : 'outline'
                           }
                           onClick={() => updateSelectedSegment({ style: st })}
-                          className="flex-1"
+                          className={`flex-1 rounded-2xl ${selectedSegment.style === st ? 'bg-slate-950 text-white hover:bg-slate-800' : 'border-black/10 bg-white/70'}`}
                         >
                           {st === FenceStyle.NORMAL ? 'Normal' : 'Stepped'}
                         </Button>
@@ -962,7 +961,7 @@ export default function WorkOrderPage() {
                     </label>
                     <Input
                       type="number"
-                      className="mt-1"
+                      className="mt-1 rounded-2xl border-black/10 bg-white shadow-sm"
                       value={selectedSegment.height}
                       onChange={(e) =>
                         updateSelectedSegment({
@@ -979,7 +978,7 @@ export default function WorkOrderPage() {
                     </label>
                     <Input
                       type="number"
-                      className="mt-1"
+                      className="mt-1 rounded-2xl border-black/10 bg-white shadow-sm"
                       value={selectedSegment.linearFeet}
                       onChange={(e) =>
                         updateSelectedSegment({
@@ -1000,7 +999,7 @@ export default function WorkOrderPage() {
                           <Input
                             type="number"
                             placeholder="Position"
-                            className="flex-1"
+                            className="flex-1 rounded-2xl border-black/10 bg-white shadow-sm"
                             value={step.position}
                             onChange={(e) =>
                               updateStep(
@@ -1013,7 +1012,7 @@ export default function WorkOrderPage() {
                           <Input
                             type="number"
                             placeholder="Height"
-                            className="flex-1"
+                            className="flex-1 rounded-2xl border-black/10 bg-white shadow-sm"
                             value={step.height}
                             onChange={(e) =>
                               updateStep(
@@ -1067,7 +1066,7 @@ export default function WorkOrderPage() {
                       <div className="flex gap-1 mt-1">
                         <Input
                           autoFocus
-                          className="h-7 text-xs flex-1"
+                          className="h-7 text-xs flex-1 rounded-2xl border-black/10 bg-white shadow-sm"
                           placeholder="Custom addition..."
                           value={customAdditionText}
                           onChange={(e) => setCustomAdditionText(e.target.value)}
@@ -1076,8 +1075,8 @@ export default function WorkOrderPage() {
                             if (e.key === 'Escape') { setShowCustomAdditionInput(false); setCustomAdditionText(''); }
                           }}
                         />
-                        <Button size="sm" className="h-7 text-xs" disabled={!customAdditionText.trim()} onClick={confirmCustomAddition}>Add</Button>
-                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setShowCustomAdditionInput(false); setCustomAdditionText(''); }}>Cancel</Button>
+                        <Button size="sm" className="h-7 text-xs rounded-2xl bg-slate-950 text-white hover:bg-slate-800" disabled={!customAdditionText.trim()} onClick={confirmCustomAddition}>Add</Button>
+                        <Button size="sm" variant="outline" className="h-7 text-xs rounded-2xl border-black/10 bg-white/70" onClick={() => { setShowCustomAdditionInput(false); setCustomAdditionText(''); }}>Cancel</Button>
                       </div>
                     ) : (
                       <Button
@@ -1098,7 +1097,7 @@ export default function WorkOrderPage() {
                       Notes
                     </label>
                     <Textarea
-                      className="mt-1"
+                      className="mt-1 rounded-2xl border-black/10 bg-white shadow-sm"
                       rows={2}
                       value={selectedSegment.notes ?? ''}
                       onChange={(e) =>
@@ -1108,14 +1107,13 @@ export default function WorkOrderPage() {
                       }
                     />
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </section>
             ) : selectedGate ? (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm">Gate Properties</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
+              <section className="shell-panel rounded-[28px] p-6">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Gate</p>
+                <h2 className="mt-3 text-2xl font-semibold tracking-[-0.05em] text-slate-950">Gate Properties</h2>
+                <div className="mt-4 space-y-3">
                   <div>
                     <label className="text-xs font-medium text-muted-foreground">
                       Gate Type
@@ -1124,7 +1122,7 @@ export default function WorkOrderPage() {
                       value={selectedGate.gateType ?? 'Single Swing'}
                       onValueChange={(v) => updateElement(selectedGate.id, { gateType: v })}
                     >
-                      <SelectTrigger className="mt-1">
+                      <SelectTrigger className="mt-1 rounded-2xl border-black/10 bg-white shadow-sm">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -1142,7 +1140,7 @@ export default function WorkOrderPage() {
                     </label>
                     <Input
                       type="number"
-                      className="mt-1"
+                      className="mt-1 rounded-2xl border-black/10 bg-white shadow-sm"
                       value={selectedGate.gateWidth ?? 4}
                       onChange={(e) =>
                         updateElement(selectedGate.id, {
@@ -1151,37 +1149,34 @@ export default function WorkOrderPage() {
                       }
                     />
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </section>
             ) : (
-              <Card>
-                <CardContent className="py-6 text-center text-sm text-muted-foreground">
-                  Select a fence segment to edit properties
-                </CardContent>
-              </Card>
+              <section className="shell-panel rounded-[28px] p-6 text-center text-sm text-slate-600">
+                Select a fence segment to edit properties
+              </section>
             )}
 
             {/* Property Notes */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Property Notes</CardTitle>
-              </CardHeader>
-              <CardContent>
+            <section className="shell-panel rounded-[28px] p-6">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Notes</p>
+              <h2 className="mt-3 text-2xl font-semibold tracking-[-0.05em] text-slate-950">Property Notes</h2>
+              <div className="mt-4">
                 <Textarea
                   rows={3}
                   placeholder="General property notes..."
                   value={propertyNotes}
                   onChange={(e) => setPropertyNotes(e.target.value)}
+                  className="rounded-2xl border-black/10 bg-white shadow-sm"
                 />
-              </CardContent>
-            </Card>
+              </div>
+            </section>
 
             {/* Summary */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Summary</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
+            <section className="shell-panel rounded-[28px] p-6">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Overview</p>
+              <h2 className="mt-3 text-2xl font-semibold tracking-[-0.05em] text-slate-950">Summary</h2>
+              <div className="mt-4 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Segments</span>
                   <span className="font-medium">{segments.length}</span>
@@ -1205,8 +1200,8 @@ export default function WorkOrderPage() {
                     ))}
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </section>
           </div>
         </div>
       </div>

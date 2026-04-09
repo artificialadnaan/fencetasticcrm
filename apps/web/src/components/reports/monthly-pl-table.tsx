@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   BarChart,
   Bar,
@@ -55,18 +54,15 @@ export function MonthlyPLTable({ data, isLoading }: MonthlyPLTableProps) {
 
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base font-semibold">Monthly P&L</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-10 animate-pulse rounded bg-muted" />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <section className="shell-panel rounded-[28px] p-6 md:p-8">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Reports</p>
+        <h2 className="mt-3 text-2xl font-semibold tracking-[-0.05em] text-slate-950">Monthly P&L</h2>
+        <div className="mt-6 space-y-2">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-10 animate-pulse rounded bg-muted" />
+          ))}
+        </div>
+      </section>
     );
   }
 
@@ -78,11 +74,10 @@ export function MonthlyPLTable({ data, isLoading }: MonthlyPLTableProps) {
   }));
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base font-semibold">Monthly P&L</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
+    <section className="shell-panel rounded-[28px] p-6 md:p-8">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Reports</p>
+      <h2 className="mt-3 text-2xl font-semibold tracking-[-0.05em] text-slate-950">Monthly P&L</h2>
+      <div className="mt-6 space-y-6">
         {/* Chart */}
         <ResponsiveContainer width="100%" height={220}>
           <BarChart data={chartData} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
@@ -109,7 +104,8 @@ export function MonthlyPLTable({ data, isLoading }: MonthlyPLTableProps) {
         </ResponsiveContainer>
 
         {/* Table */}
-        <div className="overflow-x-auto">
+        <div className="rounded-[28px] border border-black/5 bg-white/55 overflow-hidden">
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-muted-foreground text-xs">
@@ -195,8 +191,9 @@ export function MonthlyPLTable({ data, isLoading }: MonthlyPLTableProps) {
               </tfoot>
             )}
           </table>
+          </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }

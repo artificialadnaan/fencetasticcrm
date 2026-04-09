@@ -1,4 +1,3 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { EditableField } from '@/components/ui/editable-field';
 import { formatDate } from '@/lib/formatters';
 import { CalendarDays } from 'lucide-react';
@@ -23,14 +22,12 @@ export function ProjectScheduleCard({
   onSave,
 }: ProjectScheduleCardProps) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
-          <CalendarDays className="h-4 w-4" />
-          Schedule
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
+    <section className="shell-panel rounded-[28px] p-6 md:p-8">
+      <div className="flex items-center gap-2 mb-5">
+        <CalendarDays className="h-4 w-4 text-slate-400" />
+        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Schedule</p>
+      </div>
+      <div className="space-y-3">
         <DateRow
           label="Contract Date"
           value={contractDate}
@@ -56,8 +53,8 @@ export function ProjectScheduleCard({
           value={completedDate}
           onSave={(v) => onSave('completedDate', v)}
         />
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }
 
@@ -72,7 +69,7 @@ function DateRow({
 }) {
   return (
     <div className="flex justify-between items-center text-sm">
-      <span className="text-muted-foreground">{label}</span>
+      <span className="text-slate-500">{label}</span>
       <EditableField
         label={label}
         value={value}

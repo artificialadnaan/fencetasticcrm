@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
@@ -64,11 +63,11 @@ export function NotesTimeline({
   }
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg">Notes</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <section className="shell-panel rounded-[28px] p-6 md:p-8">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Activity</p>
+      <h2 className="mt-3 text-2xl font-semibold tracking-[-0.05em] text-slate-950">Notes</h2>
+
+      <div className="mt-6 space-y-4">
         {/* Add note form */}
         <AddNoteForm
           projectId={projectId}
@@ -94,7 +93,7 @@ export function NotesTimeline({
                     </div>
                     <div>
                       <span className="text-sm font-medium">{note.authorName}</span>
-                      <span className="text-xs text-muted-foreground ml-2">
+                      <span className="text-xs text-slate-500 ml-2">
                         {formatDate(note.createdAt.split('T')[0])}
                         {' · '}
                         {new Date(note.createdAt).toLocaleTimeString('en-US', {
@@ -142,6 +141,7 @@ export function NotesTimeline({
                     <div className="flex gap-2">
                       <Button
                         size="sm"
+                        className="rounded-2xl bg-slate-950 px-5 text-white hover:bg-slate-800"
                         onClick={() => saveEdit(note.id)}
                         disabled={isSaving || !editContent.trim()}
                       >
@@ -166,11 +166,11 @@ export function NotesTimeline({
         </div>
 
         {notes.length === 0 && (
-          <p className="text-sm text-muted-foreground text-center py-2">
+          <p className="text-sm text-slate-500 text-center py-2">
             No notes yet. Add one above.
           </p>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }

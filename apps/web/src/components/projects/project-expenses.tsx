@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -117,9 +116,9 @@ export function ProjectExpenses({ projectId, onDataChange }: ProjectExpensesProp
   const total = expenses.reduce((sum, e) => sum + e.amount, 0);
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-3">
-        <CardTitle className="text-lg">Expenses</CardTitle>
+    <section className="shell-panel rounded-[28px] p-6 md:p-8">
+      <div className="flex items-center justify-between mb-5">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Expenses</p>
         <Button
           size="sm"
           onClick={() => {
@@ -130,134 +129,133 @@ export function ProjectExpenses({ projectId, onDataChange }: ProjectExpensesProp
           <Plus className="h-4 w-4 mr-1" />
           Add Expense
         </Button>
-      </CardHeader>
-      <CardContent>
-        {showForm && (
-          <div className="mb-4 p-3 border rounded-md bg-muted/40">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div>
-                <Select
-                  value={form.category}
-                  onValueChange={(val) => setForm((f) => ({ ...f, category: val }))}
-                >
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue placeholder="Category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {EXPENSE_CATEGORIES.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {c}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Input
-                  className="h-8 text-sm"
-                  placeholder="Description"
-                  value={form.description}
-                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                />
-              </div>
-              <div>
-                <Input
-                  className="h-8 text-sm"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="Amount"
-                  value={form.amount}
-                  onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
-                />
-              </div>
-              <div>
-                <Input
-                  className="h-8 text-sm"
-                  type="date"
-                  value={form.date}
-                  onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-                />
-              </div>
-            </div>
-            <div className="flex gap-2 mt-3 justify-end">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowForm(false)}
-                disabled={saving}
-              >
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleAdd}
-                disabled={saving || !form.category || !form.amount || !form.date}
-              >
-                {saving ? 'Saving…' : 'Save'}
-              </Button>
-            </div>
-          </div>
-        )}
+      </div>
 
-        {loading ? (
-          <p className="text-sm text-muted-foreground text-center py-6">Loading…</p>
-        ) : expenses.length === 0 && !showForm ? (
-          <p className="text-sm text-muted-foreground text-center py-6">
-            No expenses recorded yet.
-          </p>
-        ) : expenses.length > 0 ? (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="w-10" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {expenses.map((exp) => (
-                  <TableRow key={exp.id}>
-                    <TableCell className="text-muted-foreground">{formatDate(exp.date)}</TableCell>
-                    <TableCell>{exp.category}</TableCell>
-                    <TableCell className="text-muted-foreground max-w-[200px] truncate">
-                      {exp.description || '—'}
-                    </TableCell>
-                    <TableCell className="text-right font-mono text-red-500">
-                      {formatCurrency(exp.amount)}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-destructive hover:text-destructive"
-                        onClick={() => handleDelete(exp.id)}
-                        disabled={deletingId === exp.id}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-              <tfoot>
-                <tr className="border-t font-semibold">
-                  <td colSpan={3} className="pt-3 pl-4 text-sm">
-                    Total
-                  </td>
-                  <td className="pt-3 pr-4 text-right font-mono text-sm text-red-500">
-                    {formatCurrency(total)}
-                  </td>
-                  <td />
-                </tr>
-              </tfoot>
-            </Table>
+      {showForm && (
+        <div className="mb-4 p-4 border border-black/5 rounded-[16px] bg-slate-50">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div>
+              <Select
+                value={form.category}
+                onValueChange={(val) => setForm((f) => ({ ...f, category: val }))}
+              >
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {EXPENSE_CATEGORIES.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Input
+                className="h-8 text-sm"
+                placeholder="Description"
+                value={form.description}
+                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Input
+                className="h-8 text-sm"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Amount"
+                value={form.amount}
+                onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Input
+                className="h-8 text-sm"
+                type="date"
+                value={form.date}
+                onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+              />
+            </div>
           </div>
-        ) : null}
-      </CardContent>
-    </Card>
+          <div className="flex gap-2 mt-3 justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowForm(false)}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleAdd}
+              disabled={saving || !form.category || !form.amount || !form.date}
+            >
+              {saving ? 'Saving…' : 'Save'}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <p className="text-sm text-slate-400 text-center py-6">Loading…</p>
+      ) : expenses.length === 0 && !showForm ? (
+        <p className="text-sm text-slate-400 text-center py-6">
+          No expenses recorded yet.
+        </p>
+      ) : expenses.length > 0 ? (
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+                <TableHead className="w-10" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {expenses.map((exp) => (
+                <TableRow key={exp.id}>
+                  <TableCell className="text-slate-400">{formatDate(exp.date)}</TableCell>
+                  <TableCell>{exp.category}</TableCell>
+                  <TableCell className="text-slate-400 max-w-[200px] truncate">
+                    {exp.description || '—'}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-red-500">
+                    {formatCurrency(exp.amount)}
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive hover:text-destructive"
+                      onClick={() => handleDelete(exp.id)}
+                      disabled={deletingId === exp.id}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+            <tfoot>
+              <tr className="border-t font-semibold">
+                <td colSpan={3} className="pt-3 pl-4 text-sm">
+                  Total
+                </td>
+                <td className="pt-3 pr-4 text-right font-mono text-sm text-red-500">
+                  {formatCurrency(total)}
+                </td>
+                <td />
+              </tr>
+            </tfoot>
+          </Table>
+        </div>
+      ) : null}
+    </section>
   );
 }

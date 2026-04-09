@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -126,105 +125,115 @@ export function SubcontractorTable({
 
   return (
     <>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-3">
-          <CardTitle className="text-lg">Subcontractor Payments</CardTitle>
-          <Button size="sm" onClick={openAdd}>
+      <section className="shell-panel rounded-[28px] p-6 md:p-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Payments</p>
+            <h2 className="mt-3 text-2xl font-semibold tracking-[-0.05em] text-slate-950">Subcontractor Payments</h2>
+          </div>
+          <Button
+            size="sm"
+            className="rounded-2xl bg-slate-950 px-5 text-white hover:bg-slate-800"
+            onClick={openAdd}
+          >
             <Plus className="h-4 w-4 mr-1" />
             Add Sub
           </Button>
-        </CardHeader>
-        <CardContent>
+        </div>
+
+        <div className="mt-6">
           {subs.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-6">
+            <p className="text-sm text-slate-500 text-center py-6">
               No subcontractor payments yet.
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-muted-foreground">
-                    <th className="text-left py-2 pr-4 font-medium">Name</th>
-                    <th className="text-right py-2 pr-4 font-medium">Owed</th>
-                    <th className="text-right py-2 pr-4 font-medium">Paid</th>
-                    <th className="text-right py-2 pr-4 font-medium">Balance</th>
-                    <th className="text-left py-2 pr-4 font-medium">Date Paid</th>
-                    <th className="text-left py-2 font-medium">Notes</th>
-                    <th className="py-2" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {subs.map((sub) => (
-                    <tr key={sub.id} className="border-b hover:bg-muted/50 transition-colors">
-                      <td className="py-2 pr-4 font-medium">{sub.subcontractorName}</td>
-                      <td className="py-2 pr-4 text-right font-mono">
-                        {formatCurrency(sub.amountOwed)}
+            <div className="rounded-[28px] border border-black/5 bg-white/55 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-black/5 text-slate-500">
+                      <th className="text-left py-2 px-4 font-medium">Name</th>
+                      <th className="text-right py-2 px-4 font-medium">Owed</th>
+                      <th className="text-right py-2 px-4 font-medium">Paid</th>
+                      <th className="text-right py-2 px-4 font-medium">Balance</th>
+                      <th className="text-left py-2 px-4 font-medium">Date Paid</th>
+                      <th className="text-left py-2 px-4 font-medium">Notes</th>
+                      <th className="py-2 px-4" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {subs.map((sub) => (
+                      <tr key={sub.id} className="border-b border-black/5 hover:bg-slate-100/50 transition-colors">
+                        <td className="py-2 px-4 font-medium">{sub.subcontractorName}</td>
+                        <td className="py-2 px-4 text-right font-mono">
+                          {formatCurrency(sub.amountOwed)}
+                        </td>
+                        <td className="py-2 px-4 text-right font-mono text-green-600">
+                          {formatCurrency(sub.amountPaid)}
+                        </td>
+                        <td
+                          className={`py-2 px-4 text-right font-mono ${
+                            sub.amountOwed - sub.amountPaid > 0
+                              ? 'text-red-500'
+                              : 'text-slate-500'
+                          }`}
+                        >
+                          {formatCurrency(sub.amountOwed - sub.amountPaid)}
+                        </td>
+                        <td className="py-2 px-4 text-slate-500">
+                          {formatDate(sub.datePaid)}
+                        </td>
+                        <td className="py-2 px-4 text-slate-500 max-w-[160px] truncate">
+                          {sub.notes ?? '—'}
+                        </td>
+                        <td className="py-2 px-4">
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => openEdit(sub)}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-destructive hover:text-destructive"
+                              onClick={() => setDeleteConfirmId(sub.id)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t border-black/5 font-semibold">
+                      <td className="pt-3 pb-3 px-4">Totals</td>
+                      <td className="pt-3 pb-3 px-4 text-right font-mono">
+                        {formatCurrency(totalOwed)}
                       </td>
-                      <td className="py-2 pr-4 text-right font-mono text-green-600">
-                        {formatCurrency(sub.amountPaid)}
+                      <td className="pt-3 pb-3 px-4 text-right font-mono text-green-600">
+                        {formatCurrency(totalPaid)}
                       </td>
                       <td
-                        className={`py-2 pr-4 text-right font-mono ${
-                          sub.amountOwed - sub.amountPaid > 0
-                            ? 'text-red-500'
-                            : 'text-muted-foreground'
+                        className={`pt-3 pb-3 px-4 text-right font-mono ${
+                          outstanding > 0 ? 'text-red-500' : 'text-slate-500'
                         }`}
                       >
-                        {formatCurrency(sub.amountOwed - sub.amountPaid)}
+                        {formatCurrency(outstanding)}
                       </td>
-                      <td className="py-2 pr-4 text-muted-foreground">
-                        {formatDate(sub.datePaid)}
-                      </td>
-                      <td className="py-2 text-muted-foreground max-w-[160px] truncate">
-                        {sub.notes ?? '—'}
-                      </td>
-                      <td className="py-2 pl-2">
-                        <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => openEdit(sub)}
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-destructive hover:text-destructive"
-                            onClick={() => setDeleteConfirmId(sub.id)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </td>
+                      <td colSpan={3} />
                     </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t font-semibold">
-                    <td className="pt-3 pr-4">Totals</td>
-                    <td className="pt-3 pr-4 text-right font-mono">
-                      {formatCurrency(totalOwed)}
-                    </td>
-                    <td className="pt-3 pr-4 text-right font-mono text-green-600">
-                      {formatCurrency(totalPaid)}
-                    </td>
-                    <td
-                      className={`pt-3 pr-4 text-right font-mono ${
-                        outstanding > 0 ? 'text-red-500' : 'text-muted-foreground'
-                      }`}
-                    >
-                      {formatCurrency(outstanding)}
-                    </td>
-                    <td colSpan={3} />
-                  </tr>
-                </tfoot>
-              </table>
+                  </tfoot>
+                </table>
+              </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       {/* Add / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -304,7 +313,7 @@ export function SubcontractorTable({
           <DialogHeader>
             <DialogTitle>Delete Sub Payment?</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground py-2">
+          <p className="text-sm text-slate-500 py-2">
             This cannot be undone. The commission waterfall will recalculate.
           </p>
           <DialogFooter>

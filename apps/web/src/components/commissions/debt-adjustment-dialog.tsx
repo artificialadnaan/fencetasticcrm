@@ -4,7 +4,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,63 +61,89 @@ export function DebtAdjustmentDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Manual Debt Adjustment</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="adj-amount">Amount</Label>
-            <Input
-              id="adj-amount"
-              type="number"
-              step="0.01"
-              placeholder="e.g. 250.00 (positive = add debt, negative = reduce)"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              disabled={isSubmitting}
-              autoFocus
-            />
-            <p className="text-xs text-muted-foreground">
-              Positive adds debt, negative reduces it.
-            </p>
+      <DialogContent className="max-w-2xl rounded-[28px] border-black/5 bg-white p-0 shadow-2xl">
+        <div className="border-b border-black/5 px-6 py-5">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold tracking-[-0.03em] text-slate-950">
+              Manual Debt Adjustment
+            </DialogTitle>
+          </DialogHeader>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <div className="px-6 py-6 space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="adj-amount" className="text-sm font-medium text-slate-700">
+                Amount
+              </Label>
+              <Input
+                id="adj-amount"
+                type="number"
+                step="0.01"
+                placeholder="e.g. 250.00 (positive = add debt, negative = reduce)"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                disabled={isSubmitting}
+                autoFocus
+                className="rounded-2xl"
+              />
+              <p className="text-xs text-slate-500">
+                Positive adds debt, negative reduces it.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="adj-note" className="text-sm font-medium text-slate-700">
+                Note
+              </Label>
+              <Input
+                id="adj-note"
+                type="text"
+                placeholder="e.g. Manual correction — CC payment made"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                disabled={isSubmitting}
+                className="rounded-2xl"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="adj-date" className="text-sm font-medium text-slate-700">
+                Date (optional)
+              </Label>
+              <Input
+                id="adj-date"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                disabled={isSubmitting}
+                className="rounded-2xl"
+              />
+            </div>
+
+            {validationError && (
+              <p className="text-sm text-red-600">{validationError}</p>
+            )}
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="adj-note">Note</Label>
-            <Input
-              id="adj-note"
-              type="text"
-              placeholder="e.g. Manual correction — CC payment made"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
+          <div className="flex items-center justify-end gap-3 border-t border-black/5 px-6 py-5">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleClose}
               disabled={isSubmitting}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="adj-date">Date (optional)</Label>
-            <Input
-              id="adj-date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              disabled={isSubmitting}
-            />
-          </div>
-
-          {validationError && (
-            <p className="text-sm text-destructive">{validationError}</p>
-          )}
-
-          <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" onClick={handleClose} disabled={isSubmitting}>
+              className="rounded-2xl"
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="rounded-2xl bg-slate-950 px-5 text-white hover:bg-slate-800"
+            >
               {isSubmitting ? 'Saving...' : 'Save Adjustment'}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

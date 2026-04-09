@@ -1,4 +1,3 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { EditableField } from '@/components/ui/editable-field';
 import { formatCurrency } from '@/lib/formatters';
 import { Info } from 'lucide-react';
@@ -36,14 +35,12 @@ export function ProjectInfoCard({
   onSave,
 }: ProjectInfoCardProps) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
-          <Info className="h-4 w-4" />
-          Project Info
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
+    <section className="shell-panel rounded-[28px] p-6 md:p-8">
+      <div className="flex items-center gap-2 mb-5">
+        <Info className="h-4 w-4 text-slate-400" />
+        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Project Info</p>
+      </div>
+      <div className="space-y-3">
         <InfoRow label="Description">
           <EditableField
             label="Description"
@@ -107,8 +104,8 @@ export function ProjectInfoCard({
             onSave={(v) => onSave('notes', v)}
           />
         </InfoRow>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }
 
@@ -121,7 +118,7 @@ function InfoRow({
 }) {
   return (
     <div className="flex justify-between items-center text-sm">
-      <span className="text-muted-foreground">{label}</span>
+      <span className="text-slate-500">{label}</span>
       {children}
     </div>
   );

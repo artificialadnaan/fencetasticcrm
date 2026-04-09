@@ -7,7 +7,6 @@ import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { EditableField } from '@/components/ui/editable-field';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -25,7 +24,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from '@/components/ui/dialog';
 import { StatusBadge } from '@/components/projects/status-badge';
 import { NotesTimeline } from '@/components/projects/notes-timeline';
@@ -271,25 +269,23 @@ export default function ProjectDetailPage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-24 w-full rounded-[28px]" />
         <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-          <Skeleton className="h-24" />
-          <Skeleton className="h-24" />
-          <Skeleton className="h-24" />
-          <Skeleton className="h-24" />
+          <Skeleton className="h-24 rounded-[24px]" />
+          <Skeleton className="h-24 rounded-[24px]" />
+          <Skeleton className="h-24 rounded-[24px]" />
+          <Skeleton className="h-24 rounded-[24px]" />
         </div>
-        <Skeleton className="h-[400px]" />
+        <Skeleton className="h-[400px] rounded-[28px]" />
       </div>
     );
   }
 
   if (error || !project) {
     return (
-      <Card className="border-destructive">
-        <CardContent className="py-8 text-center">
-          <p className="text-destructive">{error || 'Project not found'}</p>
-        </CardContent>
-      </Card>
+      <section className="shell-panel rounded-[28px] p-8 text-center">
+        <p className="text-red-500">{error || 'Project not found'}</p>
+      </section>
     );
   }
 
@@ -320,119 +316,118 @@ export default function ProjectDetailPage() {
   return (
     <div className="space-y-6">
       {/* ================================================================ */}
-      {/* HEADER CARD                                                      */}
+      {/* HEADER                                                           */}
       {/* ================================================================ */}
-      <Card>
-        <CardContent className="py-5">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            {/* Back link */}
-            <Link
-              to="/projects"
-              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      <section className="shell-panel rounded-[28px] p-6 md:p-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <Link
+            to="/projects"
+            className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-950 transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Projects
+          </Link>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mt-4">
+          {/* Left: customer info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-2xl sm:text-3xl font-semibold tracking-[-0.05em] text-slate-950 truncate">
+                {project.customer}
+              </h1>
+              <StatusBadge status={project.status} />
+            </div>
+            <p className="text-slate-500 mt-1 truncate">{project.address}</p>
+            {project.subcontractor && (
+              <p className="text-sm text-slate-400 mt-0.5">
+                Sub: {project.subcontractor}
+              </p>
+            )}
+          </div>
+
+          {/* Right: actions */}
+          <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`/projects/${project.id}/work-order`)}
             >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Projects
-            </Link>
+              <FileEdit className="h-4 w-4 mr-1" />
+              Work Order
+            </Button>
+
+            <Select value={project.status} onValueChange={handleStatusChange}>
+              <SelectTrigger className="w-[160px] h-9">
+                <SelectValue placeholder="Change status" />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.values(ProjectStatus).map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {s.replace(/_/g, ' ')}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+              onClick={() => setShowDeleteDialog(true)}
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Delete
+            </Button>
           </div>
-
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mt-3">
-            {/* Left: customer info */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight truncate">
-                  {project.customer}
-                </h1>
-                <StatusBadge status={project.status} />
-              </div>
-              <p className="text-muted-foreground mt-1 truncate">{project.address}</p>
-              {project.subcontractor && (
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  Sub: {project.subcontractor}
-                </p>
-              )}
-            </div>
-
-            {/* Right: actions */}
-            <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate(`/projects/${project.id}/work-order`)}
-              >
-                <FileEdit className="h-4 w-4 mr-1" />
-                Work Order
-              </Button>
-
-              <Select value={project.status} onValueChange={handleStatusChange}>
-                <SelectTrigger className="w-[160px] h-9">
-                  <SelectValue placeholder="Change status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.values(ProjectStatus).map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s.replace(/_/g, ' ')}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                onClick={() => setShowDeleteDialog(true)}
-              >
-                <Trash2 className="h-4 w-4 mr-1" />
-                Delete
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       {/* ================================================================ */}
-      {/* KPI SUMMARY CARDS                                                */}
+      {/* KPI METRIC TILES                                                 */}
       {/* ================================================================ */}
       <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-        <KpiCard
+        <KpiTile
           label="Invoice"
           value={formatCurrency(project.projectTotal)}
           icon={<FileText className="h-5 w-5" />}
         />
-        <KpiCard
+        <KpiTile
           label="Collected"
           value={formatCurrency(project.customerPaid)}
           icon={<DollarSign className="h-5 w-5" />}
         />
-        <KpiCard
+        <KpiTile
           label="Expenses"
           value={formatCurrency(cp.totalExpenses || project.forecastedExpenses)}
           icon={<Building className="h-5 w-5" />}
         />
-        <KpiCard
+        <KpiTile
           label="Profit"
           value={formatCurrency(cp.netProfit)}
           icon={<TrendingUp className="h-5 w-5" />}
           valueClassName={cp.netProfit >= 0 ? 'text-green-600' : 'text-red-500'}
+          dark={cp.netProfit >= 0}
         />
       </div>
 
       {/* ================================================================ */}
       {/* TAB BAR                                                          */}
       {/* ================================================================ */}
-      <div className="border-b">
-        <nav className="flex gap-0 overflow-x-auto -mb-px">
+      <div className="rounded-[28px] border border-black/5 bg-white/55 p-2 shadow-sm">
+        <div className="flex flex-wrap items-center gap-2">
           {TABS.map((tab) => {
             const count = tabCounts[tab.id];
             const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
+                type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                className={`rounded-2xl px-4 py-2 text-sm font-medium transition-all duration-200 ${
                   isActive
-                    ? 'border-purple-600 text-purple-600'
-                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                    ? 'bg-slate-950 text-white shadow-[0_10px_24px_rgba(15,23,42,0.18)]'
+                    : 'text-slate-600 hover:bg-white hover:text-slate-950'
                 }`}
               >
                 {tab.label}
@@ -447,7 +442,7 @@ export default function ProjectDetailPage() {
               </button>
             );
           })}
-        </nav>
+        </div>
       </div>
 
       {/* ================================================================ */}
@@ -458,14 +453,12 @@ export default function ProjectDetailPage() {
       {activeTab === 'overview' && (
         <div className="grid gap-4 md:grid-cols-2">
           {/* Job Details */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Info className="h-4 w-4" />
-                Job Details
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+          <section className="shell-panel rounded-[28px] p-6 md:p-8">
+            <div className="flex items-center gap-2 mb-5">
+              <Info className="h-4 w-4 text-slate-400" />
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Job Details</p>
+            </div>
+            <div className="space-y-3">
               <FieldRow label="Contract Date">
                 <EditableField
                   label="Contract Date"
@@ -566,18 +559,16 @@ export default function ProjectDetailPage() {
                   onSave={(v) => handleFieldSave('notes', v)}
                 />
               </FieldRow>
-            </CardContent>
-          </Card>
+            </div>
+          </section>
 
           {/* Schedule */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <CalendarDays className="h-4 w-4" />
-                Schedule
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+          <section className="shell-panel rounded-[28px] p-6 md:p-8">
+            <div className="flex items-center gap-2 mb-5">
+              <CalendarDays className="h-4 w-4 text-slate-400" />
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Schedule</p>
+            </div>
+            <div className="space-y-3">
               <FieldRow label="Install Date">
                 <EditableField
                   label="Install Date"
@@ -605,31 +596,30 @@ export default function ProjectDetailPage() {
                   onSave={(v) => handleFieldSave('completedDate', v)}
                 />
               </FieldRow>
-            </CardContent>
-          </Card>
+            </div>
+          </section>
 
-          <Card className="md:col-span-2">
-            <CardHeader>
-              <CardTitle className="text-lg">Lifecycle</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {/* Lifecycle */}
+          <section className="shell-panel rounded-[28px] p-6 md:p-8 md:col-span-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 mb-5">Lifecycle</p>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {lifecycleStages.map(({ status, meta, trackedDate, stateLabel }) => (
-                <div key={status} className="rounded-lg border p-3">
+                <div key={status} className="rounded-[24px] border border-black/5 bg-white/70 px-5 py-4">
                   <div className="flex items-center justify-between gap-3">
-                    <div className="font-medium">{meta.label}</div>
+                    <div className="font-medium text-slate-950">{meta.label}</div>
                     <StatusBadge status={status} className="text-[11px]" />
                   </div>
-                  <p className="mt-2 text-sm text-muted-foreground">{meta.description}</p>
-                  <p className="mt-3 text-xs uppercase tracking-wide text-muted-foreground">
+                  <p className="mt-2 text-sm text-slate-500">{meta.description}</p>
+                  <p className="mt-3 text-xs uppercase tracking-wide text-slate-400">
                     {meta.lifecycleDateLabel ?? 'Tracking'}
                   </p>
-                  <p className="text-sm font-medium">
+                  <p className="text-sm font-medium text-slate-950">
                     {trackedDate ? formatDate(trackedDate) : stateLabel}
                   </p>
                 </div>
               ))}
-            </CardContent>
-          </Card>
+            </div>
+          </section>
         </div>
       )}
 
@@ -640,9 +630,9 @@ export default function ProjectDetailPage() {
 
       {/* --- PAYMENTS TAB --- */}
       {activeTab === 'payments' && (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <CardTitle className="text-lg">Income / Payments</CardTitle>
+        <section className="shell-panel rounded-[28px] p-6 md:p-8">
+          <div className="flex items-center justify-between mb-5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Income / Payments</p>
             <Button
               size="sm"
               onClick={() => {
@@ -653,139 +643,138 @@ export default function ProjectDetailPage() {
               <Plus className="h-4 w-4 mr-1" />
               Add
             </Button>
-          </CardHeader>
-          <CardContent>
-            {showIncomeForm && (
-              <div className="p-3 border rounded-lg bg-muted/30 space-y-3 mb-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <Select
-                    value={incomeForm.category}
-                    onValueChange={(v) => setIncomeForm((f) => ({ ...f, category: v }))}
-                  >
-                    <SelectTrigger className="h-8 text-sm">
-                      <SelectValue placeholder="Category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {INCOME_CATEGORIES.map((c) => (
-                        <SelectItem key={c} value={c}>
-                          {c}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    className="h-8 text-sm"
-                    placeholder="Description"
-                    value={incomeForm.description}
-                    onChange={(e) => setIncomeForm((f) => ({ ...f, description: e.target.value }))}
-                  />
-                  <Input
-                    className="h-8 text-sm"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="Amount"
-                    value={incomeForm.amount}
-                    onChange={(e) => setIncomeForm((f) => ({ ...f, amount: e.target.value }))}
-                  />
-                  <Input
-                    className="h-8 text-sm"
-                    type="date"
-                    value={incomeForm.date}
-                    onChange={(e) => setIncomeForm((f) => ({ ...f, date: e.target.value }))}
-                  />
-                </div>
-                <div className="flex gap-2 justify-end">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowIncomeForm(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={addIncome}
-                    disabled={savingIncome || !incomeForm.category || !incomeForm.amount}
-                  >
-                    {savingIncome ? 'Saving...' : 'Save'}
-                  </Button>
-                </div>
-              </div>
-            )}
+          </div>
 
-            {incomeItems.length === 0 && !showIncomeForm ? (
-              <p className="text-sm text-muted-foreground text-center py-6">
-                No payments recorded yet.
-              </p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-muted-foreground">
-                      <th className="text-left py-2 pr-4 font-medium">Type</th>
-                      <th className="text-left py-2 pr-4 font-medium">Description</th>
-                      <th className="text-right py-2 pr-4 font-medium">Amount</th>
-                      <th className="text-left py-2 pr-4 font-medium">Date</th>
-                      <th className="py-2 w-10" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {incomeItems.map((item) => (
-                      <tr
-                        key={item.id}
-                        className="border-b hover:bg-muted/50 transition-colors"
-                      >
-                        <td className="py-2 pr-4 font-medium">{item.category}</td>
-                        <td className="py-2 pr-4 text-muted-foreground truncate max-w-[200px]">
-                          {item.description !== item.category ? item.description : '\u2014'}
-                        </td>
-                        <td className="py-2 pr-4 text-right font-mono text-green-600">
-                          {formatCurrency(item.amount)}
-                        </td>
-                        <td className="py-2 pr-4 text-muted-foreground">
-                          {formatDate(item.date)}
-                        </td>
-                        <td className="py-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-destructive hover:text-destructive"
-                            disabled={deletingId === item.id}
-                            onClick={() => handleDeleteTransaction(item.id, 'INCOME')}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </td>
-                      </tr>
+          {showIncomeForm && (
+            <div className="p-4 border border-black/5 rounded-[16px] bg-slate-50 space-y-3 mb-4">
+              <div className="grid grid-cols-2 gap-3">
+                <Select
+                  value={incomeForm.category}
+                  onValueChange={(v) => setIncomeForm((f) => ({ ...f, category: v }))}
+                >
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {INCOME_CATEGORIES.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {c}
+                      </SelectItem>
                     ))}
-                  </tbody>
-                  {incomeItems.length > 0 && (
-                    <tfoot>
-                      <tr className="border-t font-semibold">
-                        <td className="pt-3 pr-4" colSpan={2}>
-                          Total Income
-                        </td>
-                        <td className="pt-3 pr-4 text-right font-mono text-green-600">
-                          {formatCurrency(incomeTotal)}
-                        </td>
-                        <td colSpan={2} />
-                      </tr>
-                    </tfoot>
-                  )}
-                </table>
+                  </SelectContent>
+                </Select>
+                <Input
+                  className="h-8 text-sm"
+                  placeholder="Description"
+                  value={incomeForm.description}
+                  onChange={(e) => setIncomeForm((f) => ({ ...f, description: e.target.value }))}
+                />
+                <Input
+                  className="h-8 text-sm"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="Amount"
+                  value={incomeForm.amount}
+                  onChange={(e) => setIncomeForm((f) => ({ ...f, amount: e.target.value }))}
+                />
+                <Input
+                  className="h-8 text-sm"
+                  type="date"
+                  value={incomeForm.date}
+                  onChange={(e) => setIncomeForm((f) => ({ ...f, date: e.target.value }))}
+                />
               </div>
-            )}
-          </CardContent>
-        </Card>
+              <div className="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowIncomeForm(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={addIncome}
+                  disabled={savingIncome || !incomeForm.category || !incomeForm.amount}
+                >
+                  {savingIncome ? 'Saving...' : 'Save'}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {incomeItems.length === 0 && !showIncomeForm ? (
+            <p className="text-sm text-slate-400 text-center py-6">
+              No payments recorded yet.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-slate-400">
+                    <th className="text-left py-2 pr-4 font-medium">Type</th>
+                    <th className="text-left py-2 pr-4 font-medium">Description</th>
+                    <th className="text-right py-2 pr-4 font-medium">Amount</th>
+                    <th className="text-left py-2 pr-4 font-medium">Date</th>
+                    <th className="py-2 w-10" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {incomeItems.map((item) => (
+                    <tr
+                      key={item.id}
+                      className="border-b hover:bg-slate-50/50 transition-colors"
+                    >
+                      <td className="py-2 pr-4 font-medium">{item.category}</td>
+                      <td className="py-2 pr-4 text-slate-400 truncate max-w-[200px]">
+                        {item.description !== item.category ? item.description : '\u2014'}
+                      </td>
+                      <td className="py-2 pr-4 text-right font-mono text-green-600">
+                        {formatCurrency(item.amount)}
+                      </td>
+                      <td className="py-2 pr-4 text-slate-400">
+                        {formatDate(item.date)}
+                      </td>
+                      <td className="py-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          disabled={deletingId === item.id}
+                          onClick={() => handleDeleteTransaction(item.id, 'INCOME')}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                {incomeItems.length > 0 && (
+                  <tfoot>
+                    <tr className="border-t font-semibold">
+                      <td className="pt-3 pr-4" colSpan={2}>
+                        Total Income
+                      </td>
+                      <td className="pt-3 pr-4 text-right font-mono text-green-600">
+                        {formatCurrency(incomeTotal)}
+                      </td>
+                      <td colSpan={2} />
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+            </div>
+          )}
+        </section>
       )}
 
       {/* --- EXPENSES TAB --- */}
       {activeTab === 'expenses' && (
         <div className="space-y-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-3">
-              <CardTitle className="text-lg">Expenses</CardTitle>
+          <section className="shell-panel rounded-[28px] p-6 md:p-8">
+            <div className="flex items-center justify-between mb-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Expenses</p>
               <Button
                 size="sm"
                 onClick={() => {
@@ -796,137 +785,136 @@ export default function ProjectDetailPage() {
                 <Plus className="h-4 w-4 mr-1" />
                 Add
               </Button>
-            </CardHeader>
-            <CardContent>
-              {showExpenseForm && (
-                <div className="p-3 border rounded-lg bg-muted/30 space-y-3 mb-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <Select
-                      value={expenseForm.category}
-                      onValueChange={(v) => setExpenseForm((f) => ({ ...f, category: v }))}
-                    >
-                      <SelectTrigger className="h-8 text-sm">
-                        <SelectValue placeholder="Category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {EXPENSE_CATEGORIES.map((c) => (
-                          <SelectItem key={c} value={c}>
-                            {c}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Input
-                      className="h-8 text-sm"
-                      placeholder="Description"
-                      value={expenseForm.description}
-                      onChange={(e) =>
-                        setExpenseForm((f) => ({ ...f, description: e.target.value }))
-                      }
-                    />
-                    <Input
-                      className="h-8 text-sm"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="Amount"
-                      value={expenseForm.amount}
-                      onChange={(e) =>
-                        setExpenseForm((f) => ({ ...f, amount: e.target.value }))
-                      }
-                    />
-                    <Input
-                      className="h-8 text-sm"
-                      type="date"
-                      value={expenseForm.date}
-                      onChange={(e) =>
-                        setExpenseForm((f) => ({ ...f, date: e.target.value }))
-                      }
-                    />
-                  </div>
-                  <div className="flex gap-2 justify-end">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowExpenseForm(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={addExpense}
-                      disabled={savingExpense || !expenseForm.category || !expenseForm.amount}
-                    >
-                      {savingExpense ? 'Saving...' : 'Save'}
-                    </Button>
-                  </div>
-                </div>
-              )}
+            </div>
 
-              {expenseItems.length === 0 && !showExpenseForm ? (
-                <p className="text-sm text-muted-foreground text-center py-6">
-                  No expenses recorded yet.
-                </p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b text-muted-foreground">
-                        <th className="text-left py-2 pr-4 font-medium">Category</th>
-                        <th className="text-left py-2 pr-4 font-medium">Description</th>
-                        <th className="text-right py-2 pr-4 font-medium">Amount</th>
-                        <th className="text-left py-2 pr-4 font-medium">Date</th>
-                        <th className="py-2 w-10" />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {expenseItems.map((item) => (
-                        <tr
-                          key={item.id}
-                          className="border-b hover:bg-muted/50 transition-colors"
-                        >
-                          <td className="py-2 pr-4 font-medium">{item.category}</td>
-                          <td className="py-2 pr-4 text-muted-foreground truncate max-w-[200px]">
-                            {item.description !== item.category ? item.description : '\u2014'}
-                          </td>
-                          <td className="py-2 pr-4 text-right font-mono text-red-500">
-                            {formatCurrency(item.amount)}
-                          </td>
-                          <td className="py-2 pr-4 text-muted-foreground">
-                            {formatDate(item.date)}
-                          </td>
-                          <td className="py-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-destructive hover:text-destructive"
-                              disabled={deletingId === item.id}
-                              onClick={() => handleDeleteTransaction(item.id, 'EXPENSE')}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </td>
-                        </tr>
+            {showExpenseForm && (
+              <div className="p-4 border border-black/5 rounded-[16px] bg-slate-50 space-y-3 mb-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <Select
+                    value={expenseForm.category}
+                    onValueChange={(v) => setExpenseForm((f) => ({ ...f, category: v }))}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder="Category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {EXPENSE_CATEGORIES.map((c) => (
+                        <SelectItem key={c} value={c}>
+                          {c}
+                        </SelectItem>
                       ))}
-                    </tbody>
-                    {expenseItems.length > 0 && (
-                      <tfoot>
-                        <tr className="border-t font-semibold">
-                          <td className="pt-3 pr-4" colSpan={2}>
-                            Total Expenses
-                          </td>
-                          <td className="pt-3 pr-4 text-right font-mono text-red-500">
-                            {formatCurrency(expenseTotal)}
-                          </td>
-                          <td colSpan={2} />
-                        </tr>
-                      </tfoot>
-                    )}
-                  </table>
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    className="h-8 text-sm"
+                    placeholder="Description"
+                    value={expenseForm.description}
+                    onChange={(e) =>
+                      setExpenseForm((f) => ({ ...f, description: e.target.value }))
+                    }
+                  />
+                  <Input
+                    className="h-8 text-sm"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Amount"
+                    value={expenseForm.amount}
+                    onChange={(e) =>
+                      setExpenseForm((f) => ({ ...f, amount: e.target.value }))
+                    }
+                  />
+                  <Input
+                    className="h-8 text-sm"
+                    type="date"
+                    value={expenseForm.date}
+                    onChange={(e) =>
+                      setExpenseForm((f) => ({ ...f, date: e.target.value }))
+                    }
+                  />
                 </div>
-              )}
-            </CardContent>
-          </Card>
+                <div className="flex gap-2 justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowExpenseForm(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={addExpense}
+                    disabled={savingExpense || !expenseForm.category || !expenseForm.amount}
+                  >
+                    {savingExpense ? 'Saving...' : 'Save'}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {expenseItems.length === 0 && !showExpenseForm ? (
+              <p className="text-sm text-slate-400 text-center py-6">
+                No expenses recorded yet.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-slate-400">
+                      <th className="text-left py-2 pr-4 font-medium">Category</th>
+                      <th className="text-left py-2 pr-4 font-medium">Description</th>
+                      <th className="text-right py-2 pr-4 font-medium">Amount</th>
+                      <th className="text-left py-2 pr-4 font-medium">Date</th>
+                      <th className="py-2 w-10" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {expenseItems.map((item) => (
+                      <tr
+                        key={item.id}
+                        className="border-b hover:bg-slate-50/50 transition-colors"
+                      >
+                        <td className="py-2 pr-4 font-medium">{item.category}</td>
+                        <td className="py-2 pr-4 text-slate-400 truncate max-w-[200px]">
+                          {item.description !== item.category ? item.description : '\u2014'}
+                        </td>
+                        <td className="py-2 pr-4 text-right font-mono text-red-500">
+                          {formatCurrency(item.amount)}
+                        </td>
+                        <td className="py-2 pr-4 text-slate-400">
+                          {formatDate(item.date)}
+                        </td>
+                        <td className="py-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive hover:text-destructive"
+                            disabled={deletingId === item.id}
+                            onClick={() => handleDeleteTransaction(item.id, 'EXPENSE')}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  {expenseItems.length > 0 && (
+                    <tfoot>
+                      <tr className="border-t font-semibold">
+                        <td className="pt-3 pr-4" colSpan={2}>
+                          Total Expenses
+                        </td>
+                        <td className="pt-3 pr-4 text-right font-mono text-red-500">
+                          {formatCurrency(expenseTotal)}
+                        </td>
+                        <td colSpan={2} />
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              </div>
+            )}
+          </section>
 
           {/* Subcontractor Payments within Expenses tab */}
           <SubcontractorTable
@@ -946,16 +934,16 @@ export default function ProjectDetailPage() {
           {/* Left: payments + expenses + profit */}
           <div className="md:col-span-2 space-y-4">
             {/* PAYMENTS */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Payments</h3>
+            <section className="shell-panel rounded-[28px] p-6 md:p-8">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Payments</p>
                 <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setActiveTab('payments')}>
                   <Plus className="h-3 w-3 mr-1" />Add
                 </Button>
               </div>
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b text-muted-foreground">
+                  <tr className="border-b text-slate-400">
                     <th className="text-left py-1.5 font-medium">Type</th>
                     <th className="text-right py-1.5 font-medium">Amount</th>
                     <th className="text-right py-1.5 font-medium">Received</th>
@@ -963,7 +951,7 @@ export default function ProjectDetailPage() {
                 </thead>
                 <tbody>
                   {incomeItems.length === 0 ? (
-                    <tr><td colSpan={3} className="py-3 text-center text-muted-foreground">No payments yet</td></tr>
+                    <tr><td colSpan={3} className="py-3 text-center text-slate-400">No payments yet</td></tr>
                   ) : incomeItems.map((item) => (
                     <tr key={item.id} className="border-b border-dashed">
                       <td className="py-1.5 font-medium uppercase text-xs">{item.category}</td>
@@ -980,21 +968,19 @@ export default function ProjectDetailPage() {
                   </tr>
                 </tfoot>
               </table>
-            </div>
-
-            <Separator />
+            </section>
 
             {/* EXPENSES */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Expenses</h3>
+            <section className="shell-panel rounded-[28px] p-6 md:p-8">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Expenses</p>
                 <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setActiveTab('expenses')}>
                   <Plus className="h-3 w-3 mr-1" />Add
                 </Button>
               </div>
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b text-muted-foreground">
+                  <tr className="border-b text-slate-400">
                     <th className="text-left py-1.5 font-medium">Category</th>
                     <th className="text-left py-1.5 font-medium">Description</th>
                     <th className="text-right py-1.5 font-medium">Amount</th>
@@ -1002,11 +988,11 @@ export default function ProjectDetailPage() {
                 </thead>
                 <tbody>
                   {expenseItems.length === 0 ? (
-                    <tr><td colSpan={3} className="py-3 text-center text-muted-foreground">No expenses yet</td></tr>
+                    <tr><td colSpan={3} className="py-3 text-center text-slate-400">No expenses yet</td></tr>
                   ) : expenseItems.map((item) => (
                     <tr key={item.id} className="border-b border-dashed">
                       <td className="py-1.5 font-medium uppercase text-xs">{item.category}</td>
-                      <td className="py-1.5 text-muted-foreground">{item.description || '—'}</td>
+                      <td className="py-1.5 text-slate-400">{item.description || '—'}</td>
                       <td className="py-1.5 text-right font-mono">{formatCurrency(item.amount)}</td>
                     </tr>
                   ))}
@@ -1018,27 +1004,23 @@ export default function ProjectDetailPage() {
                   </tr>
                 </tfoot>
               </table>
-            </div>
+            </section>
 
-            {/* Total Profit bar */}
-            <Card className="bg-gradient-to-r from-purple-600/5 to-cyan-500/5 border-purple-200">
-              <CardContent className="py-4">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold">Total Profit</span>
-                  <span className={`text-xl font-bold font-mono ${cp.grossProfit >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                    {formatCurrency(cp.grossProfit)}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Total Profit tile */}
+            <div className="rounded-[24px] border border-black/5 bg-slate-950 px-5 py-4 text-white">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold">Total Profit</span>
+                <span className={`text-xl font-bold font-mono ${cp.grossProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {formatCurrency(cp.grossProfit)}
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* Right: SUMMARY sidebar */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Summary</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+          <section className="shell-panel rounded-[28px] p-6 md:p-8">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 mb-4">Summary</p>
+            <div className="space-y-3">
               <SummaryRow label="Income" value={formatCurrency(incomeTotal > 0 ? incomeTotal : cp.moneyReceived)} />
               <SummaryRow label="Expenses" value={formatCurrency(expenseTotal > 0 ? expenseTotal : cp.totalExpenses)} negative />
               <Separator />
@@ -1054,7 +1036,7 @@ export default function ProjectDetailPage() {
 
               {/* Editable overrides */}
               <div className="space-y-2 pt-1">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Overrides</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Overrides</p>
                 <FieldRow label="Commission Owed">
                   <EditableField label="Commission Owed" value={project.commissionOwed ?? null} type="currency"
                     formatDisplay={(v) => (v != null ? formatCurrency(v as number) : '\u2014')} onSave={(v) => handleFieldSave('commissionOwed', v)} />
@@ -1073,12 +1055,12 @@ export default function ProjectDetailPage() {
 
               {/* Notes */}
               <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Notes</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Notes</p>
                 <EditableField label="Notes" value={project.notes} type="text"
                   formatDisplay={(v) => (v ? String(v) : 'Add notes...')} onSave={(v) => handleFieldSave('notes', v)} />
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </section>
         </div>
       )}
 
@@ -1097,44 +1079,44 @@ export default function ProjectDetailPage() {
 
       {/* --- PHOTOS TAB --- */}
       {activeTab === 'photos' && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Photos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {photosFromNotes.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-6">
-                No photos yet. Add photos via the Activity tab.
-              </p>
-            ) : (
-              <div className="space-y-4">
-                {photosFromNotes.map((note) => (
-                  <div key={note.id}>
-                    <p className="text-xs text-muted-foreground mb-1">
-                      {note.authorName} &middot; {formatDate(note.createdAt.split('T')[0])}
-                    </p>
-                    <PhotoGallery urls={note.photoUrls} altPrefix="Project photo" />
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <section className="shell-panel rounded-[28px] p-6 md:p-8">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 mb-5">Photos</p>
+          {photosFromNotes.length === 0 ? (
+            <p className="text-sm text-slate-400 text-center py-6">
+              No photos yet. Add photos via the Activity tab.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {photosFromNotes.map((note) => (
+                <div key={note.id}>
+                  <p className="text-xs text-slate-400 mb-1">
+                    {note.authorName} &middot; {formatDate(note.createdAt.split('T')[0])}
+                  </p>
+                  <PhotoGallery urls={note.photoUrls} altPrefix="Project photo" />
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       )}
 
       {/* ================================================================ */}
       {/* DELETE CONFIRMATION DIALOG                                       */}
       {/* ================================================================ */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle>Delete Project?</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground py-2">
-            This will soft-delete the project for <strong>{project.customer}</strong>. This
-            action cannot be easily undone.
-          </p>
-          <DialogFooter>
+        <DialogContent className="max-w-[400px] rounded-[28px] border-black/5 bg-white p-0 shadow-2xl">
+          <div className="border-b border-black/5 px-6 py-5">
+            <DialogHeader>
+              <DialogTitle>Delete Project?</DialogTitle>
+            </DialogHeader>
+          </div>
+          <div className="px-6 py-6">
+            <p className="text-sm text-slate-500">
+              This will soft-delete the project for <strong className="text-slate-950">{project.customer}</strong>. This
+              action cannot be easily undone.
+            </p>
+          </div>
+          <div className="flex items-center justify-end gap-3 border-t border-black/5 px-6 py-5">
             <Button
               variant="outline"
               onClick={() => setShowDeleteDialog(false)}
@@ -1145,7 +1127,7 @@ export default function ProjectDetailPage() {
             <Button variant="destructive" onClick={handleDeleteProject} disabled={deleting}>
               {deleting ? 'Deleting...' : 'Delete Project'}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
@@ -1156,29 +1138,42 @@ export default function ProjectDetailPage() {
 // Sub-components
 // ---------------------------------------------------------------------------
 
-function KpiCard({
+function KpiTile({
   label,
   value,
   icon,
   valueClassName,
+  dark = false,
 }: {
   label: string;
   value: string;
   icon: React.ReactNode;
   valueClassName?: string;
+  dark?: boolean;
 }) {
-  return (
-    <Card className="relative overflow-hidden">
-      <CardContent className="py-4">
-        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+  if (dark) {
+    return (
+      <div className="rounded-[24px] border border-black/5 bg-slate-950 px-5 py-4 text-white relative overflow-hidden">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
           {label}
         </p>
-        <p className={`text-xl sm:text-2xl font-bold mt-1 font-mono ${valueClassName ?? ''}`}>
+        <p className={`text-xl sm:text-2xl font-bold mt-1 font-mono ${valueClassName ?? 'text-white'}`}>
           {value}
         </p>
-        <div className="absolute top-4 right-4 text-muted-foreground/20">{icon}</div>
-      </CardContent>
-    </Card>
+        <div className="absolute top-4 right-4 text-white/10">{icon}</div>
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-[24px] border border-black/5 bg-white/70 px-5 py-4 relative overflow-hidden">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+        {label}
+      </p>
+      <p className={`text-xl sm:text-2xl font-bold mt-1 font-mono ${valueClassName ?? 'text-slate-950'}`}>
+        {value}
+      </p>
+      <div className="absolute top-4 right-4 text-slate-200">{icon}</div>
+    </div>
   );
 }
 
@@ -1191,7 +1186,7 @@ function FieldRow({
 }) {
   return (
     <div className="flex justify-between items-center text-sm">
-      <span className="text-muted-foreground">{label}</span>
+      <span className="text-slate-500">{label}</span>
       {children}
     </div>
   );
@@ -1217,7 +1212,7 @@ function SummaryRow({
 
   return (
     <div className="flex justify-between text-sm">
-      <span className={highlight ? 'font-semibold' : 'text-muted-foreground'}>{label}</span>
+      <span className={highlight ? 'font-semibold text-slate-950' : 'text-slate-500'}>{label}</span>
       <span className={`font-mono ${highlight ? 'font-semibold' : ''} ${valueClass}`}>
         {negative && positive === undefined ? `- ${value}` : value}
       </span>

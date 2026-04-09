@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -145,18 +144,19 @@ export function ProjectFinancialsCard({
   const expenseTotal = expenseItems.reduce((s, e) => s + e.amount, 0);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
+    <section className="shell-panel rounded-[28px] p-6 md:p-8">
+      <div className="mb-5">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
           Financials
           {isSnapshot && (
-            <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded">
+            <span className="ml-2 normal-case tracking-normal text-xs font-normal text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
               Snapshot
             </span>
           )}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
+        </p>
+      </div>
+
+      <div className="space-y-3">
         {/* Editable fields */}
         <EditableRow label="Project Total">
           <EditableField label="Project Total" value={projectTotal} type="currency"
@@ -208,7 +208,7 @@ export function ProjectFinancialsCard({
             <div className="mt-2 space-y-1">
               {incomeItems.map((item) => (
                 <div key={item.id} className="flex items-center justify-between text-xs py-1 border-b border-dashed">
-                  <span className="text-muted-foreground w-20">{new Date(item.date).toLocaleDateString()}</span>
+                  <span className="text-slate-400 w-20">{new Date(item.date).toLocaleDateString()}</span>
                   <span className="flex-1 truncate px-2">{item.category}{item.description && item.description !== item.category ? ` — ${item.description}` : ''}</span>
                   <span className="font-mono text-green-600 w-20 text-right">{formatCurrency(item.amount)}</span>
                   <Button variant="ghost" size="icon" className="h-6 w-6 ml-1 text-destructive" disabled={deletingId === item.id}
@@ -219,7 +219,7 @@ export function ProjectFinancialsCard({
               ))}
 
               {showIncomeForm ? (
-                <div className="p-2 border rounded bg-muted/30 space-y-2 mt-2">
+                <div className="p-2 border border-black/5 rounded-[16px] bg-slate-50 space-y-2 mt-2">
                   <div className="grid grid-cols-2 gap-2">
                     <Select value={incomeForm.category} onValueChange={(v) => setIncomeForm((f) => ({ ...f, category: v }))}>
                       <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Category" /></SelectTrigger>
@@ -263,7 +263,7 @@ export function ProjectFinancialsCard({
             <div className="mt-2 space-y-1">
               {expenseItems.map((item) => (
                 <div key={item.id} className="flex items-center justify-between text-xs py-1 border-b border-dashed">
-                  <span className="text-muted-foreground w-20">{new Date(item.date).toLocaleDateString()}</span>
+                  <span className="text-slate-400 w-20">{new Date(item.date).toLocaleDateString()}</span>
                   <span className="flex-1 truncate px-2">{item.category}{item.description && item.description !== item.category ? ` — ${item.description}` : ''}</span>
                   <span className="font-mono text-red-500 w-20 text-right">{formatCurrency(item.amount)}</span>
                   <Button variant="ghost" size="icon" className="h-6 w-6 ml-1 text-destructive" disabled={deletingId === item.id}
@@ -274,7 +274,7 @@ export function ProjectFinancialsCard({
               ))}
 
               {showExpenseForm ? (
-                <div className="p-2 border rounded bg-muted/30 space-y-2 mt-2">
+                <div className="p-2 border border-black/5 rounded-[16px] bg-slate-50 space-y-2 mt-2">
                   <div className="grid grid-cols-2 gap-2">
                     <Select value={expenseForm.category} onValueChange={(v) => setExpenseForm((f) => ({ ...f, category: v }))}>
                       <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Category" /></SelectTrigger>
@@ -302,15 +302,15 @@ export function ProjectFinancialsCard({
             </div>
           )}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }
 
 function EditableRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex justify-between items-center text-sm">
-      <span className="text-muted-foreground">{label}</span>
+      <span className="text-slate-500">{label}</span>
       {children}
     </div>
   );
@@ -321,7 +321,7 @@ function Row({ label, value, negative = false, highlight = false }: {
 }) {
   return (
     <div className="flex justify-between text-sm">
-      <span className={highlight ? 'font-semibold' : 'text-muted-foreground'}>{label}</span>
+      <span className={highlight ? 'font-semibold text-slate-950' : 'text-slate-500'}>{label}</span>
       <span className={`font-mono ${highlight ? 'font-semibold' : ''} ${negative ? 'text-red-500' : ''}`}>
         {negative ? `- ${value}` : value}
       </span>

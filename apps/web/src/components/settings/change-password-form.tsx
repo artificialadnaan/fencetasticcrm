@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -55,62 +54,69 @@ export function ChangePasswordForm() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">Change Password</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4 max-w-sm">
-          <div className="space-y-1.5">
-            <Label htmlFor="cp-current">Current Password</Label>
-            <Input
-              id="cp-current"
-              type="password"
-              autoComplete="current-password"
-              value={form.currentPassword}
-              onChange={(e) => setForm((f) => ({ ...f, currentPassword: e.target.value }))}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="cp-new">New Password</Label>
-            <Input
-              id="cp-new"
-              type="password"
-              autoComplete="new-password"
-              placeholder="Minimum 8 characters"
-              value={form.newPassword}
-              onChange={(e) => {
-                setForm((f) => ({ ...f, newPassword: e.target.value }));
-                setSuccess(false);
-              }}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="cp-confirm">Confirm New Password</Label>
-            <Input
-              id="cp-confirm"
-              type="password"
-              autoComplete="new-password"
-              value={form.confirmPassword}
-              onChange={(e) => {
-                setForm((f) => ({ ...f, confirmPassword: e.target.value }));
-                setSuccess(false);
-              }}
-              className={passwordMismatch ? 'border-destructive' : ''}
-            />
-            {passwordMismatch && (
-              <p className="text-xs text-destructive">Passwords do not match.</p>
-            )}
-          </div>
-          {error != null && <p className="text-sm text-destructive">{error}</p>}
-          {success && (
-            <p className="text-sm text-green-600 dark:text-green-400">Password updated successfully.</p>
+    <section className="shell-panel rounded-[28px] p-6 md:p-8">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Security</p>
+      <h2 className="mt-3 text-2xl font-semibold tracking-[-0.05em] text-slate-950">Change Password</h2>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+        Update your account password. You will need your current password to make changes.
+      </p>
+
+      <form onSubmit={handleSubmit} className="mt-6 space-y-4 max-w-sm">
+        <div className="space-y-1.5">
+          <Label htmlFor="cp-current">Current Password</Label>
+          <Input
+            id="cp-current"
+            type="password"
+            autoComplete="current-password"
+            value={form.currentPassword}
+            onChange={(e) => setForm((f) => ({ ...f, currentPassword: e.target.value }))}
+            className="rounded-2xl border-black/10 bg-white shadow-sm"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="cp-new">New Password</Label>
+          <Input
+            id="cp-new"
+            type="password"
+            autoComplete="new-password"
+            placeholder="Minimum 8 characters"
+            value={form.newPassword}
+            onChange={(e) => {
+              setForm((f) => ({ ...f, newPassword: e.target.value }));
+              setSuccess(false);
+            }}
+            className="rounded-2xl border-black/10 bg-white shadow-sm"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="cp-confirm">Confirm New Password</Label>
+          <Input
+            id="cp-confirm"
+            type="password"
+            autoComplete="new-password"
+            value={form.confirmPassword}
+            onChange={(e) => {
+              setForm((f) => ({ ...f, confirmPassword: e.target.value }));
+              setSuccess(false);
+            }}
+            className={`rounded-2xl border-black/10 bg-white shadow-sm${passwordMismatch ? ' border-destructive' : ''}`}
+          />
+          {passwordMismatch && (
+            <p className="text-xs text-destructive">Passwords do not match.</p>
           )}
-          <Button type="submit" disabled={saving || !isValid}>
-            {saving ? 'Updating…' : 'Update Password'}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+        </div>
+        {error != null && <p className="text-sm text-destructive">{error}</p>}
+        {success && (
+          <p className="text-sm text-green-600 dark:text-green-400">Password updated successfully.</p>
+        )}
+        <Button
+          type="submit"
+          disabled={saving || !isValid}
+          className="rounded-2xl bg-slate-950 px-5 text-white hover:bg-slate-800"
+        >
+          {saving ? 'Updating…' : 'Update Password'}
+        </Button>
+      </form>
+    </section>
   );
 }
