@@ -11,6 +11,7 @@ Replace external spreadsheet-based financial management with comprehensive in-ap
 In scope:
 
 - Add `subcategory` field to Transaction model.
+- Add `effectiveFrom` / `effectiveTo` date fields to OperatingExpense model.
 - New `MaterialLineItem` model for per-project material cost tracking.
 - Rebuild the Reports page with 5 financial report views styled to the unified design system.
 - Add Materials tab to Project Detail page with inline entry and bulk-add.
@@ -91,25 +92,33 @@ All reports share:
 
 Reports page uses tab navigation across the 5 reports.
 
-### Date Attribution Rules
+### Date Attribution Rules — Completion-Based P&L
 
-Each report uses specific date fields for filtering:
+The P&L is **completion-based** (accrual-like): both revenue and costs for a project are attributed to the project's completion month. This prevents the common problem of revenue and COGS landing in different months for the same job.
 
-| Report | Revenue dates | Expense/cost dates |
-|--------|--------------|-------------------|
-| P&L | `Project.completedDate` (fallback: `Project.contractDate`) | `Transaction.date` for transactions; `MaterialLineItem.purchaseDate` for materials; `SubcontractorPayment.datePaid` for subs |
-| Job Costing | `Project.contractDate` for project inclusion filter | All costs tied to project regardless of date |
-| Commission Summary | `CommissionSnapshot.settledAt` | N/A |
-| Expense Breakdown | N/A | `Transaction.date`; `MaterialLineItem.purchaseDate` |
-| Cash Flow | `Transaction.date` (INCOME type) | `Transaction.date` (EXPENSE type); `MaterialLineItem.purchaseDate` for unlinked materials |
+| Report | Date attribution |
+|--------|-----------------|
+| P&L | **Completion-based.** Revenue AND all project COGS (materials, subs) are attributed to `Project.completedDate` month (fallback: `Project.contractDate`). Non-project expenses and operating expenses use `Transaction.date` / synthetic monthly. |
+| Job Costing | `Project.contractDate` for project inclusion filter. All costs tied to project regardless of date. |
+| Commission Summary | `CommissionSnapshot.settledAt` for settled. Unsettled shown separately with no date filter. |
+| Expense Breakdown | `Transaction.date`; `MaterialLineItem.purchaseDate`. Shows all expenses regardless of project attribution. |
+| Cash Flow | `Transaction.date` for both INCOME and EXPENSE types. MaterialLineItem costs only appear via their linked Transaction. Unlinked materials use `purchaseDate`. |
 
 ### Operating Expense Attribution
 
-`OperatingExpense` records have no date — they represent recurring costs (monthly/quarterly/annual) with an `isActive` flag. For date-range reporting:
+`OperatingExpense` records have no date — they represent recurring costs (monthly/quarterly/annual) with an `isActive` flag.
 
-- Expand active operating expenses into synthetic monthly amounts: `MONTHLY` = amount, `QUARTERLY` = amount / 3, `ANNUAL` = amount / 12.
-- Attribute to each month in the selected date range.
-- This is an approximation. If precise tracking is needed later, operating expenses should be converted to actual dated Transactions.
+**New fields on OperatingExpense:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `effectiveFrom` | DateTime (Date) | No | When this expense started. Null = assumed active since business start. |
+| `effectiveTo` | DateTime (Date) | No | When this expense ended. Null = still active. |
+
+For date-range reporting:
+- Expand operating expenses into synthetic monthly amounts: `MONTHLY` = amount, `QUARTERLY` = amount / 3, `ANNUAL` = amount / 12.
+- Only attribute to months within the `effectiveFrom`–`effectiveTo` range (inclusive). If `effectiveFrom` is null, include all months up to `effectiveTo`. If `effectiveTo` is null, include all months from `effectiveFrom` onward.
+- `isActive` is kept for backward compatibility but `effectiveTo` is the authoritative end date for reporting. A deactivated expense with no `effectiveTo` is treated as ending at deactivation time (set `effectiveTo` when deactivating).
 
 ### 1. Profit & Loss (P&L)
 
@@ -117,10 +126,10 @@ Period toggle: monthly / quarterly / annual.
 
 | Line Item | Source |
 |-----------|--------|
-| **Revenue** | Sum of `Project.moneyReceived` for projects with `completedDate` (or `contractDate`) in period |
-| **Cost of Goods Sold** | Sum of `MaterialLineItem.totalCost` + `SubcontractorPayment.amountPaid` for project-linked items in period |
+| **Revenue** | Sum of `Project.moneyReceived` for projects completed (or contracted) in period |
+| **Cost of Goods Sold** | For each project in period: Materials (MaterialLineItem totals, fallback `materialsCost`) + Subs (`SubcontractorPayment.amountPaid`) + Other Project Expenses (project-linked Transaction remainders after material split). All rolled into the project's completion month. |
 | **Gross Profit** | Revenue - COGS |
-| **Operating Expenses** | Synthetic monthly operating expenses + non-project-linked expense Transactions in period |
+| **Operating Expenses** | Synthetic monthly operating expenses (within `effectiveFrom`–`effectiveTo`) + non-project-linked expense Transactions by `Transaction.date` |
 | **Commissions** | Sum of `CommissionSnapshot.adnaanCommission + CommissionSnapshot.memeCommission` for snapshots settled in period |
 | **Net Profit** | Gross Profit - Operating Expenses - Commissions |
 
@@ -141,9 +150,10 @@ Table view, one row per project:
 | Revenue | `Project.moneyReceived` |
 | Materials | Sum of `MaterialLineItem.totalCost` for project. Falls back to `Project.materialsCost` for legacy projects with no MaterialLineItems. |
 | Subcontractors | Sum of `SubcontractorPayment.amountPaid` for project |
-| Commissions (Adnaan) | `Project.commissionOwed` (or `CommissionSnapshot.adnaanCommission` if settled) |
-| Commissions (Meme) | `Project.memesCommission` (or `CommissionSnapshot.memeCommission` if settled) |
-| **Profit** | Revenue - Materials - Subs - Commissions |
+| Other Project Expenses | Sum of project-linked Transaction remainders (amount minus linked MaterialLineItem totals). Captures tax, shipping, misc costs from receipts. |
+| Commissions (Adnaan) | If settled: `CommissionSnapshot.adnaanCommission`. If unsettled: computed via `calculateCommission()` using current project data (same path as commission preview). |
+| Commissions (Meme) | If settled: `CommissionSnapshot.memeCommission`. If unsettled: computed via `calculateCommission()`. |
+| **Profit** | Revenue - Materials - Subs - Other Expenses - Commissions |
 | **Margin %** | Profit / Revenue * 100 (guard: 0% if Revenue = 0) |
 
 Sortable by any column. Filterable by status, date range (using `contractDate`), fence type. Click row to expand line-item breakdown.
@@ -167,7 +177,7 @@ Period-based, grouped by person. Source of truth: `CommissionSnapshot` records (
 
 Filtered by `CommissionSnapshot.settledAt` date range.
 
-For unsettled projects (no snapshot yet): show `Project.commissionOwed` / `Project.memesCommission` in a separate "Pending" section, not mixed into settled totals.
+For unsettled projects (no snapshot yet): compute commission values live via `calculateCommission()` using the project's current `projectTotal`, `paymentMethod`, `materialsCost`, and subcontractor totals — the same calculation path used by the commission preview on the project detail page. Show these in a separate "Pending" section, not mixed into settled totals.
 
 ### 4. Expense Breakdown
 
@@ -238,8 +248,9 @@ New summary card visible on Project Detail (above or alongside materials):
 |--------|--------|
 | Total Materials | Sum of `MaterialLineItem.totalCost` (fallback: `Project.materialsCost` if no line items) |
 | Total Subs | Sum of `SubcontractorPayment.amountPaid` |
-| Total Commissions | `Project.commissionOwed` + `Project.memesCommission` |
-| **Project Profit** | `Project.moneyReceived` - Materials - Subs - Commissions |
+| Other Expenses | Sum of project-linked Transaction remainders (amount minus linked MaterialLineItem totals) |
+| Total Commissions | If settled: from `CommissionSnapshot`. If unsettled: computed live via `calculateCommission()`. |
+| **Project Profit** | `Project.moneyReceived` - Materials - Subs - Other Expenses - Commissions |
 | **Margin %** | Profit / `Project.moneyReceived` * 100 (guard: 0% if moneyReceived = 0) |
 
 ### Finances Page
@@ -267,7 +278,15 @@ No changes needed — Transaction creation already supports `projectId` via the 
 
 | Method | Path | Change |
 |--------|------|--------|
-| PATCH | `/api/transactions/:id` | Accept optional `subcategory` (consistent with existing PATCH verb) |
+| POST | `/api/transactions` | Accept optional `subcategory` in create body |
+| PATCH | `/api/transactions/:id` | Accept optional `subcategory` in update body |
+| GET | `/api/transactions` | Return `subcategory` in list response |
+
+### Shared Type Changes
+
+Update `packages/shared/src/types.ts`:
+- Add `subcategory?: string` to `TransactionCreate`, `TransactionUpdate`, and `TransactionListItem` types.
+- Update Zod schemas in `apps/api/src/routes/transactions.ts` for both create and update to accept `subcategory: z.string().max(100).optional()`.
 
 ### API Validation (Zod)
 
@@ -289,10 +308,11 @@ Validation rules:
 - `unitCost` must be non-negative (>= 0)
 - `category` must be a valid MaterialCategory enum value
 - `transactionId` if provided must reference an EXPENSE Transaction with matching or null `projectId`
+- **Allocation cap:** When linking to a Transaction, server validates that `SUM(existing linked MaterialLineItem.totalCost) + new item(s) totalCost <= Transaction.amount`. This check runs inside the Prisma `$transaction` to prevent race conditions on concurrent links. Applies to both bulk create and individual PATCH.
 - Bulk create is wrapped in a Prisma `$transaction` — all-or-nothing
 - Max 50 items per bulk request
 
-**PATCH `/api/materials/:id`** — partial update, same field validations as create.
+**PATCH `/api/materials/:id`** — partial update, same field validations as create. Allocation cap is rechecked: `existing total - old row total + new row total <= Transaction.amount`.
 
 ## Database Indexes
 
@@ -313,6 +333,7 @@ Note: `Transaction` already has a `projectId` field but may need a composite ind
 ## Migration Strategy
 
 - Add `subcategory` column to Transaction as nullable (no breaking changes)
+- Add `effectiveFrom` and `effectiveTo` nullable Date columns to OperatingExpense
 - Create `MaterialLineItem` table with `MaterialCategory` enum
 - Add database indexes listed above
 - Existing `Project.materialsCost` field is NOT removed — it serves as the legacy fallback for projects that predate MaterialLineItem tracking. Job Costing report checks for MaterialLineItems first, falls back to `materialsCost`.
