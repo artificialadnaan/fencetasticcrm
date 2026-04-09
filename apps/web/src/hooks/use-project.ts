@@ -35,8 +35,13 @@ export function useProject(projectId: string | undefined): UseProjectReturn {
     fetchProject();
   }, [fetchProject]);
 
+  // Polling — paused when tab is backgrounded
   useEffect(() => {
-    const interval = setInterval(fetchProject, POLLING_INTERVAL_MS);
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchProject();
+      }
+    }, POLLING_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [fetchProject]);
 

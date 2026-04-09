@@ -12,6 +12,14 @@ import {
   getCoreRowModel,
   useReactTable,
 } from '@tanstack/react-table';
+
+// Extend TanStack Table's ColumnMeta to support responsive visibility classNames
+declare module '@tanstack/react-table' {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface ColumnMeta<TData, TValue> {
+    className?: string;
+  }
+}
 import { PROJECT_STATUS_META, type PaginatedResponse, type ProjectListItem } from '@fencetastic/shared';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -141,14 +149,17 @@ export function ProjectsTableShell({
         </div>
       ) : (
         <div className="mt-6 overflow-hidden rounded-[28px] border border-black/5 bg-white/75">
-          <Table className="min-w-[1180px]">
+          <Table className="min-w-[640px]">
             <TableHeader className="sticky top-0 z-10 bg-[rgba(255,255,255,0.96)] backdrop-blur">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id} className="border-slate-200/70">
                   {headerGroup.headers.map((header) => (
                     <TableHead
                       key={header.id}
-                      className="h-12 px-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500"
+                      className={cn(
+                        'h-12 px-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500',
+                        header.column.columnDef.meta?.className
+                      )}
                     >
                       {header.isPlaceholder
                         ? null
@@ -183,7 +194,10 @@ export function ProjectsTableShell({
                       )}
                     >
                       {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id} className="px-4 py-4 align-middle">
+                        <TableCell
+                          key={cell.id}
+                          className={cn('px-4 py-4 align-middle', cell.column.columnDef.meta?.className)}
+                        >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </TableCell>
                       ))}

@@ -52,9 +52,13 @@ export function useProjects(query: ProjectListQuery = {}): UseProjectsReturn {
     fetchProjects();
   }, [fetchProjects]);
 
-  // Polling
+  // Polling — paused when tab is backgrounded
   useEffect(() => {
-    const interval = setInterval(fetchProjects, POLLING_INTERVAL_MS);
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchProjects();
+      }
+    }, POLLING_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [fetchProjects]);
 

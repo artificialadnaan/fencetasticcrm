@@ -4,6 +4,7 @@ import { Toaster } from 'sonner';
 import { cn } from '@/lib/utils';
 import Sidebar, { NAV_ITEMS } from './sidebar';
 import PageShell, { PageShellProvider, type PageShellConfig } from './page-shell';
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 
 const ROUTE_SUBTITLES: Record<string, string> = {
   '/': 'Overview of your operations, revenue, and active fieldwork.',
@@ -42,6 +43,7 @@ function getDefaultShellConfig(pathname: string): PageShellConfig {
 }
 
 export default function AppLayout() {
+  useKeyboardShortcuts();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pageShellConfig, setPageShellConfig] = useState<PageShellConfig>({});

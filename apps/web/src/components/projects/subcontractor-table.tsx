@@ -143,9 +143,12 @@ export function SubcontractorTable({
 
         <div className="mt-6">
           {subs.length === 0 ? (
-            <p className="text-sm text-slate-500 text-center py-6">
-              No subcontractor payments yet.
-            </p>
+            <div className="text-center py-6">
+              <p className="text-sm text-slate-500">No subcontractor payments yet.</p>
+              <Button type="button" variant="outline" size="sm" onClick={openAdd} className="mt-2 rounded-2xl">
+                Add Sub
+              </Button>
+            </div>
           ) : (
             <div className="rounded-[28px] border border-black/5 bg-white/55 overflow-hidden">
               <div className="overflow-x-auto">

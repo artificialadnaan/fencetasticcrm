@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus } from 'lucide-react';
+import { Plus, ChevronDown, ChevronUp } from 'lucide-react';
 import { api } from '@/lib/api';
 import { FenceType, PaymentMethod, ProjectStatus } from '@fencetastic/shared';
 import type { RateTemplate } from '@fencetastic/shared';
@@ -68,6 +68,7 @@ export function CreateProjectDialog({ onCreated, open: controlledOpen, onOpenCha
   const [subcontractor, setSubcontractor] = useState('');
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
+  const [showDetails, setShowDetails] = useState(false);
 
   // Sync defaultInstallDate into form when dialog opens with a new date
   useEffect(() => {
@@ -94,6 +95,7 @@ export function CreateProjectDialog({ onCreated, open: controlledOpen, onOpenCha
     setSubcontractor('');
     setNotes('');
     setError('');
+    setShowDetails(false);
   }
 
   function handleTemplateSelect(templateId: string) {
@@ -206,8 +208,8 @@ export function CreateProjectDialog({ onCreated, open: controlledOpen, onOpenCha
               <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} required rows={2} />
             </div>
 
-            {/* Fence Type, Status, Payment Method */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Fence Type & Status */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Fence Type *</Label>
                 <Select value={fenceType} onValueChange={setFenceType}>
@@ -230,84 +232,102 @@ export function CreateProjectDialog({ onCreated, open: controlledOpen, onOpenCha
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Payment Method *</Label>
-                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.values(PaymentMethod).map((p) => (
-                      <SelectItem key={p} value={p}>{p.replace('_', ' ')}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
 
-            {/* Rate Template + Linear Feet */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Rate Template</Label>
-                <Select value={selectedTemplateId} onValueChange={handleTemplateSelect}>
-                  <SelectTrigger><SelectValue placeholder="Select template..." /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="NONE">No template</SelectItem>
-                    {templates.map((t: RateTemplate) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.name} (${t.ratePerFoot}/ft)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="linearFeet">Linear Feet</Label>
-                <Input id="linearFeet" type="number" step="0.01" value={linearFeet} onChange={(e) => handleLinearFeetChange(e.target.value)} />
-              </div>
-            </div>
+            {/* Collapsible details toggle */}
+            <button
+              type="button"
+              onClick={() => setShowDetails(!showDetails)}
+              className="flex items-center gap-2 text-sm font-medium text-[hsl(var(--brand-blue))] hover:underline"
+            >
+              {showDetails ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              {showDetails ? 'Hide' : 'Show'} financial & schedule details
+            </button>
 
-            {/* Financial Fields */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="projectTotal">Project Total *</Label>
-                <Input id="projectTotal" type="number" step="0.01" min="0" value={projectTotal} onChange={(e) => setProjectTotal(e.target.value)} required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="materialsCost">Materials Cost *</Label>
-                <Input id="materialsCost" type="number" step="0.01" min="0" value={materialsCost} onChange={(e) => setMaterialsCost(e.target.value)} required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="forecastedExpenses">Forecasted Expenses *</Label>
-                <Input id="forecastedExpenses" type="number" step="0.01" min="0" value={forecastedExpenses} onChange={(e) => setForecastedExpenses(e.target.value)} required />
-              </div>
-            </div>
+            {showDetails && (
+              <div className="space-y-4">
+                {/* Payment Method */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Payment Method</Label>
+                    <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {Object.values(PaymentMethod).map((p) => (
+                          <SelectItem key={p} value={p}>{p.replace('_', ' ')}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
 
-            {/* Date Fields */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="contractDate">Contract Date *</Label>
-                <Input id="contractDate" type="date" value={contractDate} onChange={(e) => setContractDate(e.target.value)} required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="installDate">Install Date *</Label>
-                <Input id="installDate" type="date" value={installDate} onChange={(e) => setInstallDate(e.target.value)} required />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="estimateDate">Estimate Date</Label>
-                <Input id="estimateDate" type="date" value={estimateDate} onChange={(e) => setEstimateDate(e.target.value)} />
-              </div>
-            </div>
+                {/* Rate Template + Linear Feet */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Rate Template</Label>
+                    <Select value={selectedTemplateId} onValueChange={handleTemplateSelect}>
+                      <SelectTrigger><SelectValue placeholder="Select template..." /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="NONE">No template</SelectItem>
+                        {templates.map((t: RateTemplate) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.name} (${t.ratePerFoot}/ft)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="linearFeet">Linear Feet</Label>
+                    <Input id="linearFeet" type="number" step="0.01" value={linearFeet} onChange={(e) => handleLinearFeetChange(e.target.value)} />
+                  </div>
+                </div>
 
-            {/* Subcontractor & Notes */}
-            <div className="space-y-2">
-              <Label htmlFor="subcontractor">Subcontractor</Label>
-              <Input id="subcontractor" value={subcontractor} onChange={(e) => setSubcontractor(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notes</Label>
-              <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
-            </div>
+                {/* Financial Fields */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="projectTotal">Project Total</Label>
+                    <Input id="projectTotal" type="number" step="0.01" min="0" value={projectTotal} onChange={(e) => setProjectTotal(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="materialsCost">Materials Cost</Label>
+                    <Input id="materialsCost" type="number" step="0.01" min="0" value={materialsCost} onChange={(e) => setMaterialsCost(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="forecastedExpenses">Forecasted Expenses</Label>
+                    <Input id="forecastedExpenses" type="number" step="0.01" min="0" value={forecastedExpenses} onChange={(e) => setForecastedExpenses(e.target.value)} />
+                  </div>
+                </div>
+
+                {/* Date Fields */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="contractDate">Contract Date</Label>
+                    <Input id="contractDate" type="date" value={contractDate} onChange={(e) => setContractDate(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="installDate">Install Date</Label>
+                    <Input id="installDate" type="date" value={installDate} onChange={(e) => setInstallDate(e.target.value)} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="estimateDate">Estimate Date</Label>
+                    <Input id="estimateDate" type="date" value={estimateDate} onChange={(e) => setEstimateDate(e.target.value)} />
+                  </div>
+                </div>
+
+                {/* Subcontractor & Notes */}
+                <div className="space-y-2">
+                  <Label htmlFor="subcontractor">Subcontractor</Label>
+                  <Input id="subcontractor" value={subcontractor} onChange={(e) => setSubcontractor(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Notes</Label>
+                  <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
+                </div>
+              </div>
+            )}
 
             {/* Submit */}
             <div className="flex justify-end gap-2 pt-2">

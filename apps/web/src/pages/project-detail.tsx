@@ -112,6 +112,7 @@ export default function ProjectDetailPage() {
 
   const {
     data: notes,
+    refetch: refetchNotes,
     createNote,
     updateNote,
     deleteNote,
@@ -741,9 +742,12 @@ export default function ProjectDetailPage() {
           )}
 
           {incomeItems.length === 0 && !showIncomeForm ? (
-            <p className="text-sm text-slate-400 text-center py-6">
-              No payments recorded yet.
-            </p>
+            <div className="text-center py-6">
+              <p className="text-sm text-slate-400">No payments recorded yet.</p>
+              <Button type="button" variant="outline" size="sm" onClick={() => setShowIncomeForm(true)} className="mt-2 rounded-2xl">
+                Add Payment
+              </Button>
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -895,9 +899,12 @@ export default function ProjectDetailPage() {
             )}
 
             {expenseItems.length === 0 && !showExpenseForm ? (
-              <p className="text-sm text-slate-400 text-center py-6">
-                No expenses recorded yet.
-              </p>
+              <div className="text-center py-6">
+                <p className="text-sm text-slate-400">No expenses recorded yet.</p>
+                <Button type="button" variant="outline" size="sm" onClick={() => setShowExpenseForm(true)} className="mt-2 rounded-2xl">
+                  Add Expense
+                </Button>
+              </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -1124,9 +1131,21 @@ export default function ProjectDetailPage() {
         <section className="shell-panel rounded-[28px] p-6 md:p-8">
           <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 mb-5">Photos</p>
           {photosFromNotes.length === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-6">
-              No photos yet. Add photos via the Activity tab.
-            </p>
+            <div className="text-center py-8">
+              <p className="text-sm text-slate-500">No photos yet.</p>
+              <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-black/10 bg-white/70 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-white">
+                <Plus className="h-4 w-4" />
+                Upload Photos
+                <input type="file" accept="image/*" multiple className="hidden" onChange={async (e) => {
+                  const files = e.target.files;
+                  if (!files?.length) return;
+                  for (const file of Array.from(files)) {
+                    await uploadPhoto(id!, file);
+                  }
+                  refetchNotes();
+                }} />
+              </label>
+            </div>
           ) : (
             <div className="space-y-4">
               {photosFromNotes.map((note) => (

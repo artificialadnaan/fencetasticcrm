@@ -170,9 +170,9 @@ export function OperatingExpensesSection({
                   <thead>
                     <tr className="border-b border-black/5 text-slate-500">
                       <th className="text-left py-3 px-4 font-medium">Category</th>
-                      <th className="text-left py-3 px-4 font-medium">Description</th>
+                      <th className="hidden md:table-cell text-left py-3 px-4 font-medium">Description</th>
                       <th className="text-right py-3 px-4 font-medium">Amount</th>
-                      <th className="text-left py-3 px-4 font-medium">Frequency</th>
+                      <th className="hidden md:table-cell text-left py-3 px-4 font-medium">Frequency</th>
                       <th className="py-3 px-4" />
                     </tr>
                   </thead>
@@ -180,9 +180,9 @@ export function OperatingExpensesSection({
                     {expenses.map((e) => (
                       <tr key={e.id} className="border-b border-black/5 hover:bg-white/70 transition-colors">
                         <td className="py-3 px-4 font-medium text-slate-950">{e.category}</td>
-                        <td className="py-3 px-4 text-slate-500">{e.description}</td>
+                        <td className="hidden md:table-cell py-3 px-4 text-slate-500">{e.description}</td>
                         <td className="py-3 px-4 text-right font-mono text-slate-700">{formatCurrency(e.amount)}</td>
-                        <td className="py-3 px-4">
+                        <td className="hidden md:table-cell py-3 px-4">
                           <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
                             {FREQUENCY_LABELS[e.frequency]}
                           </span>

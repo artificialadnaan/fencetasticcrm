@@ -31,11 +31,11 @@ export function ProjectBreakdownTable({
               <tr className="border-b border-black/5 bg-slate-50/80">
                 <th className="px-4 py-3 text-left font-medium text-slate-500">Customer</th>
                 <th className="px-4 py-3 text-right font-medium text-slate-500">Project Total</th>
-                <th className="px-4 py-3 text-right font-medium text-slate-500">Adnaan</th>
-                <th className="px-4 py-3 text-right font-medium text-slate-500">Meme</th>
-                <th className="px-4 py-3 text-right font-medium text-slate-500">Aimann</th>
+                <th className="hidden md:table-cell px-4 py-3 text-right font-medium text-slate-500">Adnaan</th>
+                <th className="hidden md:table-cell px-4 py-3 text-right font-medium text-slate-500">Meme</th>
+                <th className="hidden md:table-cell px-4 py-3 text-right font-medium text-slate-500">Aimann</th>
                 <th className="px-4 py-3 text-right font-medium text-slate-500">Net Profit</th>
-                <th className="px-4 py-3 text-right font-medium text-slate-500">Completed</th>
+                <th className="hidden lg:table-cell px-4 py-3 text-right font-medium text-slate-500">Completed</th>
               </tr>
             </thead>
             <tbody>
@@ -43,7 +43,7 @@ export function ProjectBreakdownTable({
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="border-b border-black/5">
                     {Array.from({ length: 7 }).map((_, j) => (
-                      <td key={j} className="px-4 py-3">
+                      <td key={j} className={j >= 2 && j <= 4 ? 'hidden md:table-cell px-4 py-3' : j === 6 ? 'hidden lg:table-cell px-4 py-3' : 'px-4 py-3'}>
                         <div className="h-4 animate-pulse rounded-[28px] bg-slate-200" />
                       </td>
                     ))}
@@ -63,19 +63,19 @@ export function ProjectBreakdownTable({
                   >
                     <td className="px-4 py-3 font-medium text-slate-950">{row.customer}</td>
                     <td className="px-4 py-3 text-right text-slate-950">{formatCurrency(row.projectTotal)}</td>
-                    <td className="px-4 py-3 text-right text-green-600">
+                    <td className="hidden md:table-cell px-4 py-3 text-right text-green-600">
                       {formatCurrency(row.adnaanCommission)}
                     </td>
-                    <td className="px-4 py-3 text-right text-blue-600">
+                    <td className="hidden md:table-cell px-4 py-3 text-right text-blue-600">
                       {formatCurrency(row.memeCommission)}
                     </td>
-                    <td className="px-4 py-3 text-right text-amber-600">
+                    <td className="hidden md:table-cell px-4 py-3 text-right text-amber-600">
                       {formatCurrency(row.aimannDeduction)}
                     </td>
                     <td className="px-4 py-3 text-right font-medium text-slate-950">
                       {formatCurrency(row.netProfit)}
                     </td>
-                    <td className="px-4 py-3 text-right text-slate-500">
+                    <td className="hidden lg:table-cell px-4 py-3 text-right text-slate-500">
                       {formatDate(row.completedDate)}
                     </td>
                   </tr>

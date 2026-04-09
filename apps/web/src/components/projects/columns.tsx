@@ -14,6 +14,7 @@ export const projectColumns: ColumnDef<ProjectListItem>[] = [
   {
     accessorKey: 'address',
     header: 'Address',
+    meta: { className: 'hidden md:table-cell' },
     cell: ({ row }) => (
       <span className="text-muted-foreground max-w-[200px] truncate block">
         {row.getValue('address')}
@@ -23,6 +24,7 @@ export const projectColumns: ColumnDef<ProjectListItem>[] = [
   {
     accessorKey: 'fenceType',
     header: 'Type',
+    meta: { className: 'hidden md:table-cell' },
     cell: ({ row }) => {
       const type = row.getValue('fenceType') as string;
       return <span className="text-sm">{type.replace('_', ' ')}</span>;
@@ -43,6 +45,7 @@ export const projectColumns: ColumnDef<ProjectListItem>[] = [
   {
     accessorKey: 'receivable',
     header: 'Receivable',
+    meta: { className: 'hidden lg:table-cell' },
     cell: ({ row }) => {
       const receivable = row.getValue('receivable') as number;
       return (
@@ -55,6 +58,7 @@ export const projectColumns: ColumnDef<ProjectListItem>[] = [
   {
     accessorKey: 'profitPercent',
     header: 'Profit %',
+    meta: { className: 'hidden lg:table-cell' },
     cell: ({ row }) => {
       const pct = row.getValue('profitPercent') as number;
       return (

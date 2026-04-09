@@ -165,9 +165,9 @@ export function RateTemplatesSection({
                     <tr className="border-b border-black/5 text-slate-500">
                       <th className="text-left py-3 px-4 font-medium">Type</th>
                       <th className="text-left py-3 px-4 font-medium">Name</th>
-                      <th className="text-right py-3 px-4 font-medium">Materials/ft</th>
-                      <th className="text-right py-3 px-4 font-medium">Labor/ft</th>
-                      <th className="text-left py-3 px-4 font-medium">Description</th>
+                      <th className="hidden md:table-cell text-right py-3 px-4 font-medium">Materials/ft</th>
+                      <th className="hidden md:table-cell text-right py-3 px-4 font-medium">Labor/ft</th>
+                      <th className="hidden lg:table-cell text-left py-3 px-4 font-medium">Description</th>
                       <th className="py-3 px-4" />
                     </tr>
                   </thead>
@@ -180,9 +180,9 @@ export function RateTemplatesSection({
                           </span>
                         </td>
                         <td className="py-3 px-4 font-medium text-slate-950">{t.name}</td>
-                        <td className="py-3 px-4 text-right font-mono text-slate-700">{formatCurrency(t.ratePerFoot)}</td>
-                        <td className="py-3 px-4 text-right font-mono text-slate-700">{formatCurrency(t.laborRatePerFoot)}</td>
-                        <td className="py-3 px-4 text-slate-500 max-w-[200px] truncate">
+                        <td className="hidden md:table-cell py-3 px-4 text-right font-mono text-slate-700">{formatCurrency(t.ratePerFoot)}</td>
+                        <td className="hidden md:table-cell py-3 px-4 text-right font-mono text-slate-700">{formatCurrency(t.laborRatePerFoot)}</td>
+                        <td className="hidden lg:table-cell py-3 px-4 text-slate-500 max-w-[200px] truncate">
                           {t.description ?? '—'}
                         </td>
                         <td className="py-3 px-4">

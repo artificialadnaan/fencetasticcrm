@@ -9,6 +9,14 @@ import {
   type ColumnDef,
   type RowSelectionState,
 } from '@tanstack/react-table';
+
+// Extend TanStack Table's ColumnMeta to support responsive visibility classNames
+declare module '@tanstack/react-table' {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface ColumnMeta<TData, TValue> {
+    className?: string;
+  }
+}
 import {
   PROJECT_STATUS_META,
   PROJECT_STATUS_ORDER,
@@ -147,6 +155,7 @@ function buildColumns(
     {
       id: 'select',
       size: 40,
+      meta: { className: 'hidden md:table-cell' },
       header: ({ table }) => (
         <input
           type="checkbox"
@@ -184,11 +193,13 @@ function buildColumns(
     columnHelper.accessor('contractDate', {
       header: 'Contract Date',
       size: 115,
+      meta: { className: 'hidden lg:table-cell' },
       cell: info => <span className="whitespace-nowrap">{formatDate(info.getValue())}</span>,
     }),
     columnHelper.accessor('notes', {
       header: 'Notes',
       size: 160,
+      meta: { className: 'hidden lg:table-cell' },
       cell: info => (
         <EditableCell
           value={info.getValue()}
@@ -201,6 +212,7 @@ function buildColumns(
     columnHelper.accessor('subcontractor', {
       header: 'SUB',
       size: 120,
+      meta: { className: 'hidden md:table-cell' },
       cell: info => (
         <EditableCell
           value={info.getValue()}
@@ -218,11 +230,13 @@ function buildColumns(
     columnHelper.accessor('address', {
       header: 'Address',
       size: 180,
+      meta: { className: 'hidden md:table-cell' },
       cell: info => <span className="whitespace-nowrap">{info.getValue()}</span>,
     }),
     columnHelper.accessor('description', {
       header: 'Description',
       size: 180,
+      meta: { className: 'hidden lg:table-cell' },
       cell: info => <span className="whitespace-nowrap">{info.getValue()}</span>,
     }),
     columnHelper.accessor('projectTotal', {
@@ -233,11 +247,13 @@ function buildColumns(
     columnHelper.accessor('moneyReceived', {
       header: 'Money Received',
       size: 130,
+      meta: { className: 'hidden md:table-cell' },
       cell: info => <span className="whitespace-nowrap tabular-nums">{formatCurrency(info.getValue())}</span>,
     }),
     columnHelper.accessor('customerPaid', {
       header: 'Customer Paid',
       size: 120,
+      meta: { className: 'hidden md:table-cell' },
       cell: info => (
         <EditableCell
           value={info.getValue()}
@@ -252,16 +268,19 @@ function buildColumns(
     columnHelper.accessor('paymentMethod', {
       header: 'Pmt',
       size: 90,
+      meta: { className: 'hidden lg:table-cell' },
       cell: info => <span className="whitespace-nowrap text-xs">{info.getValue()}</span>,
     }),
     columnHelper.accessor('outstandingReceivables', {
       header: 'Outstanding Recv.',
       size: 140,
+      meta: { className: 'hidden lg:table-cell' },
       cell: info => <span className="whitespace-nowrap tabular-nums">{formatCurrency(info.getValue())}</span>,
     }),
     columnHelper.accessor('forecastedExpenses', {
       header: 'Forecasted Exp.',
       size: 130,
+      meta: { className: 'hidden lg:table-cell' },
       cell: info => (
         <EditableCell
           value={info.getValue()}
@@ -276,6 +295,7 @@ function buildColumns(
     columnHelper.accessor('materialsCost', {
       header: 'Materials',
       size: 110,
+      meta: { className: 'hidden lg:table-cell' },
       cell: info => (
         <EditableCell
           value={info.getValue()}
@@ -290,16 +310,19 @@ function buildColumns(
     columnHelper.accessor('subPayment1', {
       header: 'Sub Pmt 1',
       size: 110,
+      meta: { className: 'hidden lg:table-cell' },
       cell: info => <span className="whitespace-nowrap tabular-nums">{formatCurrency(info.getValue())}</span>,
     }),
     columnHelper.accessor('subPayment2', {
       header: 'Sub Pmt 2',
       size: 110,
+      meta: { className: 'hidden lg:table-cell' },
       cell: info => <span className="whitespace-nowrap tabular-nums">{formatCurrency(info.getValue())}</span>,
     }),
     columnHelper.accessor('commissionOwed', {
       header: 'Commission Owed',
       size: 140,
+      meta: { className: 'hidden lg:table-cell' },
       cell: info => (
         <EditableCell
           value={info.getValue()}
@@ -314,6 +337,7 @@ function buildColumns(
     columnHelper.accessor('commissionPaid', {
       header: 'Commission Paid',
       size: 135,
+      meta: { className: 'hidden lg:table-cell' },
       cell: info => (
         <EditableCell
           value={info.getValue()}
@@ -328,6 +352,7 @@ function buildColumns(
     columnHelper.accessor('outstandingPayables', {
       header: 'Outstanding Pay.',
       size: 135,
+      meta: { className: 'hidden lg:table-cell' },
       cell: info => <span className="whitespace-nowrap tabular-nums">{formatCurrency(info.getValue())}</span>,
     }),
     columnHelper.accessor('profitDollar', {
@@ -345,6 +370,7 @@ function buildColumns(
     columnHelper.accessor('profitPercent', {
       header: '% Profit',
       size: 90,
+      meta: { className: 'hidden md:table-cell' },
       cell: info => {
         const v = info.getValue();
         return (
@@ -357,6 +383,7 @@ function buildColumns(
     columnHelper.accessor('memesCommission', {
       header: "Meme's Comm",
       size: 120,
+      meta: { className: 'hidden lg:table-cell' },
       cell: info => (
         <EditableCell
           value={info.getValue()}
@@ -371,6 +398,7 @@ function buildColumns(
     columnHelper.accessor('aimannsCommission', {
       header: "Aimann's Comm",
       size: 125,
+      meta: { className: 'hidden lg:table-cell' },
       cell: info => (
         <EditableCell
           value={info.getValue()}
@@ -397,6 +425,7 @@ function buildColumns(
     columnHelper.accessor('netProfitPercent', {
       header: 'NET %',
       size: 90,
+      meta: { className: 'hidden md:table-cell' },
       cell: info => {
         const v = info.getValue();
         return (
@@ -527,7 +556,10 @@ export function GridViewTable({
                       <th
                         key={header.id}
                         style={{ width: header.getSize(), minWidth: header.getSize() }}
-                        className="border-b border-r border-gray-200 px-3 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 whitespace-nowrap"
+                        className={cn(
+                          'border-b border-r border-gray-200 px-3 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 whitespace-nowrap',
+                          header.column.columnDef.meta?.className
+                        )}
                       >
                         {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                       </th>
@@ -556,7 +588,10 @@ export function GridViewTable({
                         <td
                           key={cell.id}
                           style={{ width: cell.column.getSize(), minWidth: cell.column.getSize() }}
-                          className="border-r border-gray-100 px-3 py-2.5 align-middle"
+                          className={cn(
+                            'border-r border-gray-100 px-3 py-2.5 align-middle',
+                            cell.column.columnDef.meta?.className
+                          )}
                         >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </td>
@@ -587,11 +622,12 @@ export function GridViewTable({
                 {projects.length > 0 && !isLoading && (
                   <tr className="bg-slate-100/90 font-semibold">
                     {table.getAllColumns().map((column, index) => {
+                      const metaClass = column.columnDef.meta?.className;
                       if (index === 0) {
                         return (
                           <td
                             key={column.id}
-                            className="border-r border-gray-200 px-3 py-3 text-xs font-semibold text-slate-700 whitespace-nowrap"
+                            className={cn('border-r border-gray-200 px-3 py-3 text-xs font-semibold text-slate-700 whitespace-nowrap', metaClass)}
                           >
                             Totals ({projects.length})
                           </td>
@@ -609,7 +645,8 @@ export function GridViewTable({
                             key={column.id}
                             className={cn(
                               'border-r border-gray-200 px-3 py-3 text-xs tabular-nums whitespace-nowrap',
-                              isProfit ? (val >= 0 ? 'text-emerald-700' : 'text-rose-600') : 'text-slate-800'
+                              isProfit ? (val >= 0 ? 'text-emerald-700' : 'text-rose-600') : 'text-slate-800',
+                              metaClass
                             )}
                           >
                             {formatCurrency(val)}
@@ -617,7 +654,7 @@ export function GridViewTable({
                         );
                       }
 
-                      return <td key={column.id} className="border-r border-gray-200 px-3 py-3" />;
+                      return <td key={column.id} className={cn('border-r border-gray-200 px-3 py-3', metaClass)} />;
                     })}
                   </tr>
                 )}
