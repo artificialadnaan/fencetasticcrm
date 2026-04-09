@@ -46,7 +46,7 @@ function BucketTable({
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b text-xs text-muted-foreground">
+            <tr className="border-b border-black/5 text-xs text-slate-500">
               <th className="text-left py-2 pr-4">Customer</th>
               <th className="text-left py-2 pr-4 hidden sm:table-cell">Address</th>
               <th className="text-left py-2 pr-4 hidden md:table-cell">Type</th>
@@ -57,7 +57,7 @@ function BucketTable({
           </thead>
           <tbody>
             {projects.map((p) => (
-              <tr key={p.id} className="border-b hover:bg-muted/30 transition-colors">
+              <tr key={p.id} className="border-b border-black/5 hover:bg-slate-50/60 transition-colors">
                 <td className="py-2 pr-4">
                   <Link
                     to={`/projects/${p.id}`}
@@ -65,9 +65,9 @@ function BucketTable({
                   >
                     {p.customer}
                   </Link>
-                  <p className="text-xs text-muted-foreground">{formatDate(p.contractDate)}</p>
+                  <p className="text-xs text-slate-500">{formatDate(p.contractDate)}</p>
                 </td>
-                <td className="py-2 pr-4 text-muted-foreground text-xs hidden sm:table-cell truncate max-w-[160px]">
+                <td className="py-2 pr-4 text-slate-500 text-xs hidden sm:table-cell truncate max-w-[160px]">
                   {p.address}
                 </td>
                 <td className="py-2 pr-4 hidden md:table-cell">
@@ -99,7 +99,7 @@ export function ReceivablesTable({ data, isLoading }: ReceivablesTableProps) {
         <h2 className="mt-3 text-2xl font-semibold tracking-[-0.05em] text-slate-950">Receivables Aging</h2>
         <div className="mt-6 space-y-2">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-12 animate-pulse rounded bg-muted" />
+            <div key={i} className="h-12 animate-pulse rounded bg-slate-200" />
           ))}
         </div>
       </section>
@@ -125,7 +125,7 @@ export function ReceivablesTable({ data, isLoading }: ReceivablesTableProps) {
       </div>
       <div className="mt-6">
         {!hasAny ? (
-          <p className="text-sm text-muted-foreground py-6 text-center">
+          <p className="text-sm text-slate-500 py-6 text-center">
             No outstanding receivables
           </p>
         ) : (

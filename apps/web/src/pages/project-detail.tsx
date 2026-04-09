@@ -415,7 +415,7 @@ export default function ProjectDetailPage() {
       {/* TAB BAR                                                          */}
       {/* ================================================================ */}
       <div className="rounded-[28px] border border-black/5 bg-white/55 p-2 shadow-sm">
-        <div className="flex flex-wrap items-center gap-2">
+        <div role="tablist" className="flex flex-wrap items-center gap-2">
           {TABS.map((tab) => {
             const count = tabCounts[tab.id];
             const isActive = activeTab === tab.id;
@@ -423,6 +423,8 @@ export default function ProjectDetailPage() {
               <button
                 key={tab.id}
                 type="button"
+                role="tab"
+                aria-selected={isActive}
                 onClick={() => setActiveTab(tab.id)}
                 className={`rounded-2xl px-4 py-2 text-sm font-medium transition-all duration-200 ${
                   isActive
@@ -1116,7 +1118,7 @@ export default function ProjectDetailPage() {
               action cannot be easily undone.
             </p>
           </div>
-          <div className="flex items-center justify-end gap-3 border-t border-black/5 px-6 py-5">
+          <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-3 border-t border-black/5 px-6 py-5">
             <Button
               variant="outline"
               onClick={() => setShowDeleteDialog(false)}

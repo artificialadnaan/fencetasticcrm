@@ -193,6 +193,7 @@ export function OperatingExpensesSection({
                               variant="ghost"
                               size="icon"
                               className="h-7 w-7"
+                              aria-label={`Edit ${e.description}`}
                               onClick={() => openEdit(e)}
                             >
                               <Pencil className="h-3.5 w-3.5" />
@@ -201,6 +202,7 @@ export function OperatingExpensesSection({
                               variant="ghost"
                               size="icon"
                               className="h-7 w-7 text-destructive hover:text-destructive"
+                              aria-label={`Delete ${e.description}`}
                               onClick={() => setDeleteConfirmId(e.id)}
                             >
                               <Trash2 className="h-3.5 w-3.5" />

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import {
   BarChart,
@@ -29,7 +29,7 @@ function CustomTooltip({
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-lg border bg-card px-3 py-2 text-sm shadow-md">
+    <div className="rounded-lg border bg-white px-3 py-2 text-sm shadow-md">
       <p className="font-medium mb-1">{label}</p>
       {payload.map((entry) => (
         <p key={entry.name} style={{ color: entry.color }}>
@@ -59,7 +59,7 @@ export function MonthlyPLTable({ data, isLoading }: MonthlyPLTableProps) {
         <h2 className="mt-3 text-2xl font-semibold tracking-[-0.05em] text-slate-950">Monthly P&L</h2>
         <div className="mt-6 space-y-2">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-10 animate-pulse rounded bg-muted" />
+            <div key={i} className="h-10 animate-pulse rounded bg-slate-200" />
           ))}
         </div>
       </section>
@@ -108,7 +108,7 @@ export function MonthlyPLTable({ data, isLoading }: MonthlyPLTableProps) {
           <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b text-muted-foreground text-xs">
+              <tr className="border-b border-black/5 text-slate-500 text-xs">
                 <th className="text-left py-2 pr-4 w-4" />
                 <th className="text-left py-2 pr-4">Month</th>
                 <th className="text-right py-2 pr-4">Revenue</th>
@@ -120,17 +120,16 @@ export function MonthlyPLTable({ data, isLoading }: MonthlyPLTableProps) {
               {data.map((row) => {
                 const expanded = expandedRows.has(row.month);
                 return (
-                  <>
+                  <Fragment key={row.month}>
                     <tr
-                      key={row.month}
-                      className="border-b hover:bg-muted/40 cursor-pointer transition-colors"
+                      className="border-b border-black/5 hover:bg-slate-50/60 cursor-pointer transition-colors"
                       onClick={() => toggleRow(row.month)}
                     >
                       <td className="py-2 pr-2">
                         {expanded ? (
-                          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                          <ChevronDown className="h-3.5 w-3.5 text-slate-500" />
                         ) : (
-                          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                          <ChevronRight className="h-3.5 w-3.5 text-slate-500" />
                         )}
                       </td>
                       <td className="py-2 pr-4 font-medium">{row.month}</td>
@@ -149,27 +148,27 @@ export function MonthlyPLTable({ data, isLoading }: MonthlyPLTableProps) {
                       </td>
                     </tr>
                     {expanded && (
-                      <tr key={`${row.month}-expand`} className="bg-muted/20">
+                      <tr className="bg-slate-50/40">
                         <td />
                         <td colSpan={4} className="py-2 px-2">
-                          <div className="grid grid-cols-3 gap-4 text-xs text-muted-foreground">
+                          <div className="grid grid-cols-3 gap-4 text-xs text-slate-500">
                             <div>
-                              <span className="block font-medium text-foreground">Adnaan Commission</span>
+                              <span className="block font-medium text-slate-950">Adnaan Commission</span>
                               {formatCurrency(row.adnaanCommission)}
                             </div>
                             <div>
-                              <span className="block font-medium text-foreground">Meme Commission</span>
+                              <span className="block font-medium text-slate-950">Meme Commission</span>
                               {formatCurrency(row.memeCommission)}
                             </div>
                             <div>
-                              <span className="block font-medium text-foreground">Aimann Deduction</span>
+                              <span className="block font-medium text-slate-950">Aimann Deduction</span>
                               {formatCurrency(row.aimannDeduction)}
                             </div>
                           </div>
                         </td>
                       </tr>
                     )}
-                  </>
+                  </Fragment>
                 );
               })}
             </tbody>

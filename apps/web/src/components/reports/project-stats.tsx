@@ -36,7 +36,7 @@ function CustomTooltip({
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-lg border bg-card px-3 py-2 text-sm shadow-md">
+    <div className="rounded-lg border bg-white px-3 py-2 text-sm shadow-md">
       <p className="font-medium">{label}</p>
       <p className="text-[#7C3AED]">
         {payload[0].value}
@@ -52,7 +52,7 @@ export function ProjectStats({ data, isLoading }: ProjectStatsProps) {
       <div className="grid gap-4 md:grid-cols-2">
         {[1, 2].map((i) => (
           <section key={i} className="shell-panel rounded-[28px] p-6 md:p-8">
-            <div className="h-52 animate-pulse rounded bg-muted" />
+            <div className="h-52 animate-pulse rounded bg-slate-200" />
           </section>
         ))}
       </div>
@@ -76,7 +76,7 @@ export function ProjectStats({ data, isLoading }: ProjectStatsProps) {
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">Days from start to completion, by fence type.</p>
         <div className="mt-6">
           {durationData.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">
+            <p className="text-sm text-slate-500 py-8 text-center">
               No completed projects with dates
             </p>
           ) : (

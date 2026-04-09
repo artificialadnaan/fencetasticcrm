@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Stage, Layer, Rect, Line, Text as KonvaText, Group, Circle } from 'react-konva';
 import type Konva from 'konva';
 import { useWorkOrder } from '@/hooks/use-work-order';
-
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -755,7 +754,7 @@ export default function WorkOrderPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <p className="text-muted-foreground">Loading work order...</p>
+        <p className="text-slate-500">Loading work order...</p>
       </div>
     );
   }
@@ -825,8 +824,8 @@ export default function WorkOrderPage() {
               }}
               className={`flex items-center justify-center w-10 h-10 rounded-md transition-colors ${
                 activeTool === type
-                  ? 'bg-purple-600 text-white'
-                  : 'text-muted-foreground hover:bg-muted'
+                  ? 'bg-slate-950 text-white'
+                  : 'text-slate-500 hover:bg-muted'
               }`}
             >
               <Icon className="h-5 w-5" />
@@ -891,7 +890,7 @@ export default function WorkOrderPage() {
             </div>
           )}
           {/* Zoom indicator */}
-          <div className="absolute bottom-3 left-3 text-xs text-muted-foreground bg-white/80 rounded px-2 py-1">
+          <div className="absolute bottom-3 left-3 text-xs text-slate-500 bg-white/80 rounded px-2 py-1">
             {Math.round(scale * 100)}%
           </div>
         </div>
@@ -912,7 +911,7 @@ export default function WorkOrderPage() {
                 <div className="mt-4 space-y-3">
                   {/* Fence Type */}
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground">
+                    <label className="text-xs font-medium text-slate-500">
                       Fence Type
                     </label>
                     <Select
@@ -934,7 +933,7 @@ export default function WorkOrderPage() {
 
                   {/* Style */}
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground">
+                    <label className="text-xs font-medium text-slate-500">
                       Style
                     </label>
                     <div className="flex gap-1 mt-1">
@@ -956,7 +955,7 @@ export default function WorkOrderPage() {
 
                   {/* Height */}
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground">
+                    <label className="text-xs font-medium text-slate-500">
                       Height (ft)
                     </label>
                     <Input
@@ -973,7 +972,7 @@ export default function WorkOrderPage() {
 
                   {/* Linear Feet */}
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground">
+                    <label className="text-xs font-medium text-slate-500">
                       Linear Feet
                     </label>
                     <Input
@@ -991,7 +990,7 @@ export default function WorkOrderPage() {
                   {/* Steps (when stepped) */}
                   {selectedSegment.style === FenceStyle.STEPPED && (
                     <div>
-                      <label className="text-xs font-medium text-muted-foreground">
+                      <label className="text-xs font-medium text-slate-500">
                         Steps
                       </label>
                       {(selectedSegment.steps ?? []).map((step, idx) => (
@@ -1038,7 +1037,7 @@ export default function WorkOrderPage() {
 
                   {/* Additions */}
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground">
+                    <label className="text-xs font-medium text-slate-500">
                       Additions
                     </label>
                     <div className="flex flex-wrap gap-1 mt-1">
@@ -1093,7 +1092,7 @@ export default function WorkOrderPage() {
 
                   {/* Notes */}
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground">
+                    <label className="text-xs font-medium text-slate-500">
                       Notes
                     </label>
                     <Textarea
@@ -1115,7 +1114,7 @@ export default function WorkOrderPage() {
                 <h2 className="mt-3 text-2xl font-semibold tracking-[-0.05em] text-slate-950">Gate Properties</h2>
                 <div className="mt-4 space-y-3">
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground">
+                    <label className="text-xs font-medium text-slate-500">
                       Gate Type
                     </label>
                     <Select
@@ -1135,7 +1134,7 @@ export default function WorkOrderPage() {
                     </Select>
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground">
+                    <label className="text-xs font-medium text-slate-500">
                       Width (ft)
                     </label>
                     <Input
@@ -1178,11 +1177,11 @@ export default function WorkOrderPage() {
               <h2 className="mt-3 text-2xl font-semibold tracking-[-0.05em] text-slate-950">Summary</h2>
               <div className="mt-4 space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Segments</span>
+                  <span className="text-slate-500">Segments</span>
                   <span className="font-medium">{segments.length}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Total Linear Feet</span>
+                  <span className="text-slate-500">Total Linear Feet</span>
                   <span className="font-medium">{totalLinearFeet.toFixed(1)}</span>
                 </div>
                 {segments.length > 0 && (

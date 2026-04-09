@@ -18,10 +18,6 @@ export default function ReportsPage() {
 
   const pageError = plError ?? statsError ?? receivablesError;
 
-  function handlePrint() {
-    window.print();
-  }
-
   const utilityActions = useMemo(
     () => (
       <div className="inline-flex items-center rounded-2xl border border-black/5 bg-white/65 p-1 shadow-sm">
@@ -51,7 +47,7 @@ export default function ReportsPage() {
       <Button
         variant="outline"
         size="sm"
-        onClick={handlePrint}
+        onClick={() => window.print()}
         className="rounded-2xl border-black/10 bg-white/70 px-4 print:hidden"
       >
         <Download className="h-4 w-4" />

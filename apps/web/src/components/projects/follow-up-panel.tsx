@@ -263,7 +263,7 @@ export function FollowUpPanel({ projectId }: FollowUpPanelProps) {
 
   if (error && !summary) {
     return (
-      <section className="shell-panel rounded-[28px] p-6 md:p-8 border-destructive">
+      <section className="rounded-[28px] bg-destructive/10 p-6 md:p-8 border border-destructive/30">
         <p className="py-8 text-sm text-destructive">{error}</p>
       </section>
     );

@@ -191,6 +191,7 @@ export function RateTemplatesSection({
                               variant="ghost"
                               size="icon"
                               className="h-7 w-7"
+                              aria-label={`Edit ${t.name}`}
                               onClick={() => openEdit(t)}
                             >
                               <Pencil className="h-3.5 w-3.5" />
@@ -199,6 +200,7 @@ export function RateTemplatesSection({
                               variant="ghost"
                               size="icon"
                               className="h-7 w-7 text-destructive hover:text-destructive"
+                              aria-label={`Delete ${t.name}`}
                               onClick={() => setDeleteConfirmId(t.id)}
                             >
                               <Trash2 className="h-3.5 w-3.5" />

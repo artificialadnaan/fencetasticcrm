@@ -99,7 +99,7 @@ export function ChangePasswordForm() {
               setForm((f) => ({ ...f, confirmPassword: e.target.value }));
               setSuccess(false);
             }}
-            className={`rounded-2xl border-black/10 bg-white shadow-sm${passwordMismatch ? ' border-destructive' : ''}`}
+            className={`rounded-2xl bg-white shadow-sm ${passwordMismatch ? 'border border-destructive' : 'border-black/10'}`}
           />
           {passwordMismatch && (
             <p className="text-xs text-destructive">Passwords do not match.</p>
