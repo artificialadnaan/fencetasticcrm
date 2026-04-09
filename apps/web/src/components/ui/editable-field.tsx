@@ -147,7 +147,12 @@ export function EditableField({
       tabIndex={0}
       aria-label={`Edit ${label}`}
       onClick={startEdit}
-      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && startEdit()}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          startEdit();
+        }
+      }}
       className={`group inline-flex items-center gap-1 cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1 transition-colors ${saving ? 'opacity-50' : ''} ${className ?? ''}`}
     >
       <span className="font-medium">{displayValue()}</span>

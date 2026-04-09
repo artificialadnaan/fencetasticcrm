@@ -66,6 +66,25 @@ export default function ProjectsPage() {
   const deferredSearch = useDeferredValue(searchText);
   const prevSearchRef = useRef(deferredSearch);
 
+  // Sync from URL → state on back/forward navigation
+  useEffect(() => {
+    const urlStatus = (searchParams.get('status') as ProjectStatus) || undefined;
+    const urlSearch = searchParams.get('search') || undefined;
+    const urlFenceType = (searchParams.get('fenceType') as FenceType) || undefined;
+    const urlPage = Number(searchParams.get('page')) || 1;
+
+    // Only sync if URL actually differs from current state (prevents loops)
+    if (
+      urlStatus !== query.status ||
+      urlSearch !== query.search ||
+      urlFenceType !== query.fenceType ||
+      urlPage !== query.page
+    ) {
+      setQuery({ ...DEFAULT_QUERY, status: urlStatus, search: urlSearch, fenceType: urlFenceType, page: urlPage });
+      setSearchText(urlSearch ?? '');
+    }
+  }, [searchParams]); // intentionally exclude query to prevent loops
+
   // Sync deferred search value into query — only reset page when search actually changes
   useEffect(() => {
     const searchChanged = prevSearchRef.current !== deferredSearch;

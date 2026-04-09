@@ -131,9 +131,10 @@ export function CreateProjectDialog({ onCreated, open: controlledOpen, onOpenCha
     setError('');
     setIsSubmitting(true);
 
-    const safeFloat = (val: string) => {
+    const safeFloat = (val: string): number | null => {
+      if (!val.trim()) return null;
       const n = parseFloat(val);
-      return isNaN(n) ? 0 : n;
+      return isNaN(n) ? null : n;
     };
 
     try {
@@ -150,7 +151,7 @@ export function CreateProjectDialog({ onCreated, open: controlledOpen, onOpenCha
         contractDate,
         installDate,
         estimateDate: estimateDate || null,
-        linearFeet: linearFeet ? safeFloat(linearFeet) : null,
+        linearFeet: safeFloat(linearFeet),
         rateTemplateId: selectedTemplateId && selectedTemplateId !== 'NONE' ? selectedTemplateId : null,
         subcontractor: subcontractor || null,
         notes: notes || null,

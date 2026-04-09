@@ -131,6 +131,15 @@ export default function ProjectDetailPage() {
     setSearchParams({ tab }, { replace: true });
   }, [setSearchParams]);
 
+  // Sync tab from URL on back/forward navigation
+  useEffect(() => {
+    const urlTab = searchParams.get('tab') as TabId;
+    const validTab = VALID_TABS.includes(urlTab) ? urlTab : 'overview';
+    if (validTab !== activeTab) {
+      setActiveTab(validTab);
+    }
+  }, [searchParams]); // intentionally exclude activeTab to prevent loops
+
   // Transaction state
   const [incomeItems, setIncomeItems] = useState<Transaction[]>([]);
   const [expenseItems, setExpenseItems] = useState<Transaction[]>([]);
