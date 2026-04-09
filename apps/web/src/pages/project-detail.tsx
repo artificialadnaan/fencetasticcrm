@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { toast } from 'sonner';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useProject } from '@/hooks/use-project';
 import { useSubcontractors } from '@/hooks/use-subcontractors';
 import { useNotes } from '@/hooks/use-notes';
@@ -117,8 +118,15 @@ export default function ProjectDetailPage() {
     uploadPhoto,
   } = useNotes(id);
 
-  // Tab state
-  const [activeTab, setActiveTab] = useState<TabId>('overview');
+  // Tab state synced to URL
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<TabId>(
+    () => (searchParams.get('tab') as TabId) || 'overview'
+  );
+  const handleTabChange = useCallback((tab: TabId) => {
+    setActiveTab(tab);
+    setSearchParams({ tab }, { replace: true });
+  }, [setSearchParams]);
 
   // Transaction state
   const [incomeItems, setIncomeItems] = useState<Transaction[]>([]);
@@ -130,6 +138,12 @@ export default function ProjectDetailPage() {
   const [savingIncome, setSavingIncome] = useState(false);
   const [savingExpense, setSavingExpense] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteTransactionId, setDeleteTransactionId] = useState<string | null>(null);
+  const [deleteTransactionType, setDeleteTransactionType] = useState<'INCOME' | 'EXPENSE' | null>(null);
+
+  // Error states for fetch failures
+  const [incomeError, setIncomeError] = useState<string | null>(null);
+  const [expenseError, setExpenseError] = useState<string | null>(null);
 
   // Delete project dialog
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -141,7 +155,10 @@ export default function ProjectDetailPage() {
     try {
       const res = await api.get(`/transactions?projectId=${id}&type=INCOME&limit=100`);
       setIncomeItems(res.data.data ?? []);
-    } catch { /* silent */ }
+      setIncomeError(null);
+    } catch {
+      setIncomeError('Failed to load payments');
+    }
   }, [id]);
 
   const fetchExpenses = useCallback(async () => {
@@ -149,7 +166,10 @@ export default function ProjectDetailPage() {
     try {
       const res = await api.get(`/transactions?projectId=${id}&type=EXPENSE&limit=100`);
       setExpenseItems(res.data.data ?? []);
-    } catch { /* silent */ }
+      setExpenseError(null);
+    } catch {
+      setExpenseError('Failed to load expenses');
+    }
   }, [id]);
 
   useEffect(() => {
@@ -162,9 +182,10 @@ export default function ProjectDetailPage() {
     try {
       await api.patch(`/projects/${id}`, { [field]: value });
       refetch();
+      toast.success('Field updated');
     } catch (err) {
       console.error('Failed to save:', err);
-      alert('Failed to save field.');
+      toast.error('Failed to save field');
     }
   };
 
@@ -172,9 +193,10 @@ export default function ProjectDetailPage() {
     try {
       await api.patch(`/projects/${id}`, { status: newStatus });
       refetch();
+      toast.success('Status updated');
     } catch (err) {
       console.error('Status change failed:', err);
-      alert('Failed to update status.');
+      toast.error('Failed to update status');
       refetch();
     }
   }
@@ -183,10 +205,11 @@ export default function ProjectDetailPage() {
     setDeleting(true);
     try {
       await api.delete(`/projects/${id}`);
+      toast.success('Project deleted');
       navigate('/projects');
     } catch (err) {
       console.error('Delete failed:', err);
-      alert('Failed to delete project.');
+      toast.error('Failed to delete project');
     } finally {
       setDeleting(false);
       setShowDeleteDialog(false);
@@ -209,9 +232,10 @@ export default function ProjectDetailPage() {
       setShowIncomeForm(false);
       await fetchIncome();
       refetch();
+      toast.success('Payment added');
     } catch (err) {
       console.error('Failed to add payment:', err);
-      alert('Failed to add payment.');
+      toast.error('Failed to add payment');
     } finally {
       setSavingIncome(false);
     }
@@ -233,9 +257,10 @@ export default function ProjectDetailPage() {
       setShowExpenseForm(false);
       await fetchExpenses();
       refetch();
+      toast.success('Expense added');
     } catch (err) {
       console.error('Failed to add expense:', err);
-      alert('Failed to add expense.');
+      toast.error('Failed to add expense');
     } finally {
       setSavingExpense(false);
     }
@@ -248,10 +273,13 @@ export default function ProjectDetailPage() {
       if (type === 'INCOME') await fetchIncome();
       else await fetchExpenses();
       refetch();
+      toast.success('Transaction deleted');
     } catch {
-      /* silent */
+      toast.error('Failed to delete transaction');
     } finally {
       setDeletingId(null);
+      setDeleteTransactionId(null);
+      setDeleteTransactionType(null);
     }
   }
 
@@ -425,7 +453,7 @@ export default function ProjectDetailPage() {
                 type="button"
                 role="tab"
                 aria-selected={isActive}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 className={`rounded-2xl px-4 py-2 text-sm font-medium transition-all duration-200 ${
                   isActive
                     ? 'bg-slate-950 text-white shadow-[0_10px_24px_rgba(15,23,42,0.18)]'
@@ -647,6 +675,12 @@ export default function ProjectDetailPage() {
             </Button>
           </div>
 
+          {incomeError && (
+            <div className="mb-4 rounded-[24px] border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {incomeError}
+            </div>
+          )}
+
           {showIncomeForm && (
             <div className="p-4 border border-black/5 rounded-[16px] bg-slate-50 space-y-3 mb-4">
               <div className="grid grid-cols-2 gap-3">
@@ -744,7 +778,7 @@ export default function ProjectDetailPage() {
                           size="icon"
                           className="h-7 w-7 text-destructive hover:text-destructive"
                           disabled={deletingId === item.id}
-                          onClick={() => handleDeleteTransaction(item.id, 'INCOME')}
+                          onClick={() => { setDeleteTransactionId(item.id); setDeleteTransactionType('INCOME'); }}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
@@ -788,6 +822,12 @@ export default function ProjectDetailPage() {
                 Add
               </Button>
             </div>
+
+            {expenseError && (
+              <div className="mb-4 rounded-[24px] border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                {expenseError}
+              </div>
+            )}
 
             {showExpenseForm && (
               <div className="p-4 border border-black/5 rounded-[16px] bg-slate-50 space-y-3 mb-4">
@@ -892,7 +932,7 @@ export default function ProjectDetailPage() {
                             size="icon"
                             className="h-7 w-7 text-destructive hover:text-destructive"
                             disabled={deletingId === item.id}
-                            onClick={() => handleDeleteTransaction(item.id, 'EXPENSE')}
+                            onClick={() => { setDeleteTransactionId(item.id); setDeleteTransactionType('EXPENSE'); }}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
@@ -939,7 +979,7 @@ export default function ProjectDetailPage() {
             <section className="shell-panel rounded-[28px] p-6 md:p-8">
               <div className="flex items-center justify-between mb-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Payments</p>
-                <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setActiveTab('payments')}>
+                <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => handleTabChange('payments')}>
                   <Plus className="h-3 w-3 mr-1" />Add
                 </Button>
               </div>
@@ -976,7 +1016,7 @@ export default function ProjectDetailPage() {
             <section className="shell-panel rounded-[28px] p-6 md:p-8">
               <div className="flex items-center justify-between mb-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Expenses</p>
-                <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setActiveTab('expenses')}>
+                <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => handleTabChange('expenses')}>
                   <Plus className="h-3 w-3 mr-1" />Add
                 </Button>
               </div>
@@ -1101,6 +1141,52 @@ export default function ProjectDetailPage() {
           )}
         </section>
       )}
+
+      {/* ================================================================ */}
+      {/* DELETE TRANSACTION CONFIRMATION DIALOG                          */}
+      {/* ================================================================ */}
+      <Dialog
+        open={deleteTransactionId != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteTransactionId(null);
+            setDeleteTransactionType(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-[400px] rounded-[28px] border-black/5 bg-white p-0 shadow-2xl">
+          <div className="border-b border-black/5 px-6 py-5">
+            <DialogHeader>
+              <DialogTitle>Delete Transaction?</DialogTitle>
+            </DialogHeader>
+          </div>
+          <div className="px-6 py-6">
+            <p className="text-sm text-slate-500">
+              Delete this transaction? This cannot be undone.
+            </p>
+          </div>
+          <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-3 border-t border-black/5 px-6 py-5">
+            <Button
+              variant="outline"
+              onClick={() => { setDeleteTransactionId(null); setDeleteTransactionType(null); }}
+              disabled={deletingId != null}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deletingId != null}
+              onClick={() => {
+                if (deleteTransactionId && deleteTransactionType) {
+                  handleDeleteTransaction(deleteTransactionId, deleteTransactionType);
+                }
+              }}
+            >
+              {deletingId != null ? 'Deleting...' : 'Delete'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* ================================================================ */}
       {/* DELETE CONFIRMATION DIALOG                                       */}

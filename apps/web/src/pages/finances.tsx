@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
 import { Download, Plus, Search } from 'lucide-react';
 import { TransactionType, type CreateTransactionDTO } from '@fencetastic/shared';
 import { usePageShell } from '@/components/layout/page-shell';
@@ -39,11 +39,13 @@ export default function FinancesPage() {
   const [period, setPeriod] = useState<'mtd' | 'ytd'>('mtd');
   const [typeFilter, setTypeFilter] = useState<'ALL' | TransactionType>('ALL');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
-  const [search, setSearch] = useState('');
+  const [searchText, setSearchText] = useState('');
+  const deferredSearch = useDeferredValue(searchText.trim());
   const [page, setPage] = useState(1);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<CreateTransactionDTO>({ ...EMPTY_FORM });
   const [saving, setSaving] = useState(false);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const txQuery = useMemo(
     () => ({
@@ -51,9 +53,9 @@ export default function FinancesPage() {
       limit: 20,
       ...(typeFilter !== 'ALL' ? { type: typeFilter } : {}),
       ...(categoryFilter !== 'ALL' ? { category: categoryFilter } : {}),
-      ...(search.trim() ? { search: search.trim() } : {}),
+      ...(deferredSearch ? { search: deferredSearch } : {}),
     }),
-    [page, typeFilter, categoryFilter, search]
+    [page, typeFilter, categoryFilter, deferredSearch]
   );
 
   const { data: transactions, pagination, isLoading, error, refetch } = useTransactions(txQuery);
@@ -66,10 +68,18 @@ export default function FinancesPage() {
     [categories]
   );
 
-  const hasActiveFilters = Boolean(typeFilter !== 'ALL' || categoryFilter !== 'ALL' || search.trim());
+  const hasActiveFilters = Boolean(typeFilter !== 'ALL' || categoryFilter !== 'ALL' || searchText.trim());
 
   async function handleSave() {
-    if (!form.category || !form.description || form.amount <= 0) return;
+    const errors: Record<string, string> = {};
+    if (!form.category) errors.category = 'Category is required';
+    if (!form.description) errors.description = 'Description is required';
+    if (form.amount <= 0) errors.amount = 'Amount must be greater than 0';
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+    setFormErrors({});
     setSaving(true);
     try {
       await api.post('/transactions', {
@@ -94,15 +104,15 @@ export default function FinancesPage() {
         <Input
           placeholder="Search description, category, or payee..."
           className="h-10 rounded-2xl border-black/10 bg-white/80 pl-10 shadow-sm placeholder:text-slate-400"
-          value={search}
+          value={searchText}
           onChange={(event) => {
-            setSearch(event.target.value);
+            setSearchText(event.target.value);
             setPage(1);
           }}
         />
       </div>
     ),
-    [search]
+    [searchText]
   );
 
   const periodToggle = useMemo(
@@ -137,6 +147,7 @@ export default function FinancesPage() {
         type="button"
         onClick={() => {
           setForm({ ...EMPTY_FORM, date: new Date().toISOString().split('T')[0] });
+          setFormErrors({});
           setDialogOpen(true);
         }}
         className="rounded-2xl bg-slate-950 px-4 text-white hover:bg-slate-800"
@@ -191,13 +202,13 @@ export default function FinancesPage() {
   const handleClearFilters = () => {
     setTypeFilter('ALL');
     setCategoryFilter('ALL');
-    setSearch('');
+    setSearchText('');
     setPage(1);
   };
 
   return (
     <>
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) setFormErrors({}); }}>
         <DialogContent className="max-w-2xl rounded-[28px] border-black/5 bg-white p-0 shadow-2xl">
           <div className="border-b border-black/5 px-6 py-5">
             <DialogHeader>
@@ -243,6 +254,7 @@ export default function FinancesPage() {
                 className="h-10 rounded-2xl border-black/10 bg-white shadow-sm"
                 placeholder="0.00"
               />
+              {formErrors.amount && <p className="text-xs text-destructive mt-1">{formErrors.amount}</p>}
             </div>
 
             <div className="space-y-2">
@@ -263,6 +275,7 @@ export default function FinancesPage() {
                 className="h-10 rounded-2xl border-black/10 bg-white shadow-sm"
                 placeholder="Materials, labor, revenue..."
               />
+              {formErrors.category && <p className="text-xs text-destructive mt-1">{formErrors.category}</p>}
             </div>
 
             <div className="space-y-2 sm:col-span-2">
@@ -273,6 +286,7 @@ export default function FinancesPage() {
                 className="h-10 rounded-2xl border-black/10 bg-white shadow-sm"
                 placeholder="Short description"
               />
+              {formErrors.description && <p className="text-xs text-destructive mt-1">{formErrors.description}</p>}
             </div>
 
             <div className="space-y-2 sm:col-span-2">

@@ -1,6 +1,6 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { Grid3X3, Download, Plus, Search, X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   FenceType,
   PROJECT_STATUS_META,
@@ -53,8 +53,36 @@ const DEFAULT_QUERY: ProjectListQuery = {
 
 export default function ProjectsPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [query, setQuery] = useState<ProjectListQuery>(DEFAULT_QUERY);
+  const [query, setQuery] = useState<ProjectListQuery>(() => ({
+    ...DEFAULT_QUERY,
+    status: (searchParams.get('status') as ProjectStatus) || undefined,
+    search: searchParams.get('search') || undefined,
+    fenceType: (searchParams.get('fenceType') as FenceType) || undefined,
+    page: Number(searchParams.get('page')) || 1,
+  }));
+  const [searchText, setSearchText] = useState(searchParams.get('search') ?? '');
+  const deferredSearch = useDeferredValue(searchText);
+
+  // Sync deferred search value into query
+  useEffect(() => {
+    setQuery((prev) => ({
+      ...prev,
+      search: deferredSearch.trim() ? deferredSearch : undefined,
+      page: 1,
+    }));
+  }, [deferredSearch]);
+
+  // Sync query back to URL
+  useEffect(() => {
+    const params: Record<string, string> = {};
+    if (query.status) params.status = query.status;
+    if (query.search) params.search = query.search;
+    if (query.fenceType) params.fenceType = query.fenceType;
+    if (query.page && query.page > 1) params.page = String(query.page);
+    setSearchParams(params, { replace: true });
+  }, [query, setSearchParams]);
 
   const { data, pagination, isLoading, error, refetch } = useProjects(query);
 
@@ -62,12 +90,8 @@ export default function ProjectsPage() {
   const activeFenceType = query.fenceType ?? 'ALL';
   const hasActiveFilters = Boolean(query.search || query.status || query.fenceType || query.dateFrom || query.dateTo);
 
-  const handleSearchChange = useCallback((search: string) => {
-    setQuery((prev) => ({
-      ...prev,
-      search: search.trim() ? search : undefined,
-      page: 1,
-    }));
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchText(value);
   }, []);
 
   const handleFenceTypeChange = useCallback((value: string) => {
@@ -91,6 +115,7 @@ export default function ProjectsPage() {
   }, []);
 
   const handleClearFilters = useCallback(() => {
+    setSearchText('');
     setQuery(DEFAULT_QUERY);
   }, []);
 
@@ -125,7 +150,7 @@ export default function ProjectsPage() {
         <div className="relative w-full sm:w-[280px]">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <Input
-            value={query.search ?? ''}
+            value={searchText}
             onChange={(event) => handleSearchChange(event.target.value)}
             placeholder="Search customer or address..."
             className="h-10 rounded-2xl border-black/10 bg-white/80 pl-10 shadow-sm placeholder:text-slate-400"
@@ -158,7 +183,7 @@ export default function ProjectsPage() {
         )}
       </div>
     ),
-    [activeFenceType, handleClearFilters, handleFenceTypeChange, handleSearchChange, hasActiveFilters, query.search]
+    [activeFenceType, handleClearFilters, handleFenceTypeChange, handleSearchChange, hasActiveFilters, searchText]
   );
 
   const primaryActions = useMemo(

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { toast } from 'sonner';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Stage, Layer, Rect, Line, Text as KonvaText, Group, Circle } from 'react-konva';
 import type Konva from 'konva';
@@ -415,7 +416,7 @@ export default function WorkOrderPage() {
   // ------ save ------
   async function handleSave() {
     if (!projectId) {
-      alert('No project ID found. Cannot save work order.');
+      toast.error('No project ID found. Cannot save work order.');
       return;
     }
     const drawingData = {
@@ -439,17 +440,17 @@ export default function WorkOrderPage() {
           segments: segPayload,
         });
       }
-      alert('Work order saved!');
+      toast.success('Work order saved');
     } catch (err) {
       console.error('Save failed:', err);
-      alert('Failed to save work order.');
+      toast.error('Failed to save work order');
     }
   }
 
   // ------ pdf ------
   async function handlePdf() {
     if (!workOrder) {
-      alert('Please save the work order first.');
+      toast.error('Please save the work order first');
       return;
     }
     const stage = stageRef.current;
@@ -459,7 +460,7 @@ export default function WorkOrderPage() {
       await generatePdf(workOrder.id, drawingImage);
     } catch (err) {
       console.error('PDF generation failed:', err);
-      alert('Failed to generate PDF.');
+      toast.error('Failed to generate PDF');
     }
   }
 

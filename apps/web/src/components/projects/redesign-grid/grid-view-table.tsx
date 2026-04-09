@@ -1,4 +1,5 @@
 import { useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { toast } from 'sonner';
 import { ArrowRight, RefreshCw } from 'lucide-react';
 import {
   createColumnHelper,
@@ -67,7 +68,7 @@ function EditableCell({ value, rowId, field, isNumber = false, refetch, display 
       refetch();
     } catch (err) {
       console.error('Failed to save cell', err);
-      alert('Failed to save. The field may be locked on completed projects.');
+      toast.error('Failed to save. The field may be locked on completed projects.');
     }
   };
 

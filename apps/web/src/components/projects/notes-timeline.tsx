@@ -2,6 +2,12 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { PhotoGallery } from './photo-gallery';
 import { AddNoteForm } from './add-note-form';
 import { formatDate } from '@/lib/formatters';
@@ -30,6 +36,7 @@ export function NotesTimeline({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [deleteNoteId, setDeleteNoteId] = useState<string | null>(null);
 
   function startEdit(note: NoteDTO) {
     setEditingId(note.id);
@@ -52,13 +59,14 @@ export function NotesTimeline({
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm('Delete this note? This cannot be undone.')) return;
-    setSavingId(id);
+  async function confirmDeleteNote() {
+    if (!deleteNoteId) return;
+    setSavingId(deleteNoteId);
     try {
-      await onDeleteNote(id);
+      await onDeleteNote(deleteNoteId);
     } finally {
       setSavingId(null);
+      setDeleteNoteId(null);
     }
   }
 
@@ -119,7 +127,7 @@ export function NotesTimeline({
                         variant="ghost"
                         size="icon"
                         className="h-7 w-7 text-destructive hover:text-destructive"
-                        onClick={() => handleDelete(note.id)}
+                        onClick={() => setDeleteNoteId(note.id)}
                         disabled={isSaving}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -171,6 +179,35 @@ export function NotesTimeline({
           </p>
         )}
       </div>
+
+      <Dialog open={deleteNoteId != null} onOpenChange={(open) => { if (!open) setDeleteNoteId(null); }}>
+        <DialogContent className="max-w-[400px] rounded-[28px] border-black/5 bg-white p-0 shadow-2xl">
+          <div className="border-b border-black/5 px-6 py-5">
+            <DialogHeader>
+              <DialogTitle>Delete Note?</DialogTitle>
+            </DialogHeader>
+          </div>
+          <div className="px-6 py-6">
+            <p className="text-sm text-slate-500">Delete this note? This cannot be undone.</p>
+          </div>
+          <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-3 border-t border-black/5 px-6 py-5">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteNoteId(null)}
+              disabled={savingId != null}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDeleteNote}
+              disabled={savingId != null}
+            >
+              {savingId != null ? 'Deleting...' : 'Delete Note'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

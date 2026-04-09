@@ -98,6 +98,7 @@ export default function CalendarPage() {
   const [form, setForm] = useState({ ...DEFAULT_FORM });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [projects, setProjects] = useState<ProjectOption[]>([]);
   const [projectSearch, setProjectSearch] = useState('');
   const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
@@ -195,6 +196,7 @@ export default function CalendarPage() {
     setEditingEvent(null);
     setSaveError(null);
     setProjectDropdownOpen(false);
+    setConfirmDelete(false);
   }, []);
 
   const handleEventClick = useCallback((event: CalendarEventView) => {
@@ -487,16 +489,6 @@ export default function CalendarPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label>Color</Label>
-                <Input
-                  type="text"
-                  value={form.color}
-                  onChange={(event) => setForm((value) => ({ ...value, color: event.target.value }))}
-                />
-                <p className="text-xs text-slate-500">Use a hex color or keep the default picked from the event type.</p>
-              </div>
-
-              <div className="space-y-1.5">
                 <Label>Project Link</Label>
                 {form.projectId ? (
                   <div className="flex items-center justify-between gap-3 rounded-2xl border border-black/10 bg-slate-50 px-3 py-3">
@@ -615,34 +607,60 @@ export default function CalendarPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              {editingEvent && (
+              {editingEvent && !confirmDelete && (
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={handleDelete}
+                  onClick={() => setConfirmDelete(true)}
                   disabled={saving}
                   className="rounded-2xl border-rose-200 bg-rose-50 px-4 text-rose-700 hover:bg-rose-100"
                 >
                   Delete Event
                 </Button>
               )}
-              <Button
-                type="button"
-                variant="outline"
-                onClick={closeDialog}
-                disabled={saving}
-                className="rounded-2xl border-black/10 bg-white px-4 shadow-sm"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                onClick={handleSave}
-                disabled={saving}
-                className="rounded-2xl bg-slate-950 px-4 text-white hover:bg-slate-800"
-              >
-                {saving ? 'Saving...' : editingEvent ? 'Save Changes' : 'Save Event'}
-              </Button>
+              {editingEvent && confirmDelete && (
+                <>
+                  <span className="text-sm text-slate-600">Are you sure?</span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setConfirmDelete(false)}
+                    disabled={saving}
+                    className="rounded-2xl border-black/10 bg-white px-4 shadow-sm"
+                  >
+                    No, Keep It
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleDelete}
+                    disabled={saving}
+                    className="rounded-2xl bg-rose-600 px-4 text-white hover:bg-rose-700"
+                  >
+                    {saving ? 'Deleting...' : 'Yes, Delete'}
+                  </Button>
+                </>
+              )}
+              {!confirmDelete && (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={closeDialog}
+                    disabled={saving}
+                    className="rounded-2xl border-black/10 bg-white px-4 shadow-sm"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="rounded-2xl bg-slate-950 px-4 text-white hover:bg-slate-800"
+                  >
+                    {saving ? 'Saving...' : editingEvent ? 'Save Changes' : 'Save Event'}
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </DialogContent>

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -30,11 +31,11 @@ export function ProjectHeader({
   async function handleStatusChange(newStatus: string) {
     try {
       await api.patch(`/projects/${projectId}`, { status: newStatus });
+      toast.success('Status updated');
       onStatusChange();
     } catch (err) {
       console.error('Status change failed:', err);
-      alert('Failed to update status. Please try again.');
-      // Refetch to reset the dropdown
+      toast.error('Failed to update status. Please try again.');
       onStatusChange();
     }
   }

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -105,10 +106,11 @@ export function ProjectFinancialsCard({
       setIncomeForm({ ...emptyForm, date: today() });
       setShowIncomeForm(false);
       await fetchIncome();
+      toast.success('Payment added');
       onSave('customerPaid', customerPaid); // trigger refetch
     } catch (err) {
       console.error('Failed to add payment:', err);
-      alert('Failed to add payment.');
+      toast.error('Failed to add payment.');
     } finally { setSavingIncome(false); }
   }
 
@@ -123,10 +125,11 @@ export function ProjectFinancialsCard({
       setExpenseForm({ ...emptyForm, date: today() });
       setShowExpenseForm(false);
       await fetchExpenses();
+      toast.success('Expense added');
       onSave('forecastedExpenses', forecastedExpenses); // trigger refetch
     } catch (err) {
       console.error('Failed to add expense:', err);
-      alert('Failed to add expense.');
+      toast.error('Failed to add expense.');
     } finally { setSavingExpense(false); }
   }
 

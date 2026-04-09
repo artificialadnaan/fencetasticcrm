@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import { cn } from '@/lib/utils';
 import Sidebar, { NAV_ITEMS } from './sidebar';
 import PageShell, { PageShellProvider, type PageShellConfig } from './page-shell';
@@ -57,28 +58,31 @@ export default function AppLayout() {
   }, [location.pathname, pageShellConfig]);
 
   return (
-    <PageShellProvider value={setPageShellConfig}>
-      <div className="shell-app min-h-screen text-foreground">
-        <Sidebar
-          collapsed={collapsed}
-          mobileOpen={mobileOpen}
-          onMobileOpenChange={setMobileOpen}
-          onToggle={() => setCollapsed((value) => !value)}
-        />
-        <main
-          className={cn(
-            'min-h-screen transition-[padding] duration-300 ease-out',
-            collapsed ? 'md:pl-[104px]' : 'md:pl-[272px]'
-          )}
-        >
-          <PageShell
-            {...shellConfig}
-            onOpenSidebar={() => setMobileOpen(true)}
+    <>
+      <PageShellProvider value={setPageShellConfig}>
+        <div className="shell-app min-h-screen text-foreground">
+          <Sidebar
+            collapsed={collapsed}
+            mobileOpen={mobileOpen}
+            onMobileOpenChange={setMobileOpen}
+            onToggle={() => setCollapsed((value) => !value)}
+          />
+          <main
+            className={cn(
+              'min-h-screen transition-[padding] duration-300 ease-out',
+              collapsed ? 'md:pl-[104px]' : 'md:pl-[272px]'
+            )}
           >
-            <Outlet />
-          </PageShell>
-        </main>
-      </div>
-    </PageShellProvider>
+            <PageShell
+              {...shellConfig}
+              onOpenSidebar={() => setMobileOpen(true)}
+            >
+              <Outlet />
+            </PageShell>
+          </main>
+        </div>
+      </PageShellProvider>
+      <Toaster richColors position="bottom-right" />
+    </>
   );
 }

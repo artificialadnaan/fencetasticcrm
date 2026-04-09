@@ -59,16 +59,21 @@ export function EditableField({
 
   async function commit() {
     if (!editing) return;
+    let parsed: string | number | null = inputValue.trim() === '' ? null : inputValue.trim();
+    if (type === 'number') {
+      parsed = inputValue.trim() === '' ? null : Number(inputValue);
+    } else if (type === 'currency') {
+      const stripped = inputValue.replace(/[$,]/g, '').trim();
+      parsed = stripped === '' ? null : Number(stripped);
+    }
+    // Skip save if value hasn't changed
+    if (parsed === value || (parsed == null && value == null)) {
+      setEditing(false);
+      return;
+    }
     setEditing(false);
     setSaving(true);
     try {
-      let parsed: string | number | null = inputValue.trim() === '' ? null : inputValue.trim();
-      if (type === 'number') {
-        parsed = inputValue.trim() === '' ? null : Number(inputValue);
-      } else if (type === 'currency') {
-        const stripped = inputValue.replace(/[$,]/g, '').trim();
-        parsed = stripped === '' ? null : Number(stripped);
-      }
       await onSave(parsed);
     } catch {
       // error handled by caller
