@@ -121,9 +121,11 @@ export default function ProjectDetailPage() {
 
   // Tab state synced to URL
   const [searchParams, setSearchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState<TabId>(
-    () => (searchParams.get('tab') as TabId) || 'overview'
-  );
+  const VALID_TABS: TabId[] = TABS.map(t => t.id);
+  const [activeTab, setActiveTab] = useState<TabId>(() => {
+    const urlTab = searchParams.get('tab') as TabId;
+    return VALID_TABS.includes(urlTab) ? urlTab : 'overview';
+  });
   const handleTabChange = useCallback((tab: TabId) => {
     setActiveTab(tab);
     setSearchParams({ tab }, { replace: true });

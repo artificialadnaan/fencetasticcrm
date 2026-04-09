@@ -30,13 +30,7 @@ export function useKeyboardShortcuts() {
         }
       }
 
-      // "Escape" — close any open dialog
-      if (event.key === 'Escape') {
-        const closeButton = document.querySelector<HTMLButtonElement>('[data-dialog-close]');
-        if (closeButton) {
-          closeButton.click();
-        }
-      }
+
     }
 
     document.addEventListener('keydown', handleKeyDown);

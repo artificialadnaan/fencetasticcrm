@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { Grid3X3, Download, Plus, Search, X } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -64,13 +64,17 @@ export default function ProjectsPage() {
   }));
   const [searchText, setSearchText] = useState(searchParams.get('search') ?? '');
   const deferredSearch = useDeferredValue(searchText);
+  const prevSearchRef = useRef(deferredSearch);
 
-  // Sync deferred search value into query
+  // Sync deferred search value into query — only reset page when search actually changes
   useEffect(() => {
+    const searchChanged = prevSearchRef.current !== deferredSearch;
+    prevSearchRef.current = deferredSearch;
+
     setQuery((prev) => ({
       ...prev,
       search: deferredSearch.trim() ? deferredSearch : undefined,
-      page: 1,
+      ...(searchChanged ? { page: 1 } : {}),
     }));
   }, [deferredSearch]);
 

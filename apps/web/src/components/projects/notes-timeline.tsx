@@ -120,6 +120,7 @@ export function NotesTimeline({
                         className="h-7 w-7"
                         onClick={() => startEdit(note)}
                         disabled={isSaving}
+                        aria-label="Edit note"
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
@@ -129,6 +130,7 @@ export function NotesTimeline({
                         className="h-7 w-7 text-destructive hover:text-destructive"
                         onClick={() => setDeleteNoteId(note.id)}
                         disabled={isSaving}
+                        aria-label="Delete note"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>

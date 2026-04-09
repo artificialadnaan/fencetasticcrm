@@ -131,6 +131,11 @@ export function CreateProjectDialog({ onCreated, open: controlledOpen, onOpenCha
     setError('');
     setIsSubmitting(true);
 
+    const safeFloat = (val: string) => {
+      const n = parseFloat(val);
+      return isNaN(n) ? 0 : n;
+    };
+
     try {
       await api.post('/projects', {
         customer,
@@ -138,14 +143,14 @@ export function CreateProjectDialog({ onCreated, open: controlledOpen, onOpenCha
         description,
         fenceType,
         status,
-        projectTotal: parseFloat(projectTotal),
+        projectTotal: safeFloat(projectTotal),
         paymentMethod,
-        materialsCost: parseFloat(materialsCost) || 0,
-        forecastedExpenses: parseFloat(forecastedExpenses) || 0,
+        materialsCost: safeFloat(materialsCost),
+        forecastedExpenses: safeFloat(forecastedExpenses),
         contractDate,
         installDate,
         estimateDate: estimateDate || null,
-        linearFeet: linearFeet ? parseFloat(linearFeet) : null,
+        linearFeet: linearFeet ? safeFloat(linearFeet) : null,
         rateTemplateId: selectedTemplateId && selectedTemplateId !== 'NONE' ? selectedTemplateId : null,
         subcontractor: subcontractor || null,
         notes: notes || null,

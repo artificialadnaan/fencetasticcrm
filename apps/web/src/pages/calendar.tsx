@@ -213,6 +213,11 @@ export default function CalendarPage() {
       return;
     }
 
+    if (form.endDate && form.date && form.endDate < form.date) {
+      setSaveError('End date must be on or after the start date.');
+      return;
+    }
+
     setSaving(true);
     setSaveError(null);
 

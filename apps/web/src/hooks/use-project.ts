@@ -35,14 +35,25 @@ export function useProject(projectId: string | undefined): UseProjectReturn {
     fetchProject();
   }, [fetchProject]);
 
-  // Polling — paused when tab is backgrounded
+  // Polling — paused when tab is backgrounded; refetch immediately on tab focus
   useEffect(() => {
     const interval = setInterval(() => {
       if (document.visibilityState === 'visible') {
         fetchProject();
       }
     }, POLLING_INTERVAL_MS);
-    return () => clearInterval(interval);
+
+    function handleVisibility() {
+      if (document.visibilityState === 'visible') {
+        fetchProject();
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [fetchProject]);
 
   return { project, isLoading, error, refetch: fetchProject };
