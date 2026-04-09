@@ -5,13 +5,16 @@ import type { WorkOrderData, CreateWorkOrderDTO, UpdateWorkOrderDTO } from '@fen
 export function useWorkOrder(projectId: string) {
   const [workOrder, setWorkOrder] = useState<WorkOrderData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetch = useCallback(async () => {
     try {
       const res = await api.get(`/projects/${projectId}/work-order`);
+      setError(null);
       setWorkOrder(res.data.data);
     } catch {
       setWorkOrder(null);
+      setError('Failed to load work order');
     } finally {
       setIsLoading(false);
     }
@@ -44,5 +47,5 @@ export function useWorkOrder(projectId: string) {
     URL.revokeObjectURL(url);
   };
 
-  return { workOrder, isLoading, create, update, generatePdf, refetch: fetch };
+  return { workOrder, isLoading, error, create, update, generatePdf, refetch: fetch };
 }

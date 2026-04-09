@@ -1151,10 +1151,20 @@ export default function ProjectDetailPage() {
                 <input type="file" accept="image/*" multiple className="hidden" onChange={async (e) => {
                   const files = e.target.files;
                   if (!files?.length) return;
-                  for (const file of Array.from(files)) {
-                    await uploadPhoto(id!, file);
+                  try {
+                    const urls: string[] = [];
+                    for (const file of Array.from(files)) {
+                      const url = await uploadPhoto(id!, file);
+                      if (url) urls.push(url);
+                    }
+                    if (urls.length > 0) {
+                      await createNote({ content: 'Photo upload', photoUrls: urls });
+                    }
+                    refetchNotes();
+                    toast.success('Photos uploaded');
+                  } catch {
+                    toast.error('Failed to upload photos');
                   }
-                  refetchNotes();
                 }} />
               </label>
             </div>

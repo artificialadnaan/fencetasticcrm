@@ -130,7 +130,7 @@ const TOOLS: { type: ToolType; icon: typeof MousePointer; label: string }[] = [
 export default function WorkOrderPage() {
   const { id: projectId } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { workOrder, isLoading, create, update, generatePdf } = useWorkOrder(projectId ?? '');
+  const { workOrder, isLoading, error, create, update, generatePdf } = useWorkOrder(projectId ?? '');
 
   // Canvas state
   const stageRef = useRef<Konva.Stage>(null);
@@ -762,6 +762,11 @@ export default function WorkOrderPage() {
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">
+      {error && (
+        <div className="rounded-[24px] border border-destructive/30 bg-destructive/10 px-5 py-4 text-sm text-destructive">
+          {error}
+        </div>
+      )}
       {/* ---- Top Bar ---- */}
       <div
         className="flex items-center justify-between border-b px-4 shrink-0"

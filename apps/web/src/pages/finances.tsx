@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import {
   useCategoryBreakdown,
@@ -90,8 +91,10 @@ export default function FinancesPage() {
       setDialogOpen(false);
       setForm({ ...EMPTY_FORM });
       refetch();
+      toast.success('Transaction saved');
     } catch (err) {
       console.error('Failed to save transaction', err);
+      toast.error('Failed to save transaction');
     } finally {
       setSaving(false);
     }

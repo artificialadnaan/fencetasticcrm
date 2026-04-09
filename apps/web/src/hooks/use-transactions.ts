@@ -39,6 +39,7 @@ export function useTransactions(query: TransactionListQuery = {}): UseTransactio
       if (q.projectId) params.set('projectId', q.projectId);
       if (q.dateFrom) params.set('dateFrom', q.dateFrom);
       if (q.dateTo) params.set('dateTo', q.dateTo);
+      if (q.search) params.set('search', q.search);
 
       const res = await api.get(`/transactions?${params.toString()}`);
       setData(res.data.data);
