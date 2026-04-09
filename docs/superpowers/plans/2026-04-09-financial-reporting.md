@@ -17,7 +17,7 @@
 |------|---------------|
 | `apps/api/prisma/migrations/XXXXXX_add_material_line_items/migration.sql` | Schema migration |
 | `apps/api/src/services/material.service.ts` | MaterialLineItem CRUD + aggregation |
-| `apps/api/src/services/report-commission.helper.ts` | Shared commission calc helper for reports (matches buildCommissionPreview path) |
+| `apps/api/src/services/commission.helper.ts` | Shared `getAimannDebtBalance()` + `computeLiveCommission()` extracted from project.service.ts, used by financial-report.service.ts and material.service.ts |
 | `apps/api/src/routes/materials.ts` | Material API routes + Zod validation |
 | `apps/api/src/services/financial-report.service.ts` | 5 report calculation services |
 | `apps/api/src/routes/financial-reports.ts` | Report API routes + CSV/PDF export |
@@ -857,15 +857,25 @@ import type {
 } from '@fencetastic/shared';
 
 // ─── Shared Commission Helper ────────────────────────────────────────────────
-// Matches the existing buildCommissionPreview() path in project.service.ts:
-// uses amountOwed (not amountPaid) for subs and fetches real Aimann debt balance.
+// Import from the shared helper file (also used by material.service.ts and project.service.ts).
+// Extract getAimannDebtBalance from project.service.ts into commission.helper.ts
+// so all three services use the same path.
+//
+// File: apps/api/src/services/commission.helper.ts
+// Contains: getAimannDebtBalance(), computeLiveCommission()
+// project.service.ts should be updated to import from this file too.
 
-async function getAimannDebtBalance(): Promise<number> {
-  const lastLedger = await prisma.aimannDebtLedger.findFirst({
-    orderBy: { date: 'desc' },
-  });
-  return lastLedger ? d(lastLedger.runningBalance) : 0;
-}
+import { getAimannDebtBalance } from './commission.helper';
+
+// NOTE: The implementer should create apps/api/src/services/commission.helper.ts
+// with the getAimannDebtBalance function extracted from project.service.ts:
+//
+// export async function getAimannDebtBalance(): Promise<number> {
+//   const lastLedger = await prisma.aimannDebtLedger.findFirst({
+//     orderBy: { date: 'desc' },
+//   });
+//   return lastLedger ? d(lastLedger.runningBalance) : 0;
+// }
 
 async function computeLiveCommission(project: {
   projectTotal: Prisma.Decimal;
@@ -1320,20 +1330,40 @@ export async function getCommissionSummaryReport(
     pendingMemeRows.push({ projectId: p.id, customer: p.customer, projectTotal: d(p.projectTotal), commission: calc.memeCommission });
   }
 
+  // Compute pending Aimann deductions using live calculateCommission path
+  // (aimannDeduction is 25% of grossProfit when debt > 0, per existing logic)
+  let pendingAimannTotal = 0;
+  for (const p of unsettledProjects) {
+    const materialTotal = p.materialLineItems.length > 0
+      ? p.materialLineItems.reduce((s, m) => s + d(m.totalCost), 0)
+      : d(p.materialsCost);
+    const subOwedTotal = p.subcontractorPayments.reduce((s, sp) => s + d(sp.amountOwed), 0);
+    const calc = calculateCommission({
+      projectTotal: d(p.projectTotal),
+      paymentMethod: p.paymentMethod as PaymentMethod,
+      materialsCost: materialTotal,
+      subOwedTotal,
+      aimannDebtBalance,
+    });
+    pendingAimannTotal += calc.aimannDeduction;
+  }
+
+  const pendingAdnaanTotal = roundMoney(pendingAdnaanRows.reduce((s, r) => s + r.commission, 0));
   const pendingAdnaan: CommissionSummaryPerson = {
     name: 'Adnaan',
     rows: pendingAdnaanRows,
-    periodTotal: roundMoney(pendingAdnaanRows.reduce((s, r) => s + r.commission, 0)),
-    aimannDeductions: 0,
-    netPayout: roundMoney(pendingAdnaanRows.reduce((s, r) => s + r.commission, 0)),
+    periodTotal: pendingAdnaanTotal,
+    aimannDeductions: roundMoney(pendingAimannTotal),
+    netPayout: roundMoney(pendingAdnaanTotal - pendingAimannTotal),
   };
 
+  const pendingMemeTotal = roundMoney(pendingMemeRows.reduce((s, r) => s + r.commission, 0));
   const pendingMeme: CommissionSummaryPerson = {
     name: 'Meme',
     rows: pendingMemeRows,
-    periodTotal: roundMoney(pendingMemeRows.reduce((s, r) => s + r.commission, 0)),
-    aimannDeductions: 0,
-    netPayout: roundMoney(pendingMemeRows.reduce((s, r) => s + r.commission, 0)),
+    periodTotal: pendingMemeTotal,
+    aimannDeductions: 0, // Aimann deductions don't apply to Meme per spec
+    netPayout: pendingMemeTotal,
   };
 
   return {
@@ -1385,14 +1415,21 @@ export async function getExpenseBreakdownReport(
     },
   });
 
-  // Compute operating expense total for the date range
+  // Compute operating expense total for the date range (month-by-month with effectiveFrom/To)
   let opExTotal = 0;
-  const monthCount = Math.max(1, Math.round((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24 * 30)));
-  for (const exp of opExItems) {
-    let monthlyAmt = d(exp.amount);
-    if (exp.frequency === 'QUARTERLY') monthlyAmt /= 3;
-    else if (exp.frequency === 'ANNUAL') monthlyAmt /= 12;
-    opExTotal += monthlyAmt * monthCount;
+  const opExCurrent = new Date(from.getFullYear(), from.getMonth(), 1);
+  while (opExCurrent <= to) {
+    for (const exp of opExItems) {
+      const expFrom = exp.effectiveFrom ?? from;
+      const expTo = exp.effectiveTo ?? to;
+      if (opExCurrent < expFrom || opExCurrent > expTo) continue;
+
+      let monthlyAmt = d(exp.amount);
+      if (exp.frequency === 'QUARTERLY') monthlyAmt /= 3;
+      else if (exp.frequency === 'ANNUAL') monthlyAmt /= 12;
+      opExTotal += monthlyAmt;
+    }
+    opExCurrent.setMonth(opExCurrent.getMonth() + 1);
   }
 
   // By Category — 4 canonical categories per spec
@@ -2673,6 +2710,43 @@ financialReportRouter.get(
           }
           break;
         }
+        case 'commissions': {
+          const data = await getCommissionSummaryReport(dateFrom, dateTo);
+          doc.fontSize(12).text('Commission Summary', { underline: true });
+          doc.moveDown();
+          doc.fontSize(10).text('Settled — Adnaan', { underline: true });
+          for (const row of data.settled.adnaan.rows) {
+            doc.fontSize(9).text(`  ${row.customer}: ${row.commission}`);
+          }
+          doc.fontSize(9).text(`  Total: ${data.settled.adnaan.periodTotal} | Aimann: -${data.settled.adnaan.aimannDeductions} | Net: ${data.settled.adnaan.netPayout}`);
+          doc.moveDown();
+          doc.fontSize(10).text('Settled — Meme', { underline: true });
+          for (const row of data.settled.meme.rows) {
+            doc.fontSize(9).text(`  ${row.customer}: ${row.commission}`);
+          }
+          doc.fontSize(9).text(`  Total: ${data.settled.meme.periodTotal} | Net: ${data.settled.meme.netPayout}`);
+          doc.moveDown();
+          doc.fontSize(10).text('Pending — Adnaan', { underline: true });
+          for (const row of data.pending.adnaan.rows) {
+            doc.fontSize(9).text(`  ${row.customer}: ${row.commission}`);
+          }
+          doc.fontSize(9).text(`  Total: ${data.pending.adnaan.periodTotal} | Net: ${data.pending.adnaan.netPayout}`);
+          break;
+        }
+        case 'expenses': {
+          const data = await getExpenseBreakdownReport(dateFrom, dateTo);
+          doc.fontSize(12).text('Expense Breakdown', { underline: true });
+          doc.moveDown();
+          for (const cat of data.byCategory) {
+            doc.fontSize(10).text(`${cat.category}: ${cat.total}`);
+            for (const sub of cat.subcategories) {
+              doc.fontSize(9).text(`  ${sub.name}: ${sub.amount}`);
+            }
+          }
+          doc.moveDown();
+          doc.fontSize(10).text(`Total: ${data.total}`);
+          break;
+        }
         case 'cash-flow': {
           const data = await getCashFlowReport(dateFrom, dateTo);
           doc.fontSize(12).text('Cash Flow Report', { underline: true });
@@ -2685,7 +2759,7 @@ financialReportRouter.get(
           break;
         }
         default: {
-          doc.text('Report type not supported for PDF export.');
+          doc.text('Unknown report type.');
         }
       }
 
