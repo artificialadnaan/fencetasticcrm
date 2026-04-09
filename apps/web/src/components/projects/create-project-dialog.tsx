@@ -137,6 +137,11 @@ export function CreateProjectDialog({ onCreated, open: controlledOpen, onOpenCha
       return isNaN(n) ? null : n;
     };
 
+    const total = safeFloat(projectTotal);
+    const materials = safeFloat(materialsCost);
+    const forecasted = safeFloat(forecastedExpenses);
+    const feet = safeFloat(linearFeet);
+
     try {
       await api.post('/projects', {
         customer,
@@ -144,14 +149,14 @@ export function CreateProjectDialog({ onCreated, open: controlledOpen, onOpenCha
         description,
         fenceType,
         status,
-        projectTotal: safeFloat(projectTotal),
         paymentMethod,
-        materialsCost: safeFloat(materialsCost),
-        forecastedExpenses: safeFloat(forecastedExpenses),
-        contractDate,
-        installDate,
-        estimateDate: estimateDate || null,
-        linearFeet: safeFloat(linearFeet),
+        ...(total != null ? { projectTotal: total } : {}),
+        ...(materials != null ? { materialsCost: materials } : {}),
+        ...(forecasted != null ? { forecastedExpenses: forecasted } : {}),
+        ...(feet != null ? { linearFeet: feet } : {}),
+        ...(contractDate ? { contractDate } : {}),
+        ...(installDate ? { installDate } : {}),
+        ...(estimateDate ? { estimateDate } : {}),
         rateTemplateId: selectedTemplateId && selectedTemplateId !== 'NONE' ? selectedTemplateId : null,
         subcontractor: subcontractor || null,
         notes: notes || null,

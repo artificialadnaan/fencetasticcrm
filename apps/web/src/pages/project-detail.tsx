@@ -128,7 +128,7 @@ export default function ProjectDetailPage() {
   });
   const handleTabChange = useCallback((tab: TabId) => {
     setActiveTab(tab);
-    setSearchParams({ tab }, { replace: true });
+    setSearchParams({ tab });
   }, [setSearchParams]);
 
   // Sync tab from URL on back/forward navigation
