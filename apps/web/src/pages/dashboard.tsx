@@ -39,7 +39,7 @@ export default function DashboardPage() {
       <Button
         size="sm"
         onClick={() => setIsCreateOpen(true)}
-        className="rounded-2xl bg-slate-950 px-4 text-white hover:bg-slate-800 print:hidden"
+        className="rounded-2xl bg-[hsl(var(--brand-blue))] px-4 text-white hover:bg-[hsl(var(--brand-blue-hover))] print:hidden"
       >
         <Plus className="h-4 w-4" />
         Add New

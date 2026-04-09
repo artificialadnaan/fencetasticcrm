@@ -456,7 +456,7 @@ export default function ProjectDetailPage() {
                 onClick={() => handleTabChange(tab.id)}
                 className={`rounded-2xl px-4 py-2 text-sm font-medium transition-all duration-200 ${
                   isActive
-                    ? 'bg-slate-950 text-white shadow-[0_10px_24px_rgba(15,23,42,0.18)]'
+                    ? 'bg-[hsl(var(--brand-blue))] text-white shadow-[0_10px_24px_rgba(78,156,207,0.25)]'
                     : 'text-slate-600 hover:bg-white hover:text-slate-950'
                 }`}
               >

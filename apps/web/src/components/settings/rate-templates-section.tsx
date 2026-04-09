@@ -143,7 +143,7 @@ export function RateTemplatesSection({
           <Button
             size="sm"
             onClick={openAdd}
-            className="rounded-2xl bg-slate-950 px-5 text-white hover:bg-slate-800"
+            className="rounded-2xl bg-[hsl(var(--brand-blue))] px-5 text-white hover:bg-[hsl(var(--brand-blue-hover))]"
           >
             <Plus className="h-4 w-4 mr-1" />
             Add Template
@@ -311,7 +311,7 @@ export function RateTemplatesSection({
               <Button
                 onClick={handleSave}
                 disabled={saving || !isFormValid}
-                className="rounded-2xl bg-slate-950 px-5 text-white hover:bg-slate-800"
+                className="rounded-2xl bg-[hsl(var(--brand-blue))] px-5 text-white hover:bg-[hsl(var(--brand-blue-hover))]"
               >
                 {saving ? 'Saving…' : editingTemplate ? 'Save Changes' : 'Add Template'}
               </Button>

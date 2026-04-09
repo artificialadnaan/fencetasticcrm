@@ -316,7 +316,7 @@ export default function CalendarPage() {
       <Button
         type="button"
         onClick={() => openCreateDialog()}
-        className="rounded-2xl bg-slate-950 px-4 text-white hover:bg-slate-800"
+        className="rounded-2xl bg-[hsl(var(--brand-blue))] px-4 text-white hover:bg-[hsl(var(--brand-blue-hover))]"
       >
         <Plus className="h-4 w-4" />
         Add Event
@@ -655,7 +655,7 @@ export default function CalendarPage() {
                     type="button"
                     onClick={handleSave}
                     disabled={saving}
-                    className="rounded-2xl bg-slate-950 px-4 text-white hover:bg-slate-800"
+                    className="rounded-2xl bg-[hsl(var(--brand-blue))] px-4 text-white hover:bg-[hsl(var(--brand-blue-hover))]"
                   >
                     {saving ? 'Saving...' : editingEvent ? 'Save Changes' : 'Save Event'}
                   </Button>

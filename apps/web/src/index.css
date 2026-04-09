@@ -31,6 +31,8 @@
     --shell-panel: 35 30% 97%;
     --shell-glass: 0 0% 100%;
     --shell-accent: 217 72% 62%;
+    --brand-blue: 205 56% 56%;
+    --brand-blue-hover: 207 44% 44%;
   }
 }
 
@@ -78,5 +80,13 @@
     background: hsl(var(--shell-panel));
     border: 1px solid rgba(94, 82, 60, 0.08);
     box-shadow: 0 10px 30px rgba(43, 33, 18, 0.05);
+  }
+
+  .btn-brand {
+    background-color: hsl(var(--brand-blue));
+    color: white;
+  }
+  .btn-brand:hover {
+    background-color: hsl(var(--brand-blue-hover));
   }
 }

@@ -150,7 +150,7 @@ export default function FinancesPage() {
           setFormErrors({});
           setDialogOpen(true);
         }}
-        className="rounded-2xl bg-slate-950 px-4 text-white hover:bg-slate-800"
+        className="rounded-2xl bg-[hsl(var(--brand-blue))] px-4 text-white hover:bg-[hsl(var(--brand-blue-hover))]"
       >
         <Plus className="h-4 w-4" />
         Add Transaction
@@ -308,7 +308,7 @@ export default function FinancesPage() {
               type="button"
               onClick={handleSave}
               disabled={saving || !form.category || !form.description || form.amount <= 0}
-              className="rounded-2xl bg-slate-950 px-5 text-white hover:bg-slate-800"
+              className="rounded-2xl bg-[hsl(var(--brand-blue))] px-5 text-white hover:bg-[hsl(var(--brand-blue-hover))]"
             >
               {saving ? 'Saving...' : 'Save Transaction'}
             </Button>
