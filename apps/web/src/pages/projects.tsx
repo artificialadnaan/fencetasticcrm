@@ -82,6 +82,7 @@ export default function ProjectsPage() {
     ) {
       setQuery({ ...DEFAULT_QUERY, status: urlStatus, search: urlSearch, fenceType: urlFenceType, page: urlPage });
       setSearchText(urlSearch ?? '');
+      prevSearchRef.current = urlSearch ?? '';
     }
   }, [searchParams]); // intentionally exclude query to prevent loops
 
