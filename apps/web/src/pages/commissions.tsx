@@ -6,6 +6,7 @@ import { DebtTracker } from '@/components/commissions/debt-tracker';
 import { DebtAdjustmentDialog } from '@/components/commissions/debt-adjustment-dialog';
 import { useCommissionSummary, useCommissionsByProject, useCommissionPipeline } from '@/hooks/use-commissions';
 import { useDebtBalance, useDebtLedger, useDebtAdjustment } from '@/hooks/use-debt';
+import { usePageShell } from '@/components/layout/page-shell';
 
 export default function CommissionsPage() {
   const [adjustmentOpen, setAdjustmentOpen] = useState(false);
@@ -20,6 +21,12 @@ export default function CommissionsPage() {
   const pageError = summaryError ?? byProjectError ?? pipelineError ?? balanceError ?? ledgerError;
   const { submit, isSubmitting } = useDebtAdjustment();
 
+  usePageShell({
+    eyebrow: 'Payroll & Commissions',
+    title: 'Commissions',
+    subtitle: 'Commission payouts, Aimann debt tracking, and pipeline projections.',
+  });
+
   async function handleAdjustmentSubmit(dto: { amount: number; note: string; date?: string }) {
     await submit(dto);
     refetchBalance();
@@ -29,15 +36,8 @@ export default function CommissionsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Commissions</h1>
-        <p className="text-muted-foreground mt-1">
-          Commission payouts, Aimann debt tracking, and pipeline projections.
-        </p>
-      </div>
-
       {pageError && (
-        <div className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-[24px] border border-destructive/30 bg-destructive/10 px-5 py-4 text-sm text-destructive">
           Failed to load commission data: {String(pageError)}
         </div>
       )}

@@ -148,7 +148,7 @@ export default function ProjectGridPage() {
   );
 
   usePageShell({
-    eyebrow: 'Command Center',
+    eyebrow: 'Pipeline Operations',
     title: 'Grid View',
     subtitle: 'Spreadsheet-first project workspace with inline edits, filters, totals, and fast detail access.',
     searchSlot,

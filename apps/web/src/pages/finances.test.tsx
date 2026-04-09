@@ -68,11 +68,6 @@ function ShellHarness({ children }: { children: ReactNode }) {
   return (
     <PageShellProvider value={setShellConfig}>
       <PageShell
-        user={{
-          id: 'user-1',
-          name: 'Adnaan',
-          email: 'adnaan@fencetastic.com',
-        }}
         onOpenSidebar={vi.fn()}
         {...shellConfig}
       >

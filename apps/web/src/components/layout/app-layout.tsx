@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import { useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/utils';
 import Sidebar, { NAV_ITEMS } from './sidebar';
 import PageShell, { PageShellProvider, type PageShellConfig } from './page-shell';
@@ -46,8 +45,6 @@ export default function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pageShellConfig, setPageShellConfig] = useState<PageShellConfig>({});
   const location = useLocation();
-  const { user } = useAuth();
-
   const shellConfig = useMemo(() => {
     const defaults = getDefaultShellConfig(location.pathname);
     return {
@@ -76,7 +73,6 @@ export default function AppLayout() {
         >
           <PageShell
             {...shellConfig}
-            user={user}
             onOpenSidebar={() => setMobileOpen(true)}
           >
             <Outlet />

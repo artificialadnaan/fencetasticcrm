@@ -49,7 +49,7 @@ export default function DashboardPage() {
   );
 
   usePageShell({
-    eyebrow: 'Command Center',
+    eyebrow: 'Operations Overview',
     title: 'Dashboard',
     subtitle: 'Live view of revenue, pipeline, follow-ups, and install readiness.',
     secondaryActions,

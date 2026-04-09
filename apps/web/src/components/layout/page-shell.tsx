@@ -7,7 +7,6 @@ import {
   type ReactNode,
   type SetStateAction,
 } from 'react';
-import type { AuthUser } from '@fencetastic/shared';
 import { cn } from '@/lib/utils';
 import TopAppBar from './top-app-bar';
 
@@ -82,7 +81,6 @@ export function usePageShell(config: PageShellConfig) {
 
 export default function PageShell({
   children,
-  user,
   eyebrow,
   title,
   subtitle,
@@ -94,7 +92,6 @@ export default function PageShell({
   onOpenSidebar,
 }: PageShellConfig & {
   children: ReactNode;
-  user: AuthUser | null;
   onOpenSidebar: () => void;
 }) {
   return (
@@ -105,7 +102,6 @@ export default function PageShell({
         title={title}
         subtitle={subtitle}
         searchSlot={searchSlot}
-        user={user}
         primaryActions={primaryActions}
         secondaryActions={secondaryActions}
         utilityActions={utilityActions}

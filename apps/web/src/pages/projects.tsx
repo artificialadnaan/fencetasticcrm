@@ -206,7 +206,7 @@ export default function ProjectsPage() {
   );
 
   usePageShell({
-    eyebrow: 'Command Center',
+    eyebrow: 'Pipeline Operations',
     title: 'Projects',
     subtitle: 'Search the live project pipeline, switch status tabs, and export the current filtered view.',
     searchSlot,
@@ -267,41 +267,6 @@ export default function ProjectsPage() {
           onClearFilters={handleClearFilters}
         />
 
-        <section className="shell-panel rounded-[32px] p-6 md:p-8">
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(280px,0.8fr)] lg:items-center">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-                Field Ops Assist
-              </p>
-              <h2 className="mt-3 text-2xl font-semibold tracking-[-0.05em] text-slate-950">
-                Keep the project pipeline moving from one workspace.
-              </h2>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-                The Foreman AI launch control stays visible to match the approved mock, but it is not
-                wired to a live workflow yet. Use the live grid and list routes for the operational work.
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <Button
-                type="button"
-                onClick={handleGridView}
-                className="rounded-2xl bg-slate-950 px-5 text-white hover:bg-slate-800"
-              >
-                <Grid3X3 className="h-4 w-4" />
-                Open Grid View
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                disabled
-                className="rounded-2xl border-black/10 bg-white/70 px-5 shadow-sm"
-              >
-                Launch Foreman AI
-              </Button>
-            </div>
-          </div>
-        </section>
       </div>
     </>
   );

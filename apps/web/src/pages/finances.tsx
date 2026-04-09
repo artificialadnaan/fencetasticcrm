@@ -179,7 +179,7 @@ export default function FinancesPage() {
   );
 
   usePageShell({
-    eyebrow: 'Command Center',
+    eyebrow: 'Financial Ledger',
     title: 'Finances',
     subtitle: 'Live view of revenue, pipeline spend, and ledger activity.',
     searchSlot,

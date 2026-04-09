@@ -114,22 +114,6 @@ function DesktopSidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
           {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
         </Button>
       </div>
-      <div className="px-5">
-        <div className="rounded-[28px] border border-white/8 bg-white/[0.03] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-          {!collapsed ? (
-            <>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-sidebar-foreground/45">
-                Operations
-              </p>
-              <p className="mt-2 text-sm leading-6 text-sidebar-foreground/72">
-                Shared command center for pipeline, installs, and cashflow.
-              </p>
-            </>
-          ) : (
-            <div className="mx-auto h-2 w-2 rounded-full bg-[rgba(106,153,255,0.9)]" />
-          )}
-        </div>
-      </div>
       <nav className="flex-1 space-y-1 overflow-y-auto px-4 py-6">
         <TooltipProvider>{NAV_ITEMS.map((item) => <NavItem key={item.path} item={item} collapsed={collapsed} />)}</TooltipProvider>
       </nav>
@@ -185,14 +169,6 @@ function MobileSidebar({ open, onOpenChange }: { open: boolean; onOpenChange: (o
                 Fencetastic
               </h1>
             </div>
-          </div>
-          <div className="mt-5 rounded-[28px] border border-white/8 bg-white/[0.03] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-sidebar-foreground/45">
-              Operations
-            </p>
-            <p className="mt-2 text-sm leading-6 text-sidebar-foreground/72">
-              Shared command center for pipeline, installs, and cashflow.
-            </p>
           </div>
         </div>
         <nav className="flex-1 space-y-1 overflow-y-auto px-4 py-6">

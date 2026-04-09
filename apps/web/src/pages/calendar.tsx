@@ -306,7 +306,7 @@ export default function CalendarPage() {
   }, [clearFilters, searchText, typeFilter]);
 
   usePageShell({
-    eyebrow: 'Command Center',
+    eyebrow: 'Field Schedule',
     title: 'Calendar',
     subtitle: 'Schedule installs, estimates, and follow-ups with a live month view and direct project lookup.',
     searchSlot,
