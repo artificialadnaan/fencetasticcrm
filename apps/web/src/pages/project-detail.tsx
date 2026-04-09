@@ -127,9 +127,10 @@ export default function ProjectDetailPage() {
     return VALID_TABS.includes(urlTab) ? urlTab : 'overview';
   });
   const handleTabChange = useCallback((tab: TabId) => {
+    if (tab === activeTab) return;
     setActiveTab(tab);
     setSearchParams({ tab });
-  }, [setSearchParams]);
+  }, [activeTab, setSearchParams]);
 
   // Sync tab from URL on back/forward navigation
   useEffect(() => {

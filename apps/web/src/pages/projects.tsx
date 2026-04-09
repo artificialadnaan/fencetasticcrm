@@ -104,8 +104,12 @@ export default function ProjectsPage() {
     if (query.search) params.search = query.search;
     if (query.fenceType) params.fenceType = query.fenceType;
     if (query.page && query.page > 1) params.page = String(query.page);
-    setSearchParams(params);
-  }, [query, setSearchParams]);
+
+    const next = new URLSearchParams(params).toString();
+    if (next !== searchParams.toString()) {
+      setSearchParams(params);
+    }
+  }, [query, searchParams, setSearchParams]);
 
   const { data, pagination, isLoading, error, refetch } = useProjects(query);
 

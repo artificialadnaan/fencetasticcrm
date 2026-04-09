@@ -131,16 +131,11 @@ export function CreateProjectDialog({ onCreated, open: controlledOpen, onOpenCha
     setError('');
     setIsSubmitting(true);
 
-    const safeFloat = (val: string): number | null => {
-      if (!val.trim()) return null;
+    const safeFloat = (val: string): number => {
+      if (!val.trim()) return 0;
       const n = parseFloat(val);
-      return isNaN(n) ? null : n;
+      return isNaN(n) ? 0 : n;
     };
-
-    const total = safeFloat(projectTotal);
-    const materials = safeFloat(materialsCost);
-    const forecasted = safeFloat(forecastedExpenses);
-    const feet = safeFloat(linearFeet);
 
     try {
       await api.post('/projects', {
@@ -150,10 +145,10 @@ export function CreateProjectDialog({ onCreated, open: controlledOpen, onOpenCha
         fenceType,
         status,
         paymentMethod,
-        ...(total != null ? { projectTotal: total } : {}),
-        ...(materials != null ? { materialsCost: materials } : {}),
-        ...(forecasted != null ? { forecastedExpenses: forecasted } : {}),
-        ...(feet != null ? { linearFeet: feet } : {}),
+        projectTotal: safeFloat(projectTotal),
+        materialsCost: safeFloat(materialsCost),
+        forecastedExpenses: safeFloat(forecastedExpenses),
+        linearFeet: safeFloat(linearFeet),
         ...(contractDate ? { contractDate } : {}),
         ...(installDate ? { installDate } : {}),
         ...(estimateDate ? { estimateDate } : {}),
