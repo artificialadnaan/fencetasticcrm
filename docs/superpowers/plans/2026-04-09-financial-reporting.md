@@ -1432,8 +1432,13 @@ export async function getExpenseBreakdownReport(
   while (opExCurrent <= to) {
     for (const exp of opExItems) {
       // Normalize effectiveFrom/To to month boundaries for comparison
-      const expFrom = exp.effectiveFrom ? new Date(exp.effectiveFrom.getFullYear(), exp.effectiveFrom.getMonth(), 1) : from;
-      const expTo = exp.effectiveTo ? new Date(exp.effectiveTo.getFullYear(), exp.effectiveTo.getMonth(), 1) : to;
+      // Null fallbacks also normalized so arbitrary dateFrom/dateTo don't skip months
+      const expFrom = exp.effectiveFrom
+        ? new Date(exp.effectiveFrom.getFullYear(), exp.effectiveFrom.getMonth(), 1)
+        : new Date(from.getFullYear(), from.getMonth(), 1);
+      const expTo = exp.effectiveTo
+        ? new Date(exp.effectiveTo.getFullYear(), exp.effectiveTo.getMonth(), 1)
+        : new Date(to.getFullYear(), to.getMonth(), 1);
       if (opExCurrent < expFrom || opExCurrent > expTo) continue;
 
       let monthlyAmt = d(exp.amount);
@@ -1614,9 +1619,13 @@ export async function getCashFlowReport(
     const monthDate = new Date(Date.parse('1 ' + key));
     for (const exp of opExItems) {
       // Normalize effectiveFrom/To to month boundaries for comparison
-      // An expense starting April 15 should still count for April
-      const expFrom = exp.effectiveFrom ? new Date(exp.effectiveFrom.getFullYear(), exp.effectiveFrom.getMonth(), 1) : from;
-      const expTo = exp.effectiveTo ? new Date(exp.effectiveTo.getFullYear(), exp.effectiveTo.getMonth(), 1) : to;
+      // Null fallbacks also normalized so arbitrary dateFrom/dateTo don't skip months
+      const expFrom = exp.effectiveFrom
+        ? new Date(exp.effectiveFrom.getFullYear(), exp.effectiveFrom.getMonth(), 1)
+        : new Date(from.getFullYear(), from.getMonth(), 1);
+      const expTo = exp.effectiveTo
+        ? new Date(exp.effectiveTo.getFullYear(), exp.effectiveTo.getMonth(), 1)
+        : new Date(to.getFullYear(), to.getMonth(), 1);
       if (monthDate < expFrom || monthDate > expTo) continue;
 
       let monthlyAmt = d(exp.amount);
