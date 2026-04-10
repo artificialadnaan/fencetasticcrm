@@ -222,3 +222,153 @@ financialReportRouter.get(
     }
   }
 );
+
+// GET /api/reports/:type/pdf
+financialReportRouter.get(
+  '/:type/pdf',
+  requireAuth,
+  validateQuery(exportSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { type } = req.params;
+      const { dateFrom, dateTo, period } = req.query as unknown as {
+        dateFrom: string;
+        dateTo: string;
+        period?: 'monthly' | 'quarterly' | 'annual';
+      };
+
+      const PDFDocument = (await import('pdfkit')).default;
+      const doc = new PDFDocument({ margin: 50, size: 'LETTER' });
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=${type}-report.pdf`);
+      doc.pipe(res);
+
+      // Header
+      doc.fontSize(18).text('Fencetastic Financial Report', { align: 'center' });
+      doc
+        .fontSize(10)
+        .text(
+          `${type.replace(/-/g, ' ').toUpperCase()} — ${dateFrom} to ${dateTo}`,
+          { align: 'center' }
+        );
+      doc.moveDown(2);
+
+      switch (type) {
+        case 'pnl': {
+          const data = await getPnlReport(
+            new Date(dateFrom),
+            new Date(dateTo),
+            (period ?? 'monthly') as 'monthly' | 'quarterly' | 'annual'
+          );
+          doc.fontSize(14).text('Profit & Loss', { underline: true });
+          doc.moveDown();
+          for (const row of data.rows) {
+            doc.fontSize(9).text(
+              `${row.month}:  Revenue $${row.revenue.toLocaleString()}  |  COGS $${row.cogs.toLocaleString()}  |  Gross $${row.grossProfit.toLocaleString()}  |  OpEx $${row.operatingExpenses.toLocaleString()}  |  Comm $${row.commissions.toLocaleString()}  |  Net $${row.netProfit.toLocaleString()}`
+            );
+          }
+          doc.moveDown();
+          const t = data.totals;
+          doc
+            .fontSize(11)
+            .text(
+              `TOTALS:  Revenue $${t.revenue.toLocaleString()}  |  Net Profit $${t.netProfit.toLocaleString()}`
+            );
+          break;
+        }
+        case 'job-costing': {
+          const data = await getJobCostingReport(new Date(dateFrom), new Date(dateTo));
+          doc.fontSize(14).text('Job Costing Report', { underline: true });
+          doc.moveDown();
+          for (const row of data) {
+            doc.fontSize(9).text(
+              `${row.customer} (${row.address}) — Rev: $${row.revenue.toLocaleString()} | Mat: $${row.materials.toLocaleString()} | Sub: $${row.subcontractors.toLocaleString()} | Profit: $${row.profit.toLocaleString()} (${row.marginPct}%)`
+            );
+          }
+          break;
+        }
+        case 'commissions': {
+          const data = await getCommissionSummaryReport(new Date(dateFrom), new Date(dateTo));
+          doc.fontSize(14).text('Commission Summary', { underline: true });
+          doc.moveDown();
+
+          doc.fontSize(11).text('Settled — Adnaan', { underline: true });
+          for (const row of data.settled.adnaan.rows) {
+            doc.fontSize(9).text(`  ${row.customer}: $${row.commission.toLocaleString()}`);
+          }
+          doc
+            .fontSize(9)
+            .text(
+              `  Total: $${data.settled.adnaan.periodTotal.toLocaleString()} | Aimann: -$${data.settled.adnaan.aimannDeductions.toLocaleString()} | Net: $${data.settled.adnaan.netPayout.toLocaleString()}`
+            );
+          doc.moveDown(0.5);
+
+          doc.fontSize(11).text('Settled — Meme', { underline: true });
+          for (const row of data.settled.meme.rows) {
+            doc.fontSize(9).text(`  ${row.customer}: $${row.commission.toLocaleString()}`);
+          }
+          doc
+            .fontSize(9)
+            .text(
+              `  Total: $${data.settled.meme.periodTotal.toLocaleString()} | Net: $${data.settled.meme.netPayout.toLocaleString()}`
+            );
+          doc.moveDown(0.5);
+
+          doc.fontSize(11).text('Pending — Adnaan', { underline: true });
+          for (const row of data.pending.adnaan.rows) {
+            doc.fontSize(9).text(`  ${row.customer}: $${row.commission.toLocaleString()}`);
+          }
+          doc
+            .fontSize(9)
+            .text(
+              `  Total: $${data.pending.adnaan.periodTotal.toLocaleString()} | Aimann: -$${data.pending.adnaan.aimannDeductions.toLocaleString()} | Net: $${data.pending.adnaan.netPayout.toLocaleString()}`
+            );
+          doc.moveDown(0.5);
+
+          doc.fontSize(11).text('Pending — Meme', { underline: true });
+          for (const row of data.pending.meme.rows) {
+            doc.fontSize(9).text(`  ${row.customer}: $${row.commission.toLocaleString()}`);
+          }
+          doc
+            .fontSize(9)
+            .text(
+              `  Total: $${data.pending.meme.periodTotal.toLocaleString()} | Net: $${data.pending.meme.netPayout.toLocaleString()}`
+            );
+          break;
+        }
+        case 'expenses': {
+          const data = await getExpenseBreakdownReport(new Date(dateFrom), new Date(dateTo));
+          doc.fontSize(14).text('Expense Breakdown', { underline: true });
+          doc.moveDown();
+          for (const cat of data.byCategory) {
+            doc.fontSize(10).text(`${cat.category}: $${cat.total.toLocaleString()}`);
+            for (const sub of cat.subcategories) {
+              doc.fontSize(9).text(`    ${sub.name}: $${sub.amount.toLocaleString()}`);
+            }
+          }
+          doc.moveDown();
+          doc.fontSize(11).text(`Total Expenses: $${data.total.toLocaleString()}`);
+          break;
+        }
+        case 'cash-flow': {
+          const data = await getCashFlowReport(new Date(dateFrom), new Date(dateTo));
+          doc.fontSize(14).text('Cash Flow Report', { underline: true });
+          doc.moveDown();
+          for (const row of data) {
+            doc.fontSize(9).text(
+              `${row.month}:  In $${row.moneyIn.toLocaleString()}  |  Out $${row.moneyOut.toLocaleString()}  |  Net $${row.netCashFlow.toLocaleString()}  |  Balance $${row.runningBalance.toLocaleString()}`
+            );
+          }
+          break;
+        }
+        default: {
+          doc.fontSize(12).text('Unknown report type.');
+        }
+      }
+
+      doc.end();
+    } catch (err) {
+      next(err);
+    }
+  }
+);
