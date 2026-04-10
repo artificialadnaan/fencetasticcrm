@@ -212,7 +212,15 @@ export function JobCostingReport({ dateFrom, dateTo }: JobCostingReportProps) {
                       <tr
                         className="border-b border-black/5 hover:bg-slate-50/60 cursor-pointer transition-colors"
                         onClick={() => toggleRow(row.projectId)}
+                        tabIndex={0}
+                        role="button"
                         aria-expanded={expanded}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            toggleRow(row.projectId);
+                          }
+                        }}
                       >
                         <td className="py-2 px-2">
                           {expanded ? (

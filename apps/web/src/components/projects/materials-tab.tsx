@@ -211,6 +211,17 @@ export function MaterialsTab({ projectId }: MaterialsTabProps) {
       (r) => r.description.trim() && r.category && r.quantity && r.unitCost
     );
     if (validRows.length === 0) return;
+    const errors: string[] = [];
+    for (let i = 0; i < validRows.length; i++) {
+      const row = validRows[i];
+      if (Number(row.quantity) <= 0) errors.push(`Row ${i + 1}: Quantity must be greater than 0`);
+      if (Number(row.unitCost) < 0) errors.push(`Row ${i + 1}: Unit cost cannot be negative`);
+      if (!row.purchaseDate) errors.push(`Row ${i + 1}: Purchase date is required`);
+    }
+    if (errors.length > 0) {
+      toast.error(errors.join('. '));
+      return;
+    }
     const items: CreateMaterialLineItemDTO[] = validRows.map((r) => ({
       description: r.description.trim(),
       category: r.category as MaterialCategory,
