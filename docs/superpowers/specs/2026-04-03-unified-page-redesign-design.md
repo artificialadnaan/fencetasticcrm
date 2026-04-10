@@ -201,7 +201,7 @@ Behavior expectations:
 - search is a real transaction search control, not a decorative input; extend transaction query support if necessary so it can search description, category, and payee across the filtered result set
 - filter button opens real filter controls backed by transaction query state rather than page-local decoration
 - pagination stays functional
-- export downloads the current filtered transactions view as a real file, preferring CSV if no existing finance export endpoint exists
+- export downloads the full filtered transactions result set as a real CSV file, not just the currently visible page; if the existing transactions list endpoint cannot supply enough rows reliably, add a dedicated backend export route rather than exporting only the current page
 
 ### Projects
 
@@ -254,7 +254,10 @@ Map to current logic:
 - current calendar data remains driven by `useCalendarEvents`
 - existing add-event dialog is preserved unless it can be restyled safely
 - event clicking still routes to project detail for project-linked events
-- search/filter controls should work where intent is clear; if the mocked filter model has no current backing logic, keep visible and list unresolved specifics after implementation
+- the calendar top search becomes a real text filter over visible events, matching against event title and linked project customer/address when available
+- the `Filter View` control becomes a real event-type filter using the existing calendar event types shown in the legend
+- month navigation and current-month context remain functional
+- no speculative project, crew, or date-range filters are added beyond the text search, event-type filter, and the existing calendar navigation/view state for this phase
 
 If the current `react-big-calendar` month view cannot be restyled enough to meet the pasted design, replace the rendered month grid with a custom month grid built from current event data rather than forcing the existing library skin beyond reason.
 

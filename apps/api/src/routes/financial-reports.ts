@@ -181,7 +181,8 @@ financialReportRouter.get(
           csv += `${row.month},${row.revenue},${row.cogs},${row.grossProfit},${row.operatingExpenses},${row.commissions},${row.netProfit}\n`;
         }
       } else if (type === 'job-costing') {
-        const rows = await getJobCostingReport(new Date(dateFrom), new Date(dateTo));
+        const { status, fenceType } = req.query as Record<string, string | undefined>;
+        const rows = await getJobCostingReport(new Date(dateFrom), new Date(dateTo), status as any, fenceType as any);
         csv =
           'Customer,Address,Status,Fence Type,Revenue,Materials,Subcontractors,Other Expenses,Commission (Adnaan),Commission (Meme),Profit,Margin %\n';
         for (const row of rows) {
@@ -292,7 +293,8 @@ financialReportRouter.get(
           break;
         }
         case 'job-costing': {
-          const data = await getJobCostingReport(new Date(dateFrom), new Date(dateTo));
+          const { status: pdfStatus, fenceType: pdfFenceType } = req.query as Record<string, string | undefined>;
+          const data = await getJobCostingReport(new Date(dateFrom), new Date(dateTo), pdfStatus as any, pdfFenceType as any);
           doc.fontSize(14).text('Job Costing Report', { underline: true });
           doc.moveDown();
           for (const row of data) {

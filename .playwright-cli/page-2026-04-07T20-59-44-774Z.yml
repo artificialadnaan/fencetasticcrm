@@ -1,0 +1,10 @@
+- generic [ref=e4]:
+  - heading "Fencetastic" [level=1] [ref=e5]
+  - paragraph [ref=e6]: Select your account
+  - generic [ref=e7]:
+    - button "Adnaan adnaan@fencetastic.com" [ref=e8] [cursor=pointer]:
+      - paragraph [ref=e9]: Adnaan
+      - paragraph [ref=e10]: adnaan@fencetastic.com
+    - button "Meme meme@fencetastic.com" [ref=e11] [cursor=pointer]:
+      - paragraph [ref=e12]: Meme
+      - paragraph [ref=e13]: meme@fencetastic.com

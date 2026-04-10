@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { formatCurrency } from '@/lib/formatters';
 import { useJobCostingReport } from '@/hooks/use-financial-reports';
@@ -55,9 +55,17 @@ function marginColor(pct: number): string {
   return 'text-red-500';
 }
 
-export function JobCostingReport({ dateFrom, dateTo }: JobCostingReportProps) {
+export function JobCostingReport({ dateFrom, dateTo, onFiltersChange }: JobCostingReportProps & { onFiltersChange?: (filters: Record<string, string>) => void }) {
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const [fenceTypeFilter, setFenceTypeFilter] = useState<string | undefined>(undefined);
+
+  // Report active filters to parent for export sync
+  useEffect(() => {
+    const filters: Record<string, string> = {};
+    if (statusFilter) filters.status = statusFilter;
+    if (fenceTypeFilter) filters.fenceType = fenceTypeFilter;
+    onFiltersChange?.(filters);
+  }, [statusFilter, fenceTypeFilter, onFiltersChange]);
   const [sortField, setSortField] = useState<SortField>('customer');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());

@@ -452,8 +452,8 @@ export interface CreateProjectDTO {
   paymentMethod: PaymentMethod;
   forecastedExpenses: number;
   materialsCost: number;
-  contractDate: string;
-  installDate: string;
+  contractDate?: string;
+  installDate?: string;
   completedDate?: string | null;
   estimateDate?: string | null;
   followUpDate?: string | null;

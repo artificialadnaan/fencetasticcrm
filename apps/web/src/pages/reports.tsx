@@ -38,10 +38,10 @@ export default function ReportsPage() {
   const [dateFrom, setDateFrom] = useState(getDefaultDateFrom);
   const [dateTo, setDateTo] = useState(getDefaultDateTo);
   const [period, setPeriod] = useState<string>('monthly');
+  const [jobCostingFilters, setJobCostingFilters] = useState<Record<string, string>>({});
 
-  const exportType = activeTab === 'job-costing' ? 'job-costing' : activeTab;
-  const exportExtraParams = activeTab === 'pnl' ? { period } : undefined;
-  const { exportCsv, isExporting } = useExportReport(exportType, { dateFrom, dateTo }, exportExtraParams);
+  const exportExtraParams = activeTab === 'pnl' ? { period } : activeTab === 'job-costing' ? jobCostingFilters : undefined;
+  const { exportCsv, isExporting } = useExportReport(activeTab, { dateFrom, dateTo }, exportExtraParams);
 
   const handlePdfExport = async () => {
     try {
@@ -179,7 +179,7 @@ export default function ReportsPage() {
         <PnlReport dateFrom={dateFrom} dateTo={dateTo} period={period} />
       )}
       {activeTab === 'job-costing' && (
-        <JobCostingReport dateFrom={dateFrom} dateTo={dateTo} />
+        <JobCostingReport dateFrom={dateFrom} dateTo={dateTo} onFiltersChange={setJobCostingFilters} />
       )}
       {activeTab === 'commissions' && (
         <CommissionReport dateFrom={dateFrom} dateTo={dateTo} />
