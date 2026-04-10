@@ -858,6 +858,7 @@ export interface CommissionSummaryPerson {
   rows: {
     projectId: string;
     customer: string;
+    address: string;
     projectTotal: number;
     commission: number;
   }[];

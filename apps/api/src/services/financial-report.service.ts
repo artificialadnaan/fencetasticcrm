@@ -32,6 +32,12 @@ function monthKey(date: Date): string {
   return date.toLocaleString('en-US', { month: 'short', year: 'numeric' });
 }
 
+function endOfDay(date: Date): Date {
+  const d = new Date(date);
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+
 function getProjectAttributionDate(project: {
   completedDate: Date | null;
   contractDate: Date;
@@ -184,12 +190,17 @@ export async function getPnlReport(
       where: {
         type: TransactionType.EXPENSE,
         projectId: null,
-        date: { gte: dateFrom, lte: dateTo },
+        date: { gte: dateFrom, lte: endOfDay(dateTo) },
       },
       select: { amount: true, date: true },
     }),
     prisma.operatingExpense.findMany({
-      where: { isActive: true },
+      where: {
+        OR: [
+          { isActive: true },
+          { effectiveTo: { gte: dateFrom } },
+        ],
+      },
       select: { amount: true, frequency: true, effectiveFrom: true, effectiveTo: true },
     }),
     getAimannDebtBalance(),
@@ -269,12 +280,12 @@ export async function getPnlReport(
     row.commissions += commissions;
   }
 
-  // Add non-project expenses by transaction date
+  // Add non-project expenses by transaction date (these are operating expenses, not COGS)
   for (const tx of nonProjectExpenses) {
     const key = monthKey(tx.date);
     const row = rowMap.get(key);
     if (!row) continue;
-    row.cogs += d(tx.amount);
+    row.operatingExpenses += d(tx.amount);
   }
 
   // Add operating expenses per month
@@ -349,25 +360,10 @@ export async function getJobCostingReport(
   const where: Prisma.ProjectWhereInput = { isDeleted: false };
 
   if (dateFrom != null || dateTo != null) {
-    where.OR = [
-      ...(dateFrom != null || dateTo != null
-        ? [
-            {
-              completedDate: {
-                ...(dateFrom != null ? { gte: dateFrom } : {}),
-                ...(dateTo != null ? { lte: dateTo } : {}),
-              },
-            },
-            {
-              completedDate: null,
-              contractDate: {
-                ...(dateFrom != null ? { gte: dateFrom } : {}),
-                ...(dateTo != null ? { lte: dateTo } : {}),
-              },
-            },
-          ]
-        : []),
-    ];
+    where.contractDate = {
+      ...(dateFrom != null ? { gte: dateFrom } : {}),
+      ...(dateTo != null ? { lte: dateTo } : {}),
+    };
   }
 
   if (status != null) where.status = status;
@@ -485,7 +481,7 @@ export async function getCommissionSummaryReport(
   // Settled: CommissionSnapshot.settledAt in date range, project not deleted
   const settledSnapshots = await prisma.commissionSnapshot.findMany({
     where: {
-      settledAt: { gte: dateFrom, lte: dateTo },
+      settledAt: { gte: dateFrom, lte: endOfDay(dateTo) },
       project: { isDeleted: false },
     },
     select: {
@@ -496,6 +492,7 @@ export async function getCommissionSummaryReport(
       project: {
         select: {
           customer: true,
+          address: true,
           projectTotal: true,
         },
       },
@@ -513,6 +510,7 @@ export async function getCommissionSummaryReport(
     select: {
       id: true,
       customer: true,
+      address: true,
       projectTotal: true,
       paymentMethod: true,
       materialsCost: true,
@@ -539,12 +537,14 @@ export async function getCommissionSummaryReport(
     settledAdnaanRows.push({
       projectId: snap.projectId,
       customer: snap.project.customer,
+      address: snap.project.address,
       projectTotal,
       commission: roundMoney(adnaan),
     });
     settledMemeRows.push({
       projectId: snap.projectId,
       customer: snap.project.customer,
+      address: snap.project.address,
       projectTotal,
       commission: roundMoney(meme),
     });
@@ -605,12 +605,14 @@ export async function getCommissionSummaryReport(
     pendingAdnaanRows.push({
       projectId: project.id,
       customer: project.customer,
+      address: project.address,
       projectTotal,
       commission: roundMoney(calc.adnaanCommission),
     });
     pendingMemeRows.push({
       projectId: project.id,
       customer: project.customer,
+      address: project.address,
       projectTotal,
       commission: roundMoney(calc.memeCommission),
     });
@@ -665,7 +667,7 @@ export async function getExpenseBreakdownReport(
       prisma.transaction.findMany({
         where: {
           type: TransactionType.EXPENSE,
-          date: { gte: dateFrom, lte: dateTo },
+          date: { gte: dateFrom, lte: endOfDay(dateTo) },
         },
         select: {
           id: true,
@@ -854,7 +856,7 @@ export async function getCashFlowReport(
       prisma.transaction.findMany({
         where: {
           type: TransactionType.INCOME,
-          date: { gte: dateFrom, lte: dateTo },
+          date: { gte: dateFrom, lte: endOfDay(dateTo) },
         },
         select: { amount: true, date: true },
       }),
@@ -862,7 +864,7 @@ export async function getCashFlowReport(
       prisma.transaction.findMany({
         where: {
           type: TransactionType.EXPENSE,
-          date: { gte: dateFrom, lte: dateTo },
+          date: { gte: dateFrom, lte: endOfDay(dateTo) },
         },
         select: { amount: true, date: true },
       }),

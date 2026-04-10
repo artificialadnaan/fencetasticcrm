@@ -13,23 +13,35 @@ export const operatingExpenseRouter = Router();
 
 const frequencyEnum = z.enum(['MONTHLY', 'QUARTERLY', 'ANNUAL']);
 
-const createSchema = z.object({
-  category: z.string().min(1, 'Category is required'),
-  description: z.string().min(1, 'Description is required'),
-  amount: z.number().min(0, 'Amount must be >= 0'),
-  frequency: frequencyEnum,
-  effectiveFrom: z.string().nullable().optional(),
-  effectiveTo: z.string().nullable().optional(),
-});
+const dateRangeRefine = (data: { effectiveFrom?: string | null; effectiveTo?: string | null }) => {
+  if (data.effectiveFrom && data.effectiveTo) {
+    return new Date(data.effectiveFrom) <= new Date(data.effectiveTo);
+  }
+  return true;
+};
+const dateRangeMessage = { message: 'effectiveFrom must be before effectiveTo' };
 
-const updateSchema = z.object({
-  category: z.string().min(1).optional(),
-  description: z.string().min(1).optional(),
-  amount: z.number().min(0).optional(),
-  frequency: frequencyEnum.optional(),
-  effectiveFrom: z.string().nullable().optional(),
-  effectiveTo: z.string().nullable().optional(),
-});
+const createSchema = z
+  .object({
+    category: z.string().min(1, 'Category is required'),
+    description: z.string().min(1, 'Description is required'),
+    amount: z.number().min(0, 'Amount must be >= 0'),
+    frequency: frequencyEnum,
+    effectiveFrom: z.string().nullable().optional(),
+    effectiveTo: z.string().nullable().optional(),
+  })
+  .refine(dateRangeRefine, dateRangeMessage);
+
+const updateSchema = z
+  .object({
+    category: z.string().min(1).optional(),
+    description: z.string().min(1).optional(),
+    amount: z.number().min(0).optional(),
+    frequency: frequencyEnum.optional(),
+    effectiveFrom: z.string().nullable().optional(),
+    effectiveTo: z.string().nullable().optional(),
+  })
+  .refine(dateRangeRefine, dateRangeMessage);
 
 // GET /api/operating-expenses
 operatingExpenseRouter.get(

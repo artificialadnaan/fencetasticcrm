@@ -64,30 +64,38 @@ export async function createMaterialLineItems(
     throw new AppError(404, 'Project not found', 'PROJECT_NOT_FOUND');
   }
 
-  for (const item of items) {
-    if (item.transactionId) {
-      const totalCost = roundMoney(item.quantity * item.unitCost);
-      await validateTransactionLink(projectId, item.transactionId, totalCost);
-    }
-  }
+  // Run validation + inserts atomically to prevent TOCTOU races
+  const created = await prisma.$transaction(async (tx) => {
+    // Track cumulative allocations within this batch per transactionId
+    const batchAllocations = new Map<string, number>();
 
-  const created = await prisma.$transaction(
-    items.map((item) =>
-      prisma.materialLineItem.create({
-        data: {
-          projectId,
-          description: item.description,
-          category: item.category,
-          vendor: item.vendor ?? null,
-          quantity: item.quantity,
-          unitCost: item.unitCost,
-          totalCost: roundMoney(item.quantity * item.unitCost),
-          purchaseDate: new Date(item.purchaseDate),
-          transactionId: item.transactionId ?? null,
-        },
-      })
-    )
-  );
+    for (const item of items) {
+      if (item.transactionId) {
+        const batchTotal = batchAllocations.get(item.transactionId) ?? 0;
+        const itemTotal = roundMoney(item.quantity * item.unitCost);
+        await validateTransactionLink(projectId, item.transactionId, itemTotal + batchTotal, undefined, tx);
+        batchAllocations.set(item.transactionId, batchTotal + itemTotal);
+      }
+    }
+
+    return Promise.all(
+      items.map((item) =>
+        tx.materialLineItem.create({
+          data: {
+            projectId,
+            description: item.description,
+            category: item.category,
+            vendor: item.vendor ?? null,
+            quantity: item.quantity,
+            unitCost: item.unitCost,
+            totalCost: roundMoney(item.quantity * item.unitCost),
+            purchaseDate: new Date(item.purchaseDate),
+            transactionId: item.transactionId ?? null,
+          },
+        })
+      )
+    );
+  });
 
   return created.map(mapLineItem);
 }
@@ -102,13 +110,14 @@ export async function updateMaterialLineItem(id: string, dto: UpdateMaterialLine
   const newUnitCost = dto.unitCost !== undefined ? dto.unitCost : d(existing.unitCost);
   const newTotalCost = roundMoney(newQuantity * newUnitCost);
 
-  const transactionIdChanged =
-    dto.transactionId !== undefined && dto.transactionId !== existing.transactionId;
+  // Revalidate whenever a transactionId is set — quantity/unitCost changes affect allocation
+  const effectiveTransactionId =
+    dto.transactionId !== undefined ? dto.transactionId : existing.transactionId;
 
-  if (transactionIdChanged && dto.transactionId) {
+  if (effectiveTransactionId) {
     await validateTransactionLink(
       existing.projectId,
-      dto.transactionId,
+      effectiveTransactionId,
       newTotalCost,
       id
     );
@@ -140,13 +149,18 @@ export async function deleteMaterialLineItem(id: string) {
   await prisma.materialLineItem.delete({ where: { id } });
 }
 
+type PrismaTxClient = Omit<typeof prisma, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
+
 async function validateTransactionLink(
   projectId: string,
   transactionId: string,
   newItemTotal: number,
-  excludeItemId?: string
+  excludeItemId?: string,
+  tx?: PrismaTxClient
 ) {
-  const transaction = await prisma.transaction.findUnique({
+  const db = tx ?? prisma;
+
+  const transaction = await db.transaction.findUnique({
     where: { id: transactionId },
   });
   if (!transaction) {
@@ -169,7 +183,7 @@ async function validateTransactionLink(
     );
   }
 
-  const existingAgg = await prisma.materialLineItem.aggregate({
+  const existingAgg = await db.materialLineItem.aggregate({
     where: {
       transactionId,
       ...(excludeItemId ? { id: { not: excludeItemId } } : {}),
