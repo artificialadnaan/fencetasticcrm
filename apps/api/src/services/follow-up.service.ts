@@ -137,7 +137,7 @@ type FollowUpTaskDelegate = {
 };
 
 type FollowUpTx = {
-  $executeRawUnsafe: (query: string, ...values: Array<string | number>) => Promise<unknown>;
+  $queryRawUnsafe: (query: string, ...values: Array<string | number>) => Promise<unknown>;
   project: {
     findUnique: FollowUpProjectDelegate['findUnique'];
   };
@@ -278,7 +278,7 @@ function getFollowUpClient() {
 }
 
 async function acquireSequenceCreationLock(tx: FollowUpTx, projectId: string) {
-  await tx.$executeRawUnsafe(
+  await tx.$queryRawUnsafe(
     'SELECT pg_advisory_xact_lock($1::int, hashtext($2)::int)',
     6202,
     projectId

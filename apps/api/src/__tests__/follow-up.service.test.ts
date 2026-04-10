@@ -8,7 +8,7 @@ import {
 
 const prismaMock = vi.hoisted(() => {
   const tx = {
-    $executeRawUnsafe: vi.fn(),
+    $queryRawUnsafe: vi.fn(),
     project: {
       findUnique: vi.fn(),
     },
@@ -28,7 +28,7 @@ const prismaMock = vi.hoisted(() => {
   return {
     tx,
     prisma: {
-      $executeRawUnsafe: tx.$executeRawUnsafe,
+      $queryRawUnsafe: tx.$queryRawUnsafe,
       project: tx.project,
       estimateFollowUpSequence: tx.estimateFollowUpSequence,
       estimateFollowUpTask: tx.estimateFollowUpTask,
@@ -154,7 +154,7 @@ describe('follow-up.service', () => {
     const createCall = prismaMock.tx.estimateFollowUpSequence.create.mock.calls[0][0];
     const createdTasks = createCall.data.tasks.create;
 
-    expect(prismaMock.tx.$executeRawUnsafe).toHaveBeenCalledTimes(1);
+    expect(prismaMock.tx.$queryRawUnsafe).toHaveBeenCalledTimes(1);
     expect(result.sequence?.status).toBe(EstimateFollowUpSequenceStatus.ACTIVE);
     expect(createdTasks.map((task: { kind: EstimateFollowUpTaskKind }) => task.kind)).toEqual([
       EstimateFollowUpTaskKind.DAY_1,
@@ -224,7 +224,7 @@ describe('follow-up.service', () => {
     const result = await ensureEstimateFollowUpSequenceTx(prismaMock.tx, 'project-1', 'user-1');
 
     expect(prismaMock.prisma.$transaction).not.toHaveBeenCalled();
-    expect(prismaMock.tx.$executeRawUnsafe).toHaveBeenCalledTimes(1);
+    expect(prismaMock.tx.$queryRawUnsafe).toHaveBeenCalledTimes(1);
     expect(prismaMock.tx.estimateFollowUpSequence.create).toHaveBeenCalledTimes(1);
     expect(result.sequence?.status).toBe(EstimateFollowUpSequenceStatus.ACTIVE);
   });
