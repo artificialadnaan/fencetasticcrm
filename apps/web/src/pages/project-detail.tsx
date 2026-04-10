@@ -30,6 +30,8 @@ import { StatusBadge } from '@/components/projects/status-badge';
 import { NotesTimeline } from '@/components/projects/notes-timeline';
 import { PhotoGallery } from '@/components/projects/photo-gallery';
 import { SubcontractorTable } from '@/components/projects/subcontractor-table';
+import { MaterialsTab } from '@/components/projects/materials-tab';
+import { FinancialSummaryCard } from '@/components/projects/financial-summary-card';
 import { FollowUpPanel } from '@/components/projects/follow-up-panel';
 import { PROJECT_STATUS_META, PROJECT_STATUS_ORDER, ProjectStatus } from '@fencetastic/shared';
 import type { Transaction } from '@fencetastic/shared';
@@ -75,6 +77,7 @@ const TABS = [
   { id: 'follow-up', label: 'Follow-Up' },
   { id: 'payments', label: 'Payments' },
   { id: 'expenses', label: 'Expenses' },
+  { id: 'materials', label: 'Materials' },
   { id: 'commission', label: 'Commission' },
   { id: 'activity', label: 'Activity' },
   { id: 'photos', label: 'Photos' },
@@ -986,6 +989,14 @@ export default function ProjectDetailPage() {
             onDelete={deleteSub}
             onDataChange={refetch}
           />
+        </div>
+      )}
+
+      {/* --- MATERIALS TAB --- */}
+      {activeTab === 'materials' && (
+        <div className="space-y-6">
+          <FinancialSummaryCard projectId={id!} />
+          <MaterialsTab projectId={id!} />
         </div>
       )}
 
