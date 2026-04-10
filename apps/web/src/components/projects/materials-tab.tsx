@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -87,7 +88,7 @@ interface MaterialsTabProps {
 // ---------------------------------------------------------------------------
 
 export function MaterialsTab({ projectId }: MaterialsTabProps) {
-  const { data: materials, isLoading, refetch } = useProjectMaterials(projectId);
+  const { data: materials, isLoading, error: materialsError, refetch } = useProjectMaterials(projectId);
   const { mutate: createMaterials, isLoading: creating } = useCreateMaterials();
   const { mutate: updateMaterial, isLoading: updating } = useUpdateMaterial();
   const { mutate: deleteMaterial, isLoading: deleting } = useDeleteMaterial();
@@ -142,6 +143,18 @@ export function MaterialsTab({ projectId }: MaterialsTabProps) {
 
   async function handleSave() {
     if (!form.description.trim() || !form.category || !form.quantity || !form.unitCost) return;
+    if (Number(form.quantity) <= 0) {
+      toast.error('Quantity must be greater than 0');
+      return;
+    }
+    if (Number(form.unitCost) < 0) {
+      toast.error('Unit cost cannot be negative');
+      return;
+    }
+    if (!form.purchaseDate) {
+      toast.error('Purchase date is required');
+      return;
+    }
     try {
       if (editingItem) {
         await updateMaterial(editingItem.id, {
@@ -272,6 +285,10 @@ export function MaterialsTab({ projectId }: MaterialsTabProps) {
                 <Skeleton key={i} className="h-10 w-full rounded-xl" />
               ))}
             </div>
+          ) : materialsError ? (
+            <div className="rounded-[16px] border border-destructive/30 bg-destructive/10 px-4 py-4 text-sm text-destructive">
+              Unable to load materials: {materialsError}
+            </div>
           ) : materials.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-sm text-slate-500">No materials logged yet.</p>
@@ -328,6 +345,7 @@ export function MaterialsTab({ projectId }: MaterialsTabProps) {
                               variant="ghost"
                               size="icon"
                               className="h-7 w-7"
+                              aria-label="Edit material"
                               onClick={() => openEdit(item)}
                             >
                               <Pencil className="h-3.5 w-3.5" />
@@ -336,6 +354,7 @@ export function MaterialsTab({ projectId }: MaterialsTabProps) {
                               variant="ghost"
                               size="icon"
                               className="h-7 w-7 text-destructive hover:text-destructive"
+                              aria-label="Delete material"
                               onClick={() => setDeleteConfirmId(item.id)}
                             >
                               <Trash2 className="h-3.5 w-3.5" />

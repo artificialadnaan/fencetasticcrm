@@ -162,19 +162,22 @@ interface ProjectFinancialSummary {
 interface UseProjectFinancialSummaryReturn {
   data: ProjectFinancialSummary | null;
   isLoading: boolean;
+  error: string | null;
   refetch: () => void;
 }
 
 export function useProjectFinancialSummary(projectId: string): UseProjectFinancialSummaryReturn {
   const [data, setData] = useState<ProjectFinancialSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetch = useCallback(async () => {
     try {
+      setError(null);
       const res = await api.get(`/projects/${projectId}/materials/summary`);
       setData(res.data.data);
-    } catch {
-      // Summary is supplementary — fail silently
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load financial summary');
     } finally {
       setIsLoading(false);
     }
@@ -185,7 +188,7 @@ export function useProjectFinancialSummary(projectId: string): UseProjectFinanci
     fetch();
   }, [fetch]);
 
-  return { data, isLoading, refetch: fetch };
+  return { data, isLoading, error, refetch: fetch };
 }
 
 /** @deprecated Use useProjectFinancialSummary instead */

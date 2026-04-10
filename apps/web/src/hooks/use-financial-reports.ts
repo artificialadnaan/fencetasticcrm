@@ -201,14 +201,19 @@ interface UseExportReportReturn {
   isExporting: boolean;
 }
 
-export function useExportReport(type: string, range: DateRange): UseExportReportReturn {
+export function useExportReport(type: string, range: DateRange, extraParams?: Record<string, string>): UseExportReportReturn {
   const [isExporting, setIsExporting] = useState(false);
 
   const exportCsv = useCallback(async () => {
     setIsExporting(true);
     try {
+      const params = new URLSearchParams({
+        dateFrom: range.dateFrom,
+        dateTo: range.dateTo,
+        ...extraParams,
+      });
       const res = await api.get(
-        `/reports/${type}/export?dateFrom=${range.dateFrom}&dateTo=${range.dateTo}`,
+        `/reports/${type}/export?${params.toString()}`,
         { responseType: 'blob' }
       );
       const url = window.URL.createObjectURL(new Blob([res.data]));
@@ -222,7 +227,7 @@ export function useExportReport(type: string, range: DateRange): UseExportReport
     } finally {
       setIsExporting(false);
     }
-  }, [type, JSON.stringify(range)]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [type, JSON.stringify(range), JSON.stringify(extraParams)]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { exportCsv, isExporting };
 }

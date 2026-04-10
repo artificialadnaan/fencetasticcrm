@@ -125,6 +125,16 @@ export function CashFlowReport({ dateFrom, dateTo }: CashFlowReportProps) {
               axisLine={false}
             />
             <YAxis
+              yAxisId="left"
+              tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`}
+              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+              tickLine={false}
+              axisLine={false}
+              width={52}
+            />
+            <YAxis
+              yAxisId="right"
+              orientation="right"
               tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`}
               tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
               tickLine={false}
@@ -133,9 +143,10 @@ export function CashFlowReport({ dateFrom, dateTo }: CashFlowReportProps) {
             />
             <Tooltip content={<ChartTooltip />} />
             <Legend wrapperStyle={{ fontSize: 12 }} />
-            <Bar dataKey="Money In" fill="#10B981" radius={[3, 3, 0, 0]} />
-            <Bar dataKey="Money Out" fill="#EF4444" radius={[3, 3, 0, 0]} />
+            <Bar yAxisId="left" dataKey="Money In" fill="#10B981" radius={[3, 3, 0, 0]} />
+            <Bar yAxisId="left" dataKey="Money Out" fill="#EF4444" radius={[3, 3, 0, 0]} />
             <Line
+              yAxisId="right"
               type="monotone"
               dataKey="Running Balance"
               stroke="#3B82F6"

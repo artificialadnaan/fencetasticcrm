@@ -181,12 +181,15 @@ export function JobCostingReport({ dateFrom, dateTo }: JobCostingReportProps) {
                   ] as [SortField, string][]).map(([field, label]) => (
                     <th
                       key={field}
+                      role="button"
+                      tabIndex={0}
                       className={`py-2 px-3 cursor-pointer hover:text-slate-900 whitespace-nowrap ${
                         field === 'customer' || field === 'address' || field === 'status' || field === 'fenceType'
                           ? 'text-left'
                           : 'text-right'
                       }`}
                       onClick={() => handleSort(field)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort(field); } }}
                     >
                       {label}
                       {sortIndicator(field)}
@@ -209,6 +212,7 @@ export function JobCostingReport({ dateFrom, dateTo }: JobCostingReportProps) {
                       <tr
                         className="border-b border-black/5 hover:bg-slate-50/60 cursor-pointer transition-colors"
                         onClick={() => toggleRow(row.projectId)}
+                        aria-expanded={expanded}
                       >
                         <td className="py-2 px-2">
                           {expanded ? (
@@ -250,11 +254,33 @@ export function JobCostingReport({ dateFrom, dateTo }: JobCostingReportProps) {
                         <tr className="bg-slate-50/40">
                           <td />
                           <td colSpan={12} className="py-3 px-4">
-                            <div className="text-xs text-slate-600">
-                              <span className="font-medium text-slate-900">Material Details: </span>
-                              Materials total {formatCurrency(row.materials)}, Subcontractors{' '}
-                              {formatCurrency(row.subcontractors)}, Other expenses{' '}
-                              {formatCurrency(row.otherExpenses)}.
+                            <div className="px-0 py-1 text-sm space-y-1 text-slate-600">
+                              <p>
+                                <span className="font-medium text-slate-900">Materials:</span>{' '}
+                                {formatCurrency(row.materials)}
+                                {' | '}
+                                <span className="font-medium text-slate-900">Subcontractors:</span>{' '}
+                                {formatCurrency(row.subcontractors)}
+                              </p>
+                              <p>
+                                <span className="font-medium text-slate-900">Other Expenses:</span>{' '}
+                                {formatCurrency(row.otherExpenses)}
+                              </p>
+                              <p>
+                                <span className="font-medium text-slate-900">Commissions:</span>{' '}
+                                Adnaan {formatCurrency(row.commissionsAdnaan)} + Meme{' '}
+                                {formatCurrency(row.commissionsMeme)}
+                              </p>
+                              <p className="font-medium text-slate-900">
+                                Total Costs:{' '}
+                                {formatCurrency(
+                                  row.materials +
+                                    row.subcontractors +
+                                    row.otherExpenses +
+                                    row.commissionsAdnaan +
+                                    row.commissionsMeme,
+                                )}
+                              </p>
                             </div>
                           </td>
                         </tr>

@@ -21,7 +21,7 @@ function MarginBadge({ pct }: { pct: number }) {
 }
 
 export function FinancialSummaryCard({ projectId }: FinancialSummaryCardProps) {
-  const { data, isLoading } = useProjectFinancialSummary(projectId);
+  const { data, isLoading, error } = useProjectFinancialSummary(projectId);
 
   const rows: Array<{ label: string; value: string | React.ReactNode; sub?: string }> = data
     ? [
@@ -58,6 +58,22 @@ export function FinancialSummaryCard({ projectId }: FinancialSummaryCardProps) {
         },
       ]
     : [];
+
+  if (error) {
+    return (
+      <section className="shell-panel rounded-[28px] p-6 md:p-8">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+          Financial Summary
+        </p>
+        <h2 className="mt-3 text-2xl font-semibold tracking-[-0.05em] text-slate-950">
+          Project Financials
+        </h2>
+        <div className="mt-6 rounded-[16px] border border-destructive/30 bg-destructive/10 px-4 py-4 text-sm text-destructive">
+          Unable to load financial summary
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="shell-panel rounded-[28px] p-6 md:p-8">

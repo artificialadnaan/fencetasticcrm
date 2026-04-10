@@ -38,17 +38,20 @@ export default function ReportsPage() {
   const [period, setPeriod] = useState<string>('monthly');
 
   const exportType = activeTab === 'job-costing' ? 'job-costing' : activeTab;
-  const { exportCsv, isExporting } = useExportReport(exportType, { dateFrom, dateTo });
+  const exportExtraParams = activeTab === 'pnl' ? { period } : undefined;
+  const { exportCsv, isExporting } = useExportReport(exportType, { dateFrom, dateTo }, exportExtraParams);
 
   const utilityActions = useMemo(
     () => (
       <div className="flex items-center gap-3 flex-wrap">
         {/* Tab Navigation */}
-        <div className="inline-flex items-center rounded-2xl border border-black/5 bg-white/65 p-1 shadow-sm">
+        <div role="tablist" className="inline-flex items-center rounded-2xl border border-black/5 bg-white/65 p-1 shadow-sm">
           {TABS.map((tab) => (
             <Button
               key={tab.id}
               type="button"
+              role="tab"
+              aria-selected={activeTab === tab.id}
               variant="ghost"
               size="sm"
               className={`rounded-xl px-4 text-xs sm:text-sm ${
@@ -96,6 +99,7 @@ export default function ReportsPage() {
         <div className="flex items-center gap-2">
           <input
             type="date"
+            aria-label="Date from"
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
             className="rounded-xl border border-black/10 bg-white/70 px-3 py-1.5 text-sm text-slate-700"
@@ -103,6 +107,7 @@ export default function ReportsPage() {
           <span className="text-sm text-slate-400">to</span>
           <input
             type="date"
+            aria-label="Date to"
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
             className="rounded-xl border border-black/10 bg-white/70 px-3 py-1.5 text-sm text-slate-700"
@@ -124,9 +129,23 @@ export default function ReportsPage() {
           )}
           Export CSV
         </Button>
+
+        {/* Export PDF */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            const params = new URLSearchParams({ dateFrom, dateTo, ...(activeTab === 'pnl' ? { period } : {}) }).toString();
+            window.open(`${import.meta.env.VITE_API_URL || ''}/api/reports/${activeTab}/pdf?${params}`, '_blank');
+          }}
+          className="rounded-2xl border-black/10 bg-white/70 px-4 print:hidden"
+        >
+          <Download className="h-4 w-4 mr-1" />
+          PDF
+        </Button>
       </div>
     ),
-    [dateFrom, dateTo, exportCsv, isExporting],
+    [dateFrom, dateTo, exportCsv, isExporting, activeTab, period],
   );
 
   usePageShell({
