@@ -47,6 +47,9 @@ export default function ReportsPage() {
     try {
       const params = new URLSearchParams({ dateFrom, dateTo });
       if (activeTab === 'pnl') params.set('period', period);
+      if (activeTab === 'job-costing') {
+        Object.entries(jobCostingFilters).forEach(([k, v]) => { if (v) params.set(k, v); });
+      }
       const res = await api.get(`/reports/${activeTab}/pdf?${params.toString()}`, {
         responseType: 'blob',
       });

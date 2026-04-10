@@ -46,7 +46,11 @@ const jobCostingSchema = z.object({
 );
 
 const exportSchema = dateRangeFields
-  .extend({ period: z.enum(['monthly', 'quarterly', 'annual']).default('monthly').optional() })
+  .extend({
+    period: z.enum(['monthly', 'quarterly', 'annual']).default('monthly').optional(),
+    status: z.enum(['ESTIMATE', 'OPEN', 'IN_PROGRESS', 'COMPLETED', 'CLOSED', 'WARRANTY']).optional(),
+    fenceType: z.enum(['WOOD', 'METAL', 'CHAIN_LINK', 'VINYL', 'GATE', 'OTHER']).optional(),
+  })
   .refine(dateRangeRefine, { message: 'dateFrom must be before or equal to dateTo' });
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
