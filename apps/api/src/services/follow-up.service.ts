@@ -279,7 +279,7 @@ function getFollowUpClient() {
 
 async function acquireSequenceCreationLock(tx: FollowUpTx, projectId: string) {
   await tx.$executeRawUnsafe(
-    'SELECT pg_advisory_xact_lock($1, hashtext($2))',
+    'SELECT pg_advisory_xact_lock($1::int, hashtext($2)::int)',
     6202,
     projectId
   );
