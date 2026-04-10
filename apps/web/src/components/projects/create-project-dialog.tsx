@@ -161,8 +161,10 @@ export function CreateProjectDialog({ onCreated, open: controlledOpen, onOpenCha
       onCreated();
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
-        const axiosErr = err as { response?: { data?: { message?: string } } };
-        setError(axiosErr.response?.data?.message || 'Failed to create project');
+        const axiosErr = err as { response?: { data?: { message?: string; prismaCode?: string } } };
+        const msg = axiosErr.response?.data?.message || 'Failed to create project';
+        const code = axiosErr.response?.data?.prismaCode;
+        setError(code ? `${msg} (${code})` : msg);
       } else {
         setError('Failed to create project');
       }
