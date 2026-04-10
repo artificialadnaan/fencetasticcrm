@@ -92,6 +92,9 @@ export async function deactivateOperatingExpense(id: string) {
   }
   await prisma.operatingExpense.update({
     where: { id },
-    data: { isActive: false },
+    data: {
+      isActive: false,
+      effectiveTo: existing.effectiveTo ?? new Date(),
+    },
   });
 }

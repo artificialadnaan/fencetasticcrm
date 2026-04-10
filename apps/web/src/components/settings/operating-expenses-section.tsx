@@ -19,7 +19,7 @@ import {
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { ExpenseFrequency } from '@fencetastic/shared';
 import type { OperatingExpense, CreateOperatingExpenseDTO, UpdateOperatingExpenseDTO } from '@fencetastic/shared';
-import { formatCurrency } from '@/lib/formatters';
+import { formatCurrency, formatDate } from '@/lib/formatters';
 
 interface OperatingExpensesSectionProps {
   expenses: OperatingExpense[];
@@ -40,6 +40,8 @@ interface ExpenseForm {
   description: string;
   amount: string;
   frequency: ExpenseFrequency | '';
+  effectiveFrom: string;
+  effectiveTo: string;
 }
 
 const emptyForm: ExpenseForm = {
@@ -47,6 +49,8 @@ const emptyForm: ExpenseForm = {
   description: '',
   amount: '',
   frequency: '',
+  effectiveFrom: '',
+  effectiveTo: '',
 };
 
 export function OperatingExpensesSection({
@@ -77,6 +81,8 @@ export function OperatingExpensesSection({
       description: e.description,
       amount: String(e.amount),
       frequency: e.frequency,
+      effectiveFrom: e.effectiveFrom ?? '',
+      effectiveTo: e.effectiveTo ?? '',
     });
     setFormError(null);
     setDialogOpen(true);
@@ -106,6 +112,8 @@ export function OperatingExpensesSection({
         description: form.description.trim(),
         amount: parseFloat(form.amount),
         frequency: form.frequency as ExpenseFrequency,
+        effectiveFrom: form.effectiveFrom || null,
+        effectiveTo: form.effectiveTo || null,
       };
       if (editingExpense) {
         await onUpdate(editingExpense.id, dto);
@@ -173,6 +181,8 @@ export function OperatingExpensesSection({
                       <th className="hidden md:table-cell text-left py-3 px-4 font-medium">Description</th>
                       <th className="text-right py-3 px-4 font-medium">Amount</th>
                       <th className="hidden md:table-cell text-left py-3 px-4 font-medium">Frequency</th>
+                      <th className="hidden lg:table-cell text-left py-3 px-4 font-medium">Eff. From</th>
+                      <th className="hidden lg:table-cell text-left py-3 px-4 font-medium">Eff. To</th>
                       <th className="py-3 px-4" />
                     </tr>
                   </thead>
@@ -187,6 +197,8 @@ export function OperatingExpensesSection({
                             {FREQUENCY_LABELS[e.frequency]}
                           </span>
                         </td>
+                        <td className="hidden lg:table-cell py-3 px-4 text-slate-500 text-xs">{formatDate(e.effectiveFrom)}</td>
+                        <td className="hidden lg:table-cell py-3 px-4 text-slate-500 text-xs">{formatDate(e.effectiveTo)}</td>
                         <td className="py-3 px-4">
                           <div className="flex gap-1">
                             <Button
@@ -281,6 +293,28 @@ export function OperatingExpensesSection({
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="oe-effective-from">Effective From <span className="text-slate-400 font-normal">(optional)</span></Label>
+                <Input
+                  id="oe-effective-from"
+                  type="date"
+                  value={form.effectiveFrom}
+                  onChange={(e) => setForm((f) => ({ ...f, effectiveFrom: e.target.value }))}
+                  className="rounded-2xl border-black/10 bg-white shadow-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="oe-effective-to">Effective To <span className="text-slate-400 font-normal">(optional)</span></Label>
+                <Input
+                  id="oe-effective-to"
+                  type="date"
+                  value={form.effectiveTo}
+                  onChange={(e) => setForm((f) => ({ ...f, effectiveTo: e.target.value }))}
+                  className="rounded-2xl border-black/10 bg-white shadow-sm"
+                />
               </div>
             </div>
             {formError != null && (
