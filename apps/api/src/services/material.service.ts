@@ -64,7 +64,10 @@ export async function createMaterialLineItems(
     throw new AppError(404, 'Project not found', 'PROJECT_NOT_FOUND');
   }
 
-  // Run validation + inserts atomically to prevent TOCTOU races
+  // Run validation + inserts atomically to prevent TOCTOU races.
+  // Serializable isolation ensures the allocation-cap read sees a consistent snapshot
+  // even under concurrent requests — no two transactions can both pass validation
+  // for the same transaction's cap.
   const created = await prisma.$transaction(async (tx) => {
     // Track cumulative allocations within this batch per transactionId
     const batchAllocations = new Map<string, number>();
@@ -95,46 +98,55 @@ export async function createMaterialLineItems(
         })
       )
     );
+  }, {
+    isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
   });
 
   return created.map(mapLineItem);
 }
 
 export async function updateMaterialLineItem(id: string, dto: UpdateMaterialLineItemDTO) {
-  const existing = await prisma.materialLineItem.findUnique({ where: { id } });
-  if (!existing) {
-    throw new AppError(404, 'Material line item not found', 'MATERIAL_LINE_ITEM_NOT_FOUND');
-  }
+  // Wrap validation + update in a serializable transaction to prevent concurrent
+  // requests from both passing the allocation-cap check against stale data.
+  const updated = await prisma.$transaction(async (tx) => {
+    const existing = await tx.materialLineItem.findUnique({ where: { id } });
+    if (!existing) {
+      throw new AppError(404, 'Material line item not found', 'MATERIAL_LINE_ITEM_NOT_FOUND');
+    }
 
-  const newQuantity = dto.quantity !== undefined ? dto.quantity : d(existing.quantity);
-  const newUnitCost = dto.unitCost !== undefined ? dto.unitCost : d(existing.unitCost);
-  const newTotalCost = roundMoney(newQuantity * newUnitCost);
+    const newQuantity = dto.quantity !== undefined ? dto.quantity : d(existing.quantity);
+    const newUnitCost = dto.unitCost !== undefined ? dto.unitCost : d(existing.unitCost);
+    const newTotalCost = roundMoney(newQuantity * newUnitCost);
 
-  // Revalidate whenever a transactionId is set — quantity/unitCost changes affect allocation
-  const effectiveTransactionId =
-    dto.transactionId !== undefined ? dto.transactionId : existing.transactionId;
+    // Revalidate whenever a transactionId is set — quantity/unitCost changes affect allocation
+    const effectiveTransactionId =
+      dto.transactionId !== undefined ? dto.transactionId : existing.transactionId;
 
-  if (effectiveTransactionId) {
-    await validateTransactionLink(
-      existing.projectId,
-      effectiveTransactionId,
-      newTotalCost,
-      id
-    );
-  }
+    if (effectiveTransactionId) {
+      await validateTransactionLink(
+        existing.projectId,
+        effectiveTransactionId,
+        newTotalCost,
+        id,
+        tx
+      );
+    }
 
-  const updated = await prisma.materialLineItem.update({
-    where: { id },
-    data: {
-      ...(dto.description !== undefined && { description: dto.description }),
-      ...(dto.category !== undefined && { category: dto.category }),
-      ...(dto.vendor !== undefined && { vendor: dto.vendor }),
-      ...(dto.quantity !== undefined && { quantity: dto.quantity }),
-      ...(dto.unitCost !== undefined && { unitCost: dto.unitCost }),
-      totalCost: newTotalCost,
-      ...(dto.purchaseDate !== undefined && { purchaseDate: new Date(dto.purchaseDate) }),
-      ...(dto.transactionId !== undefined && { transactionId: dto.transactionId }),
-    },
+    return tx.materialLineItem.update({
+      where: { id },
+      data: {
+        ...(dto.description !== undefined && { description: dto.description }),
+        ...(dto.category !== undefined && { category: dto.category }),
+        ...(dto.vendor !== undefined && { vendor: dto.vendor }),
+        ...(dto.quantity !== undefined && { quantity: dto.quantity }),
+        ...(dto.unitCost !== undefined && { unitCost: dto.unitCost }),
+        totalCost: newTotalCost,
+        ...(dto.purchaseDate !== undefined && { purchaseDate: new Date(dto.purchaseDate) }),
+        ...(dto.transactionId !== undefined && { transactionId: dto.transactionId }),
+      },
+    });
+  }, {
+    isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
   });
 
   return mapLineItem(updated);

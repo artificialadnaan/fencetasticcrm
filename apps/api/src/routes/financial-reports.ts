@@ -14,25 +14,40 @@ export const financialReportRouter = Router();
 
 // ─── Zod Schemas ──────────────────────────────────────────────────────────────
 
-const dateRangeSchema = z.object({
+const dateRangeFields = z.object({
   dateFrom: z.string().min(1, 'dateFrom is required'),
   dateTo: z.string().min(1, 'dateTo is required'),
 });
 
-const pnlSchema = dateRangeSchema.extend({
-  period: z.enum(['monthly', 'quarterly', 'annual']).default('monthly'),
+const dateRangeRefine = <T extends { dateFrom: string; dateTo: string }>(data: T) =>
+  new Date(data.dateFrom) <= new Date(data.dateTo);
+
+const dateRangeSchema = dateRangeFields.refine(dateRangeRefine, {
+  message: 'dateFrom must be before or equal to dateTo',
 });
+
+const pnlSchema = dateRangeFields
+  .extend({ period: z.enum(['monthly', 'quarterly', 'annual']).default('monthly') })
+  .refine(dateRangeRefine, { message: 'dateFrom must be before or equal to dateTo' });
 
 const jobCostingSchema = z.object({
   dateFrom: z.string().optional(),
   dateTo: z.string().optional(),
   status: z.string().optional(),
   fenceType: z.string().optional(),
-});
+}).refine(
+  (data) => {
+    if (data.dateFrom != null && data.dateTo != null) {
+      return new Date(data.dateFrom) <= new Date(data.dateTo);
+    }
+    return true;
+  },
+  { message: 'dateFrom must be before or equal to dateTo' }
+);
 
-const exportSchema = dateRangeSchema.extend({
-  period: z.enum(['monthly', 'quarterly', 'annual']).default('monthly').optional(),
-});
+const exportSchema = dateRangeFields
+  .extend({ period: z.enum(['monthly', 'quarterly', 'annual']).default('monthly').optional() })
+  .refine(dateRangeRefine, { message: 'dateFrom must be before or equal to dateTo' });
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
