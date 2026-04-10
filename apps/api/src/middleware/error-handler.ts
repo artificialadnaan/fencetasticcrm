@@ -28,9 +28,12 @@ export function errorHandler(
   }
 
   if (err.name === 'PrismaClientKnownRequestError') {
+    const prismaErr = err as { code?: string; meta?: unknown };
+    console.error('[PrismaError]', prismaErr.code, prismaErr.meta);
     res.status(400).json({
       message: 'Database error',
       code: 'DB_ERROR',
+      prismaCode: prismaErr.code,
     });
     return;
   }
