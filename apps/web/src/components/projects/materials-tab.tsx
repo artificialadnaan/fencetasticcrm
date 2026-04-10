@@ -212,33 +212,46 @@ export function MaterialsTab({ projectId }: MaterialsTabProps) {
   }
 
   async function handleBulkSave() {
-    const validRows = bulkRows.filter(
-      (r) => r.description.trim() && r.category && r.quantity && r.unitCost
-    );
-    if (validRows.length === 0) return;
     const errors: string[] = [];
-    for (let i = 0; i < validRows.length; i++) {
-      const row = validRows[i];
+    const validItems: CreateMaterialLineItemDTO[] = [];
+
+    for (let i = 0; i < bulkRows.length; i++) {
+      const row = bulkRows[i];
+      // Skip completely blank rows
+      if (!row.description && !row.quantity && !row.unitCost && !row.category) continue;
+
+      // Validate non-blank rows
       const qty = Number(row.quantity);
       const cost = Number(row.unitCost);
+      if (!row.description) errors.push(`Row ${i + 1}: Description is required`);
+      if (!row.category) errors.push(`Row ${i + 1}: Category is required`);
       if (isNaN(qty) || qty <= 0) errors.push(`Row ${i + 1}: Quantity must be a positive number`);
       if (isNaN(cost) || cost < 0) errors.push(`Row ${i + 1}: Unit cost must be a valid number`);
       if (!row.purchaseDate) errors.push(`Row ${i + 1}: Purchase date is required`);
+
+      if (errors.length === 0) {
+        validItems.push({
+          description: row.description.trim(),
+          category: row.category as MaterialCategory,
+          vendor: row.vendor || null,
+          quantity: qty,
+          unitCost: cost,
+          purchaseDate: row.purchaseDate,
+          transactionId: row.transactionId || null,
+        });
+      }
     }
+
     if (errors.length > 0) {
       toast.error(errors.join('. '));
       return;
     }
-    const items: CreateMaterialLineItemDTO[] = validRows.map((r) => ({
-      description: r.description.trim(),
-      category: r.category as MaterialCategory,
-      vendor: r.vendor || null,
-      quantity: parseFloat(r.quantity),
-      unitCost: parseFloat(r.unitCost),
-      purchaseDate: r.purchaseDate,
-    }));
+    if (validItems.length === 0) {
+      toast.error('No valid rows to add');
+      return;
+    }
     try {
-      await createMaterials(projectId, items);
+      await createMaterials(projectId, validItems);
       refetch();
       setBulkOpen(false);
     } catch {

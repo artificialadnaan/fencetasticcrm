@@ -81,6 +81,17 @@ export async function updateOperatingExpense(
   if (dto.effectiveFrom !== undefined) data.effectiveFrom = dto.effectiveFrom ? new Date(dto.effectiveFrom) : null;
   if (dto.effectiveTo !== undefined) data.effectiveTo = dto.effectiveTo ? new Date(dto.effectiveTo) : null;
 
+  // Validate merged effective date range (PATCH may only send one of the two fields)
+  const mergedFrom = dto.effectiveFrom !== undefined
+    ? (dto.effectiveFrom ? new Date(dto.effectiveFrom) : null)
+    : existing.effectiveFrom;
+  const mergedTo = dto.effectiveTo !== undefined
+    ? (dto.effectiveTo ? new Date(dto.effectiveTo) : null)
+    : existing.effectiveTo;
+  if (mergedFrom && mergedTo && mergedFrom > mergedTo) {
+    throw new AppError(400, 'effectiveFrom must be before effectiveTo', 'INVALID_DATE_RANGE');
+  }
+
   const row = await prisma.operatingExpense.update({ where: { id }, data });
   return serialize(row);
 }
