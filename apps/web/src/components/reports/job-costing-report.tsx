@@ -132,6 +132,7 @@ export function JobCostingReport({ dateFrom, dateTo }: JobCostingReportProps) {
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <select
+          aria-label="Filter by status"
           value={statusFilter ?? ''}
           onChange={(e) => setStatusFilter(e.target.value || undefined)}
           className="rounded-xl border border-black/10 bg-white/70 px-3 py-1.5 text-sm text-slate-700"
@@ -144,6 +145,7 @@ export function JobCostingReport({ dateFrom, dateTo }: JobCostingReportProps) {
           ))}
         </select>
         <select
+          aria-label="Filter by fence type"
           value={fenceTypeFilter ?? ''}
           onChange={(e) => setFenceTypeFilter(e.target.value || undefined)}
           className="rounded-xl border border-black/10 bg-white/70 px-3 py-1.5 text-sm text-slate-700"

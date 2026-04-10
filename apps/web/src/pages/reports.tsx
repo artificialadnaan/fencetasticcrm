@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import { Download, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePageShell } from '@/components/layout/page-shell';
 import { useExportReport } from '@/hooks/use-financial-reports';
+import { api } from '@/lib/api';
 import { PnlReport } from '@/components/reports/pnl-report';
 import { JobCostingReport } from '@/components/reports/job-costing-report';
 import { CommissionReport } from '@/components/reports/commission-report';
@@ -40,6 +42,24 @@ export default function ReportsPage() {
   const exportType = activeTab === 'job-costing' ? 'job-costing' : activeTab;
   const exportExtraParams = activeTab === 'pnl' ? { period } : undefined;
   const { exportCsv, isExporting } = useExportReport(exportType, { dateFrom, dateTo }, exportExtraParams);
+
+  const handlePdfExport = async () => {
+    try {
+      const params = new URLSearchParams({ dateFrom, dateTo });
+      if (activeTab === 'pnl') params.set('period', period);
+      const res = await api.get(`/reports/${activeTab}/pdf?${params.toString()}`, {
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${activeTab}-report.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      toast.error('Failed to export PDF');
+    }
+  };
 
   const utilityActions = useMemo(
     () => (
@@ -134,10 +154,7 @@ export default function ReportsPage() {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => {
-            const params = new URLSearchParams({ dateFrom, dateTo, ...(activeTab === 'pnl' ? { period } : {}) }).toString();
-            window.open(`${import.meta.env.VITE_API_URL || ''}/api/reports/${activeTab}/pdf?${params}`, '_blank');
-          }}
+          onClick={handlePdfExport}
           className="rounded-2xl border-black/10 bg-white/70 px-4 print:hidden"
         >
           <Download className="h-4 w-4 mr-1" />

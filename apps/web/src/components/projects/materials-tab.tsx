@@ -46,7 +46,10 @@ const CATEGORY_LABELS: Record<MaterialCategory, string> = {
 
 const CATEGORY_OPTIONS = Object.entries(CATEGORY_LABELS) as [MaterialCategory, string][];
 
-const today = () => new Date().toISOString().slice(0, 10);
+function localToday(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -68,7 +71,7 @@ const emptyForm: MaterialForm = {
   vendor: '',
   quantity: '',
   unitCost: '',
-  purchaseDate: today(),
+  purchaseDate: localToday(),
   transactionId: '',
 };
 
@@ -143,12 +146,14 @@ export function MaterialsTab({ projectId }: MaterialsTabProps) {
 
   async function handleSave() {
     if (!form.description.trim() || !form.category || !form.quantity || !form.unitCost) return;
-    if (Number(form.quantity) <= 0) {
-      toast.error('Quantity must be greater than 0');
+    const qty = Number(form.quantity);
+    const cost = Number(form.unitCost);
+    if (isNaN(qty) || qty <= 0) {
+      toast.error('Quantity must be a positive number');
       return;
     }
-    if (Number(form.unitCost) < 0) {
-      toast.error('Unit cost cannot be negative');
+    if (isNaN(cost) || cost < 0) {
+      toast.error('Unit cost must be a valid number');
       return;
     }
     if (!form.purchaseDate) {
@@ -214,8 +219,10 @@ export function MaterialsTab({ projectId }: MaterialsTabProps) {
     const errors: string[] = [];
     for (let i = 0; i < validRows.length; i++) {
       const row = validRows[i];
-      if (Number(row.quantity) <= 0) errors.push(`Row ${i + 1}: Quantity must be greater than 0`);
-      if (Number(row.unitCost) < 0) errors.push(`Row ${i + 1}: Unit cost cannot be negative`);
+      const qty = Number(row.quantity);
+      const cost = Number(row.unitCost);
+      if (isNaN(qty) || qty <= 0) errors.push(`Row ${i + 1}: Quantity must be a positive number`);
+      if (isNaN(cost) || cost < 0) errors.push(`Row ${i + 1}: Unit cost must be a valid number`);
       if (!row.purchaseDate) errors.push(`Row ${i + 1}: Purchase date is required`);
     }
     if (errors.length > 0) {

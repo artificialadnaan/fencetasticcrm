@@ -88,11 +88,15 @@ export function OperatingExpensesSection({
     setDialogOpen(true);
   }
 
+  const amountNum = parseFloat(form.amount);
   const isFormValid =
     form.category.trim() !== '' &&
     form.description.trim() !== '' &&
     form.amount !== '' &&
-    form.frequency !== '';
+    !isNaN(amountNum) &&
+    amountNum > 0 &&
+    form.frequency !== '' &&
+    (!form.effectiveFrom || !form.effectiveTo || form.effectiveFrom <= form.effectiveTo);
 
   // Monthly equivalent for totals display
   const monthlyEquivalent = expenses.reduce((sum, e) => {

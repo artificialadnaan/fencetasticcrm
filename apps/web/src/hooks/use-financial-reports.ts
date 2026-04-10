@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import type {
   PnlReport,
@@ -205,8 +206,8 @@ export function useExportReport(type: string, range: DateRange, extraParams?: Re
   const [isExporting, setIsExporting] = useState(false);
 
   const exportCsv = useCallback(async () => {
-    setIsExporting(true);
     try {
+      setIsExporting(true);
       const params = new URLSearchParams({
         dateFrom: range.dateFrom,
         dateTo: range.dateTo,
@@ -224,6 +225,8 @@ export function useExportReport(type: string, range: DateRange, extraParams?: Re
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to export report');
     } finally {
       setIsExporting(false);
     }

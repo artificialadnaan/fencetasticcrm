@@ -154,6 +154,12 @@ export function ExpenseReport({ dateFrom, dateTo }: ExpenseReportProps) {
                         <tr
                           className="border-b border-black/5 hover:bg-slate-50/60 cursor-pointer transition-colors"
                           onClick={() => toggleCategory(cat.category)}
+                          tabIndex={0}
+                          role="button"
+                          aria-expanded={expandedCategories.has(cat.category)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCategory(cat.category); }
+                          }}
                         >
                           <td className="py-2 px-2">
                             {cat.subcategories.length > 0 ? (

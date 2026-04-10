@@ -136,7 +136,7 @@ export function CommissionReport({ dateFrom, dateTo }: CommissionReportProps) {
 
       {/* Pending Section */}
       <div className="rounded-2xl border border-black/5 bg-white/70 backdrop-blur-sm shadow-sm p-6 space-y-6">
-        <h3 className="text-lg font-semibold text-slate-950">Pending</h3>
+        <h3 className="text-lg font-semibold text-slate-950">Pending (all unsettled)</h3>
         <PersonTable person={data.pending.adnaan} showAimann />
         <PersonTable person={data.pending.meme} showAimann={false} />
       </div>
