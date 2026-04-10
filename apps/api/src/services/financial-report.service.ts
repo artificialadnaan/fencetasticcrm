@@ -1,7 +1,17 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { calculateCommission, PaymentMethod } from '@fencetastic/shared';
-import type { PnlReport, PnlRow, JobCostingRow } from '@fencetastic/shared';
+import type {
+  PnlReport,
+  PnlRow,
+  JobCostingRow,
+  CommissionSummaryReport,
+  CommissionSummaryPerson,
+  ExpenseBreakdownReport,
+  ExpenseByCategoryRow,
+  ExpenseByVendorRow,
+  CashFlowRow,
+} from '@fencetastic/shared';
 import { TransactionType, ProjectStatus, FenceType } from '@fencetastic/shared';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -463,5 +473,472 @@ export async function getJobCostingReport(
       profit: roundMoney(profit),
       marginPct,
     };
+  });
+}
+
+// ─── Commission Summary Report ────────────────────────────────────────────────
+
+export async function getCommissionSummaryReport(
+  dateFrom: Date,
+  dateTo: Date
+): Promise<CommissionSummaryReport> {
+  // Settled: CommissionSnapshot.settledAt in date range, project not deleted
+  const settledSnapshots = await prisma.commissionSnapshot.findMany({
+    where: {
+      settledAt: { gte: dateFrom, lte: dateTo },
+      project: { isDeleted: false },
+    },
+    select: {
+      projectId: true,
+      adnaanCommission: true,
+      memeCommission: true,
+      aimannDeduction: true,
+      project: {
+        select: {
+          customer: true,
+          projectTotal: true,
+        },
+      },
+    },
+    orderBy: { settledAt: 'asc' },
+  });
+
+  // Pending: non-ESTIMATE projects with no commissionSnapshot
+  const pendingProjects = await prisma.project.findMany({
+    where: {
+      isDeleted: false,
+      status: { not: ProjectStatus.ESTIMATE },
+      commissionSnapshot: null,
+    },
+    select: {
+      id: true,
+      customer: true,
+      projectTotal: true,
+      paymentMethod: true,
+      materialsCost: true,
+      materialLineItems: { select: { totalCost: true } },
+      subcontractorPayments: { select: { amountOwed: true, amountPaid: true } },
+    },
+  });
+
+  const aimannDebt = await getAimannDebtBalance();
+
+  // Build settled person summaries
+  const settledAdnaanRows: CommissionSummaryPerson['rows'] = [];
+  const settledMemeRows: CommissionSummaryPerson['rows'] = [];
+  let settledAdnaanTotal = 0;
+  let settledAdnaanDeductions = 0;
+  let settledMemeTotal = 0;
+
+  for (const snap of settledSnapshots) {
+    const adnaan = d(snap.adnaanCommission);
+    const meme = d(snap.memeCommission);
+    const deduction = d(snap.aimannDeduction);
+    const projectTotal = d(snap.project.projectTotal);
+
+    settledAdnaanRows.push({
+      projectId: snap.projectId,
+      customer: snap.project.customer,
+      projectTotal,
+      commission: roundMoney(adnaan),
+    });
+    settledMemeRows.push({
+      projectId: snap.projectId,
+      customer: snap.project.customer,
+      projectTotal,
+      commission: roundMoney(meme),
+    });
+
+    settledAdnaanTotal += adnaan;
+    settledAdnaanDeductions += deduction;
+    settledMemeTotal += meme;
+  }
+
+  const settledAdnaan: CommissionSummaryPerson = {
+    name: 'Adnaan',
+    rows: settledAdnaanRows,
+    periodTotal: roundMoney(settledAdnaanTotal),
+    aimannDeductions: roundMoney(settledAdnaanDeductions),
+    netPayout: roundMoney(settledAdnaanTotal - settledAdnaanDeductions),
+  };
+
+  const settledMeme: CommissionSummaryPerson = {
+    name: 'Meme',
+    rows: settledMemeRows,
+    periodTotal: roundMoney(settledMemeTotal),
+    aimannDeductions: 0,
+    netPayout: roundMoney(settledMemeTotal),
+  };
+
+  // Build pending person summaries — simulate debt paydown across projects
+  const pendingAdnaanRows: CommissionSummaryPerson['rows'] = [];
+  const pendingMemeRows: CommissionSummaryPerson['rows'] = [];
+  let pendingAdnaanTotal = 0;
+  let pendingAdnaanDeductions = 0;
+  let pendingMemeTotal = 0;
+  let simulatedDebtBalance = aimannDebt;
+
+  for (const project of pendingProjects) {
+    const hasMaterialLineItems = project.materialLineItems.length > 0;
+    const materials = hasMaterialLineItems
+      ? project.materialLineItems.reduce((s, li) => s + d(li.totalCost), 0)
+      : d(project.materialsCost);
+    const subOwedTotal = project.subcontractorPayments.reduce(
+      (s, sp) => s + d(sp.amountOwed),
+      0
+    );
+
+    const calc = calculateCommission({
+      projectTotal: d(project.projectTotal),
+      paymentMethod: project.paymentMethod as PaymentMethod,
+      materialsCost: materials,
+      subOwedTotal,
+      aimannDebtBalance: simulatedDebtBalance,
+    });
+
+    // Cap deduction to remaining simulated debt
+    const cappedDeduction = Math.min(calc.aimannDeduction, simulatedDebtBalance);
+    simulatedDebtBalance = Math.max(simulatedDebtBalance - cappedDeduction, 0);
+
+    const projectTotal = d(project.projectTotal);
+
+    pendingAdnaanRows.push({
+      projectId: project.id,
+      customer: project.customer,
+      projectTotal,
+      commission: roundMoney(calc.adnaanCommission),
+    });
+    pendingMemeRows.push({
+      projectId: project.id,
+      customer: project.customer,
+      projectTotal,
+      commission: roundMoney(calc.memeCommission),
+    });
+
+    pendingAdnaanTotal += calc.adnaanCommission;
+    pendingAdnaanDeductions += cappedDeduction;
+    pendingMemeTotal += calc.memeCommission;
+  }
+
+  const pendingAdnaan: CommissionSummaryPerson = {
+    name: 'Adnaan',
+    rows: pendingAdnaanRows,
+    periodTotal: roundMoney(pendingAdnaanTotal),
+    aimannDeductions: roundMoney(pendingAdnaanDeductions),
+    netPayout: roundMoney(pendingAdnaanTotal - pendingAdnaanDeductions),
+  };
+
+  const pendingMeme: CommissionSummaryPerson = {
+    name: 'Meme',
+    rows: pendingMemeRows,
+    periodTotal: roundMoney(pendingMemeTotal),
+    aimannDeductions: 0,
+    netPayout: roundMoney(pendingMemeTotal),
+  };
+
+  return {
+    settled: { adnaan: settledAdnaan, meme: settledMeme },
+    pending: { adnaan: pendingAdnaan, meme: pendingMeme },
+  };
+}
+
+// ─── Expense Breakdown Report ─────────────────────────────────────────────────
+
+export async function getExpenseBreakdownReport(
+  dateFrom: Date,
+  dateTo: Date
+): Promise<ExpenseBreakdownReport> {
+  const [materialLineItems, expenseTransactions, subcontractorPayments, operatingExpenses] =
+    await Promise.all([
+      // All material line items with purchaseDate in range
+      prisma.materialLineItem.findMany({
+        where: { purchaseDate: { gte: dateFrom, lte: dateTo } },
+        select: {
+          totalCost: true,
+          category: true,
+          vendor: true,
+          projectId: true,
+          transactionId: true,
+        },
+      }),
+      // EXPENSE transactions in range, including linked material line items
+      prisma.transaction.findMany({
+        where: {
+          type: TransactionType.EXPENSE,
+          date: { gte: dateFrom, lte: dateTo },
+        },
+        select: {
+          id: true,
+          amount: true,
+          category: true,
+          subcategory: true,
+          payee: true,
+          projectId: true,
+          materialLineItems: {
+            select: { totalCost: true, vendor: true, category: true, projectId: true },
+          },
+        },
+      }),
+      // Subcontractor payments with datePaid in range
+      prisma.subcontractorPayment.findMany({
+        where: {
+          datePaid: { gte: dateFrom, lte: dateTo },
+          amountPaid: { gt: 0 },
+        },
+        select: { amountPaid: true, subcontractorName: true, projectId: true },
+      }),
+      // Operating expenses (active or effectiveTo >= dateFrom)
+      prisma.operatingExpense.findMany({
+        where: {
+          OR: [
+            { isActive: true },
+            { effectiveTo: { gte: dateFrom } },
+          ],
+        },
+        select: { amount: true, frequency: true, effectiveFrom: true, effectiveTo: true, category: true, description: true },
+      }),
+    ]);
+
+  // ── byCategory ──────────────────────────────────────────────────────────────
+
+  // 1. Materials — by MaterialCategory
+  const materialsByCat = new Map<string, number>();
+  let materialsTotal = 0;
+  for (const li of materialLineItems) {
+    const cat = li.category as string;
+    materialsByCat.set(cat, (materialsByCat.get(cat) ?? 0) + d(li.totalCost));
+    materialsTotal += d(li.totalCost);
+  }
+  const materialsRow: ExpenseByCategoryRow = {
+    category: 'Materials',
+    subcategories: Array.from(materialsByCat.entries()).map(([name, amount]) => ({
+      name,
+      amount: roundMoney(amount),
+    })),
+    total: roundMoney(materialsTotal),
+  };
+
+  // 2. Subcontractors
+  const subsBySub = new Map<string, number>();
+  let subsTotal = 0;
+  for (const sp of subcontractorPayments) {
+    subsBySub.set(sp.subcontractorName, (subsBySub.get(sp.subcontractorName) ?? 0) + d(sp.amountPaid));
+    subsTotal += d(sp.amountPaid);
+  }
+  const subsRow: ExpenseByCategoryRow = {
+    category: 'Subcontractors',
+    subcategories: Array.from(subsBySub.entries()).map(([name, amount]) => ({
+      name,
+      amount: roundMoney(amount),
+    })),
+    total: roundMoney(subsTotal),
+  };
+
+  // 3. Operating Expenses — month-by-month attribution
+  const buckets = buildMonthBuckets(dateFrom, dateTo);
+  const opExByCat = new Map<string, number>();
+  let opExTotal = 0;
+  for (const exp of operatingExpenses) {
+    const expFrom = exp.effectiveFrom
+      ? new Date(exp.effectiveFrom.getFullYear(), exp.effectiveFrom.getMonth(), 1)
+      : new Date(dateFrom.getFullYear(), dateFrom.getMonth(), 1);
+    const expTo = exp.effectiveTo
+      ? new Date(exp.effectiveTo.getFullYear(), exp.effectiveTo.getMonth(), 1)
+      : new Date(dateTo.getFullYear(), dateTo.getMonth(), 1);
+
+    for (const bucket of buckets) {
+      if (bucket < expFrom || bucket > expTo) continue;
+      const monthAmt = monthlyAmountForOpEx(d(exp.amount), exp.frequency, exp.effectiveFrom, exp.effectiveTo, bucket);
+      opExByCat.set(exp.category, (opExByCat.get(exp.category) ?? 0) + monthAmt);
+      opExTotal += monthAmt;
+    }
+  }
+  const opExRow: ExpenseByCategoryRow = {
+    category: 'Operating Expenses',
+    subcategories: Array.from(opExByCat.entries()).map(([name, amount]) => ({
+      name,
+      amount: roundMoney(amount),
+    })),
+    total: roundMoney(opExTotal),
+  };
+
+  // 4. Other Expenses — transaction remainders (amount minus linked material costs)
+  const otherBySub = new Map<string, number>();
+  let otherTotal = 0;
+  for (const tx of expenseTransactions) {
+    const linkedMaterials = tx.materialLineItems.reduce((s, li) => s + d(li.totalCost), 0);
+    const remainder = Math.max(d(tx.amount) - linkedMaterials, 0);
+    if (remainder <= 0) continue;
+    const subcat = tx.subcategory ?? tx.category ?? 'Uncategorized';
+    otherBySub.set(subcat, (otherBySub.get(subcat) ?? 0) + remainder);
+    otherTotal += remainder;
+  }
+  const otherRow: ExpenseByCategoryRow = {
+    category: 'Other Expenses',
+    subcategories: Array.from(otherBySub.entries()).map(([name, amount]) => ({
+      name,
+      amount: roundMoney(amount),
+    })),
+    total: roundMoney(otherTotal),
+  };
+
+  // ── byVendor ─────────────────────────────────────────────────────────────────
+
+  // Map: vendor -> { totalSpend, projectIds, categories }
+  const vendorMap = new Map<string, { spend: number; projectIds: Set<string>; cats: Map<string, number> }>();
+
+  const ensureVendor = (vendor: string) => {
+    if (!vendorMap.has(vendor)) {
+      vendorMap.set(vendor, { spend: 0, projectIds: new Set(), cats: new Map() });
+    }
+    return vendorMap.get(vendor)!;
+  };
+
+  // Add material line item amounts by vendor
+  for (const li of materialLineItems) {
+    const vendor = li.vendor ?? 'Unknown';
+    const entry = ensureVendor(vendor);
+    const amt = d(li.totalCost);
+    entry.spend += amt;
+    if (li.projectId) entry.projectIds.add(li.projectId);
+    const cat = li.category as string;
+    entry.cats.set(cat, (entry.cats.get(cat) ?? 0) + amt);
+  }
+
+  // Add transaction REMAINDERS by payee (not full amounts to avoid double-counting linked materials)
+  for (const tx of expenseTransactions) {
+    const vendor = tx.payee ?? 'Unknown';
+    const linkedMaterials = tx.materialLineItems.reduce((s, li) => s + d(li.totalCost), 0);
+    const remainder = Math.max(d(tx.amount) - linkedMaterials, 0);
+    if (remainder <= 0) continue;
+    const entry = ensureVendor(vendor);
+    entry.spend += remainder;
+    if (tx.projectId) entry.projectIds.add(tx.projectId);
+    const cat = tx.subcategory ?? tx.category ?? 'Other';
+    entry.cats.set(cat, (entry.cats.get(cat) ?? 0) + remainder);
+  }
+
+  const byVendor: ExpenseByVendorRow[] = Array.from(vendorMap.entries())
+    .map(([vendor, data]) => {
+      const topCategories = Array.from(data.cats.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([name]) => name);
+      return {
+        vendor,
+        totalSpend: roundMoney(data.spend),
+        projectCount: data.projectIds.size,
+        topCategories,
+      };
+    })
+    .sort((a, b) => b.totalSpend - a.totalSpend);
+
+  const total = roundMoney(materialsTotal + subsTotal + opExTotal + otherTotal);
+
+  return {
+    byCategory: [materialsRow, subsRow, opExRow, otherRow],
+    byVendor,
+    total,
+  };
+}
+
+// ─── Cash Flow Report ─────────────────────────────────────────────────────────
+
+export async function getCashFlowReport(
+  dateFrom: Date,
+  dateTo: Date
+): Promise<CashFlowRow[]> {
+  const [incomeTransactions, expenseTransactions, unlinkedMaterials, operatingExpenses] =
+    await Promise.all([
+      // INCOME transactions by date
+      prisma.transaction.findMany({
+        where: {
+          type: TransactionType.INCOME,
+          date: { gte: dateFrom, lte: dateTo },
+        },
+        select: { amount: true, date: true },
+      }),
+      // EXPENSE transactions by date
+      prisma.transaction.findMany({
+        where: {
+          type: TransactionType.EXPENSE,
+          date: { gte: dateFrom, lte: dateTo },
+        },
+        select: { amount: true, date: true },
+      }),
+      // Unlinked material line items (no transaction) by purchaseDate
+      prisma.materialLineItem.findMany({
+        where: {
+          transactionId: null,
+          purchaseDate: { gte: dateFrom, lte: dateTo },
+        },
+        select: { totalCost: true, purchaseDate: true },
+      }),
+      // Operating expenses for range
+      prisma.operatingExpense.findMany({
+        where: {
+          OR: [
+            { isActive: true },
+            { effectiveTo: { gte: dateFrom } },
+          ],
+        },
+        select: { amount: true, frequency: true, effectiveFrom: true, effectiveTo: true },
+      }),
+    ]);
+
+  const buckets = buildMonthBuckets(dateFrom, dateTo);
+  const inMap = new Map<string, number>();
+  const outMap = new Map<string, number>();
+
+  for (const bucket of buckets) {
+    const key = monthKey(bucket);
+    inMap.set(key, 0);
+    outMap.set(key, 0);
+  }
+
+  // Money In: INCOME transactions bucketed by month
+  for (const tx of incomeTransactions) {
+    const key = monthKey(tx.date);
+    if (inMap.has(key)) inMap.set(key, inMap.get(key)! + d(tx.amount));
+  }
+
+  // Money Out: EXPENSE transactions
+  for (const tx of expenseTransactions) {
+    const key = monthKey(tx.date);
+    if (outMap.has(key)) outMap.set(key, outMap.get(key)! + d(tx.amount));
+  }
+
+  // Money Out: unlinked material line items by purchaseDate
+  for (const li of unlinkedMaterials) {
+    const key = monthKey(li.purchaseDate);
+    if (outMap.has(key)) outMap.set(key, outMap.get(key)! + d(li.totalCost));
+  }
+
+  // Money Out: operating expenses per month
+  for (const exp of operatingExpenses) {
+    const expFrom = exp.effectiveFrom
+      ? new Date(exp.effectiveFrom.getFullYear(), exp.effectiveFrom.getMonth(), 1)
+      : new Date(dateFrom.getFullYear(), dateFrom.getMonth(), 1);
+    const expTo = exp.effectiveTo
+      ? new Date(exp.effectiveTo.getFullYear(), exp.effectiveTo.getMonth(), 1)
+      : new Date(dateTo.getFullYear(), dateTo.getMonth(), 1);
+
+    for (const bucket of buckets) {
+      if (bucket < expFrom || bucket > expTo) continue;
+      const monthAmt = monthlyAmountForOpEx(d(exp.amount), exp.frequency, exp.effectiveFrom, exp.effectiveTo, bucket);
+      const key = monthKey(bucket);
+      if (outMap.has(key)) outMap.set(key, outMap.get(key)! + monthAmt);
+    }
+  }
+
+  // Build rows with running balance
+  let runningBalance = 0;
+  return buckets.map((bucket) => {
+    const key = monthKey(bucket);
+    const moneyIn = roundMoney(inMap.get(key) ?? 0);
+    const moneyOut = roundMoney(outMap.get(key) ?? 0);
+    const netCashFlow = roundMoney(moneyIn - moneyOut);
+    runningBalance = roundMoney(runningBalance + netCashFlow);
+    return { month: key, moneyIn, moneyOut, netCashFlow, runningBalance };
   });
 }
