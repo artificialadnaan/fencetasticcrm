@@ -115,6 +115,34 @@ export function useDeleteMaterial(): UseDeleteMaterialReturn {
   return { mutate, isLoading };
 }
 
+// --- Eligible Transactions ---
+
+interface EligibleTransaction {
+  id: string;
+  description: string;
+  amount: number;
+  date: string;
+  payee: string | null;
+  category: string;
+}
+
+export function useEligibleTransactions(projectId: string) {
+  const [data, setData] = useState<EligibleTransaction[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetch = useCallback(async () => {
+    try {
+      const res = await api.get(`/projects/${projectId}/materials/eligible-transactions`);
+      setData(res.data.data);
+    } catch { /* silent — supplementary data */ }
+    finally { setIsLoading(false); }
+  }, [projectId]);
+
+  useEffect(() => { setIsLoading(true); fetch(); }, [fetch]);
+
+  return { data, isLoading, refetch: fetch };
+}
+
 // --- Project Material Summary ---
 
 interface MaterialSummary {

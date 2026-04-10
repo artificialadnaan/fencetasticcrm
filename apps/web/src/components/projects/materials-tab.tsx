@@ -24,6 +24,7 @@ import {
   useCreateMaterials,
   useUpdateMaterial,
   useDeleteMaterial,
+  useEligibleTransactions,
 } from '@/hooks/use-materials';
 import { MaterialCategory } from '@fencetastic/shared';
 import type { MaterialLineItem, CreateMaterialLineItemDTO } from '@fencetastic/shared';
@@ -57,6 +58,7 @@ interface MaterialForm {
   quantity: string;
   unitCost: string;
   purchaseDate: string;
+  transactionId: string;
 }
 
 const emptyForm: MaterialForm = {
@@ -66,6 +68,7 @@ const emptyForm: MaterialForm = {
   quantity: '',
   unitCost: '',
   purchaseDate: today(),
+  transactionId: '',
 };
 
 // Empty row used for bulk-add
@@ -88,6 +91,7 @@ export function MaterialsTab({ projectId }: MaterialsTabProps) {
   const { mutate: createMaterials, isLoading: creating } = useCreateMaterials();
   const { mutate: updateMaterial, isLoading: updating } = useUpdateMaterial();
   const { mutate: deleteMaterial, isLoading: deleting } = useDeleteMaterial();
+  const { data: eligibleTransactions } = useEligibleTransactions(projectId);
 
   // Single add/edit dialog
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -131,6 +135,7 @@ export function MaterialsTab({ projectId }: MaterialsTabProps) {
       quantity: String(item.quantity),
       unitCost: String(item.unitCost),
       purchaseDate: item.purchaseDate,
+      transactionId: item.transactionId ?? '',
     });
     setDialogOpen(true);
   }
@@ -146,6 +151,7 @@ export function MaterialsTab({ projectId }: MaterialsTabProps) {
           quantity: parseFloat(form.quantity),
           unitCost: parseFloat(form.unitCost),
           purchaseDate: form.purchaseDate,
+          transactionId: form.transactionId || null,
         });
       } else {
         const dto: CreateMaterialLineItemDTO = {
@@ -155,6 +161,7 @@ export function MaterialsTab({ projectId }: MaterialsTabProps) {
           quantity: parseFloat(form.quantity),
           unitCost: parseFloat(form.unitCost),
           purchaseDate: form.purchaseDate,
+          transactionId: form.transactionId || null,
         };
         await createMaterials(projectId, [dto]);
       }
@@ -443,6 +450,22 @@ export function MaterialsTab({ projectId }: MaterialsTabProps) {
                   {formatCurrency(isNaN(formTotal) ? 0 : formTotal)}
                 </div>
               </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="mat-transaction">Link to Transaction (optional)</Label>
+              <select
+                id="mat-transaction"
+                value={form.transactionId}
+                onChange={(e) => setForm((f) => ({ ...f, transactionId: e.target.value }))}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="">None</option>
+                {eligibleTransactions.map((txn) => (
+                  <option key={txn.id} value={txn.id}>
+                    {txn.description} — ${txn.amount.toFixed(2)} ({txn.date})
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
           <DialogFooter>

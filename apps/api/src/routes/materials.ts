@@ -9,6 +9,7 @@ import {
   deleteMaterialLineItem,
   getProjectMaterialSummary,
 } from '../services/material.service';
+import { prisma } from '../lib/prisma';
 
 export const materialRouter = Router();
 
@@ -43,6 +44,38 @@ const updateSchema = z.object({
 });
 
 // --- Routes ---
+
+// GET /api/projects/:projectId/materials/eligible-transactions
+// Returns EXPENSE transactions for this project or with null projectId
+materialRouter.get(
+  '/projects/:projectId/materials/eligible-transactions',
+  requireAuth,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { projectId } = req.params;
+      const transactions = await prisma.transaction.findMany({
+        where: {
+          type: 'EXPENSE',
+          OR: [
+            { projectId },
+            { projectId: null },
+          ],
+        },
+        select: { id: true, description: true, amount: true, date: true, payee: true, category: true },
+        orderBy: { date: 'desc' },
+        take: 100,
+      });
+      const mapped = transactions.map(t => ({
+        ...t,
+        amount: Number(t.amount),
+        date: t.date instanceof Date ? t.date.toISOString().split('T')[0] : t.date,
+      }));
+      res.json({ data: mapped });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
 
 // GET /api/projects/:projectId/materials — list material line items for a project
 materialRouter.get(
