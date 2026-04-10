@@ -1,98 +1,159 @@
 import { useMemo, useState } from 'react';
-import { Download } from 'lucide-react';
+import { Download, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useMonthlyPL, useProjectStats, useReceivablesAging } from '@/hooks/use-reports';
-import { MonthlyPLTable } from '@/components/reports/monthly-pl-table';
-import { ProjectStats } from '@/components/reports/project-stats';
-import { ReceivablesTable } from '@/components/reports/receivables-table';
 import { usePageShell } from '@/components/layout/page-shell';
+import { useExportReport } from '@/hooks/use-financial-reports';
+import { PnlReport } from '@/components/reports/pnl-report';
+import { JobCostingReport } from '@/components/reports/job-costing-report';
+import { CommissionReport } from '@/components/reports/commission-report';
+import { ExpenseReport } from '@/components/reports/expense-report';
+import { CashFlowReport } from '@/components/reports/cash-flow-report';
 
-const MONTH_OPTIONS = [3, 6, 12] as const;
+const TABS = [
+  { id: 'pnl', label: 'P&L' },
+  { id: 'job-costing', label: 'Job Costing' },
+  { id: 'commissions', label: 'Commissions' },
+  { id: 'expenses', label: 'Expenses' },
+  { id: 'cash-flow', label: 'Cash Flow' },
+] as const;
+
+type TabId = (typeof TABS)[number]['id'];
+
+const PERIOD_OPTIONS = ['monthly', 'quarterly', 'annual'] as const;
+
+function getDefaultDateFrom(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+}
+
+function getDefaultDateTo(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 export default function ReportsPage() {
-  const [months, setMonths] = useState<number>(6);
+  const [activeTab, setActiveTab] = useState<TabId>('pnl');
+  const [dateFrom, setDateFrom] = useState(getDefaultDateFrom);
+  const [dateTo, setDateTo] = useState(getDefaultDateTo);
+  const [period, setPeriod] = useState<string>('monthly');
 
-  const { data: plData, isLoading: plLoading, error: plError } = useMonthlyPL(months);
-  const { data: statsData, isLoading: statsLoading, error: statsError } = useProjectStats();
-  const { data: receivablesData, isLoading: receivablesLoading, error: receivablesError } = useReceivablesAging();
-
-  const pageError = plError ?? statsError ?? receivablesError;
+  const exportType = activeTab === 'job-costing' ? 'job-costing' : activeTab;
+  const { exportCsv, isExporting } = useExportReport(exportType, { dateFrom, dateTo });
 
   const utilityActions = useMemo(
     () => (
-      <div className="inline-flex items-center rounded-2xl border border-black/5 bg-white/65 p-1 shadow-sm">
-        {MONTH_OPTIONS.map((m) => (
-          <Button
-            key={m}
-            type="button"
-            variant="ghost"
-            size="sm"
-            className={`rounded-xl px-4 ${
-              months === m
-                ? 'bg-slate-950 text-white hover:bg-slate-800'
-                : 'text-slate-600 hover:bg-white hover:text-slate-950'
-            }`}
-            onClick={() => setMonths(m)}
-          >
-            {m}M
-          </Button>
-        ))}
+      <div className="flex items-center gap-3 flex-wrap">
+        {/* Tab Navigation */}
+        <div className="inline-flex items-center rounded-2xl border border-black/5 bg-white/65 p-1 shadow-sm">
+          {TABS.map((tab) => (
+            <Button
+              key={tab.id}
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={`rounded-xl px-4 text-xs sm:text-sm ${
+                activeTab === tab.id
+                  ? 'bg-slate-950 text-white hover:bg-slate-800'
+                  : 'text-slate-600 hover:bg-white hover:text-slate-950'
+              }`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              {tab.label}
+            </Button>
+          ))}
+        </div>
+
+        {/* Period toggle for P&L */}
+        {activeTab === 'pnl' && (
+          <div className="inline-flex items-center rounded-2xl border border-black/5 bg-white/65 p-1 shadow-sm">
+            {PERIOD_OPTIONS.map((p) => (
+              <Button
+                key={p}
+                type="button"
+                variant="ghost"
+                size="sm"
+                className={`rounded-xl px-3 text-xs capitalize ${
+                  period === p
+                    ? 'bg-slate-950 text-white hover:bg-slate-800'
+                    : 'text-slate-600 hover:bg-white hover:text-slate-950'
+                }`}
+                onClick={() => setPeriod(p)}
+              >
+                {p}
+              </Button>
+            ))}
+          </div>
+        )}
       </div>
     ),
-    [months]
+    [activeTab, period],
   );
 
   const secondaryActions = useMemo(
     () => (
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => window.print()}
-        className="rounded-2xl border-black/10 bg-white/70 px-4 print:hidden"
-      >
-        <Download className="h-4 w-4" />
-        Export PDF
-      </Button>
+      <div className="flex items-center gap-3 flex-wrap">
+        {/* Date Range Controls */}
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="rounded-xl border border-black/10 bg-white/70 px-3 py-1.5 text-sm text-slate-700"
+          />
+          <span className="text-sm text-slate-400">to</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="rounded-xl border border-black/10 bg-white/70 px-3 py-1.5 text-sm text-slate-700"
+          />
+        </div>
+
+        {/* Export CSV */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={exportCsv}
+          disabled={isExporting}
+          className="rounded-2xl border-black/10 bg-white/70 px-4 print:hidden"
+        >
+          {isExporting ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Download className="h-4 w-4" />
+          )}
+          Export CSV
+        </Button>
+      </div>
     ),
-    []
+    [dateFrom, dateTo, exportCsv, isExporting],
   );
 
   usePageShell({
     eyebrow: 'Financial Reports',
     title: 'Reports',
-    subtitle: 'Monthly P&L, project stats, and receivables aging.',
+    subtitle: 'P&L, job costing, commissions, expenses, and cash flow.',
     utilityActions,
     secondaryActions,
   });
 
   return (
     <div className="space-y-6 print:space-y-4">
-      <div className="hidden print:block mb-4">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-          Fencetastic Reports
-        </p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-slate-950">
-          Financial overview
-        </h1>
-        <p className="mt-2 text-sm text-slate-600">
-          Generated {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-        </p>
-      </div>
-
-      {pageError && (
-        <div className="rounded-[24px] border border-destructive/30 bg-destructive/10 px-5 py-4 text-sm text-destructive print:hidden">
-          Failed to load report data: {pageError}
-        </div>
+      {activeTab === 'pnl' && (
+        <PnlReport dateFrom={dateFrom} dateTo={dateTo} period={period} />
       )}
-
-      {/* Monthly P&L */}
-      <MonthlyPLTable data={plData} isLoading={plLoading} />
-
-      {/* Project Stats */}
-      <ProjectStats data={statsData} isLoading={statsLoading} />
-
-      {/* Receivables Aging */}
-      <ReceivablesTable data={receivablesData} isLoading={receivablesLoading} />
+      {activeTab === 'job-costing' && (
+        <JobCostingReport dateFrom={dateFrom} dateTo={dateTo} />
+      )}
+      {activeTab === 'commissions' && (
+        <CommissionReport dateFrom={dateFrom} dateTo={dateTo} />
+      )}
+      {activeTab === 'expenses' && (
+        <ExpenseReport dateFrom={dateFrom} dateTo={dateTo} />
+      )}
+      {activeTab === 'cash-flow' && (
+        <CashFlowReport dateFrom={dateFrom} dateTo={dateTo} />
+      )}
     </div>
   );
 }
