@@ -19,6 +19,7 @@ import { reportsRouter } from './routes/reports';
 import { operatingExpenseRouter } from './routes/operating-expenses';
 import { transactionRouter } from './routes/transactions';
 import { workOrderRouter } from './routes/work-orders';
+import { materialRouter } from './routes/materials';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -68,6 +69,7 @@ app.use('/api/reports', reportsRouter);
 app.use('/api/operating-expenses', operatingExpenseRouter);
 app.use('/api/transactions', transactionRouter);
 app.use('/api', workOrderRouter);
+app.use('/api', materialRouter);
 
 app.use(errorHandler);
 
