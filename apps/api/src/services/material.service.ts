@@ -279,11 +279,16 @@ export async function getProjectFinancialSummary(projectId: string) {
     const subOwedTotal = project.subcontractorPayments.reduce((s, sp) => s + d(sp.amountOwed), 0);
     const lastLedger = await prisma.aimannDebtLedger.findFirst({ orderBy: { date: 'desc' } });
     const aimannDebtBalance = lastLedger ? d(lastLedger.runningBalance) : 0;
+    const projectExpenseTotal = project.transactions.reduce((s, t) => s + d(t.amount), 0);
+    const expenseOverride = materialTotal + subOwedTotal > 0
+      ? Math.max(projectExpenseTotal, materialTotal + subOwedTotal)
+      : undefined;
     const calc = calculateCommission({
       projectTotal: d(project.projectTotal),
       paymentMethod: project.paymentMethod as PaymentMethod,
       materialsCost: materialTotal,
       subOwedTotal,
+      expenseOverride,
       aimannDebtBalance,
     });
     commissionsAdnaan = calc.adnaanCommission;

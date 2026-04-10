@@ -109,6 +109,34 @@ export async function updateTransaction(id: string, dto: UpdateTransactionDTO) {
     throw new AppError(404, 'Transaction not found', 'TRANSACTION_NOT_FOUND');
   }
 
+  // Validate linked material line items before mutating
+  if (dto.amount !== undefined || dto.type !== undefined || dto.projectId !== undefined) {
+    const linkedMaterials = await prisma.materialLineItem.findMany({
+      where: { transactionId: id },
+      select: { totalCost: true, projectId: true },
+    });
+
+    if (linkedMaterials.length > 0) {
+      const newType = dto.type ?? existing.type;
+      if (newType !== 'EXPENSE') {
+        throw new AppError(400, 'Cannot change transaction type while materials are linked', 'MATERIAL_LINK_CONFLICT');
+      }
+
+      const newAmount = dto.amount ?? Number(existing.amount);
+      const linkedTotal = linkedMaterials.reduce((s, m) => s + d(m.totalCost), 0);
+      if (linkedTotal > newAmount + 0.005) {
+        throw new AppError(400, `Linked materials total (${linkedTotal.toFixed(2)}) exceeds new amount (${newAmount.toFixed(2)})`, 'ALLOCATION_CAP_EXCEEDED');
+      }
+
+      if (dto.projectId !== undefined) {
+        const hasConflict = linkedMaterials.some(m => dto.projectId !== null && m.projectId !== dto.projectId);
+        if (hasConflict) {
+          throw new AppError(400, 'Cannot change project while materials from different projects are linked', 'MATERIAL_LINK_CONFLICT');
+        }
+      }
+    }
+  }
+
   const updateData: Prisma.TransactionUpdateInput = {};
 
   if (dto.type !== undefined) updateData.type = dto.type;

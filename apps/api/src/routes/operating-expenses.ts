@@ -27,8 +27,8 @@ const createSchema = z
     description: z.string().min(1, 'Description is required'),
     amount: z.number().min(0, 'Amount must be >= 0'),
     frequency: frequencyEnum,
-    effectiveFrom: z.string().nullable().optional(),
-    effectiveTo: z.string().nullable().optional(),
+    effectiveFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be YYYY-MM-DD format').nullable().optional(),
+    effectiveTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be YYYY-MM-DD format').nullable().optional(),
   })
   .refine(dateRangeRefine, dateRangeMessage);
 
@@ -38,8 +38,8 @@ const updateSchema = z
     description: z.string().min(1).optional(),
     amount: z.number().min(0).optional(),
     frequency: frequencyEnum.optional(),
-    effectiveFrom: z.string().nullable().optional(),
-    effectiveTo: z.string().nullable().optional(),
+    effectiveFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be YYYY-MM-DD format').nullable().optional(),
+    effectiveTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be YYYY-MM-DD format').nullable().optional(),
   })
   .refine(dateRangeRefine, dateRangeMessage);
 

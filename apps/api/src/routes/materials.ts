@@ -26,7 +26,7 @@ const createItemSchema = z.object({
   vendor: z.string().max(200).nullable().optional(),
   quantity: z.number().positive(),
   unitCost: z.number().nonnegative(),
-  purchaseDate: z.string().min(1),
+  purchaseDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be YYYY-MM-DD format'),
   transactionId: z.string().uuid().nullable().optional(),
 });
 
@@ -40,7 +40,7 @@ const updateSchema = z.object({
   vendor: z.string().max(200).nullable().optional(),
   quantity: z.number().positive().optional(),
   unitCost: z.number().nonnegative().optional(),
-  purchaseDate: z.string().optional(),
+  purchaseDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be YYYY-MM-DD format').optional(),
   transactionId: z.string().uuid().nullable().optional(),
 });
 

@@ -263,11 +263,16 @@ export async function getPnlReport(
         (s, sp) => s + d(sp.amountOwed),
         0
       );
+      const projectExpenseTotal = project.transactions.reduce((s, t) => s + d(t.amount), 0);
+      const expenseOverride = materials + subOwedTotal > 0
+        ? Math.max(projectExpenseTotal, materials + subOwedTotal)
+        : undefined;
       const breakdown = calculateCommission({
         projectTotal: d(project.projectTotal),
         paymentMethod: project.paymentMethod as PaymentMethod,
         materialsCost: materials,
         subOwedTotal,
+        expenseOverride,
         aimannDebtBalance: aimannDebt,
       });
       commissionsAdnaan = breakdown.adnaanCommission;
@@ -439,11 +444,16 @@ export async function getJobCostingReport(
         (s, sp) => s + d(sp.amountOwed),
         0
       );
+      const projectExpenseTotal = project.transactions.reduce((s, t) => s + d(t.amount), 0);
+      const expenseOverride = materials + subOwedTotal > 0
+        ? Math.max(projectExpenseTotal, materials + subOwedTotal)
+        : undefined;
       const breakdown = calculateCommission({
         projectTotal: d(project.projectTotal),
         paymentMethod: project.paymentMethod as PaymentMethod,
         materialsCost: materials,
         subOwedTotal,
+        expenseOverride,
         aimannDebtBalance: aimannDebt,
       });
       commissionsAdnaan = breakdown.adnaanCommission;
@@ -501,6 +511,7 @@ export async function getCommissionSummaryReport(
   });
 
   // Pending: non-ESTIMATE projects with no commissionSnapshot
+  // orderBy contractDate asc so debt paydown is deterministic (oldest projects first)
   const pendingProjects = await prisma.project.findMany({
     where: {
       isDeleted: false,
@@ -514,9 +525,15 @@ export async function getCommissionSummaryReport(
       projectTotal: true,
       paymentMethod: true,
       materialsCost: true,
+      contractDate: true,
       materialLineItems: { select: { totalCost: true } },
       subcontractorPayments: { select: { amountOwed: true, amountPaid: true } },
+      transactions: {
+        where: { type: TransactionType.EXPENSE },
+        select: { amount: true },
+      },
     },
+    orderBy: { contractDate: 'asc' },
   });
 
   const aimannDebt = await getAimannDebtBalance();
@@ -587,12 +604,19 @@ export async function getCommissionSummaryReport(
       (s, sp) => s + d(sp.amountOwed),
       0
     );
+    const projectExpenseTotal = project.transactions
+      ? project.transactions.reduce((s, t) => s + d(t.amount), 0)
+      : 0;
+    const expenseOverride = materials + subOwedTotal > 0
+      ? Math.max(projectExpenseTotal, materials + subOwedTotal)
+      : undefined;
 
     const calc = calculateCommission({
       projectTotal: d(project.projectTotal),
       paymentMethod: project.paymentMethod as PaymentMethod,
       materialsCost: materials,
       subOwedTotal,
+      expenseOverride,
       aimannDebtBalance: simulatedDebtBalance,
     });
 
@@ -677,7 +701,7 @@ export async function getExpenseBreakdownReport(
           payee: true,
           projectId: true,
           materialLineItems: {
-            select: { totalCost: true, vendor: true, category: true, projectId: true },
+            select: { totalCost: true, vendor: true, category: true, projectId: true, purchaseDate: true },
           },
         },
       }),
@@ -764,11 +788,16 @@ export async function getExpenseBreakdownReport(
     total: roundMoney(opExTotal),
   };
 
-  // 4. Other Expenses — transaction remainders (amount minus linked material costs)
+  // 4. Other Expenses — transaction remainders (amount minus linked material costs within date range)
   const otherBySub = new Map<string, number>();
   let otherTotal = 0;
   for (const tx of expenseTransactions) {
-    const linkedMaterials = tx.materialLineItems.reduce((s, li) => s + d(li.totalCost), 0);
+    const linkedMaterials = tx.materialLineItems
+      .filter(m => {
+        const pd = m.purchaseDate instanceof Date ? m.purchaseDate : new Date(m.purchaseDate);
+        return pd >= dateFrom && pd <= dateTo;
+      })
+      .reduce((s, li) => s + d(li.totalCost), 0);
     const remainder = Math.max(d(tx.amount) - linkedMaterials, 0);
     if (remainder <= 0) continue;
     const subcat = tx.subcategory ?? tx.category ?? 'Uncategorized';
@@ -810,7 +839,12 @@ export async function getExpenseBreakdownReport(
   // Add transaction REMAINDERS by payee (not full amounts to avoid double-counting linked materials)
   for (const tx of expenseTransactions) {
     const vendor = tx.payee ?? 'Unknown';
-    const linkedMaterials = tx.materialLineItems.reduce((s, li) => s + d(li.totalCost), 0);
+    const linkedMaterials = tx.materialLineItems
+      .filter(m => {
+        const pd = m.purchaseDate instanceof Date ? m.purchaseDate : new Date(m.purchaseDate);
+        return pd >= dateFrom && pd <= dateTo;
+      })
+      .reduce((s, li) => s + d(li.totalCost), 0);
     const remainder = Math.max(d(tx.amount) - linkedMaterials, 0);
     if (remainder <= 0) continue;
     const entry = ensureVendor(vendor);

@@ -33,8 +33,8 @@ const pnlSchema = dateRangeFields
 const jobCostingSchema = z.object({
   dateFrom: z.string().optional(),
   dateTo: z.string().optional(),
-  status: z.string().optional(),
-  fenceType: z.string().optional(),
+  status: z.enum(['ESTIMATE', 'OPEN', 'IN_PROGRESS', 'COMPLETED', 'CLOSED', 'WARRANTY']).optional(),
+  fenceType: z.enum(['WOOD', 'METAL', 'CHAIN_LINK', 'VINYL', 'GATE', 'OTHER']).optional(),
 }).refine(
   (data) => {
     if (data.dateFrom != null && data.dateTo != null) {
