@@ -143,22 +143,30 @@ export function useEligibleTransactions(projectId: string) {
   return { data, isLoading, refetch: fetch };
 }
 
-// --- Project Material Summary ---
+// --- Project Financial Summary ---
 
-interface MaterialSummary {
-  total: number;
-  lineItemCount: number;
-  isLegacy: boolean;
+interface ProjectFinancialSummary {
+  materials: number;
+  materialLineItemCount: number;
+  subcontractors: number;
+  otherExpenses: number;
+  commissionsAdnaan: number;
+  commissionsMeme: number;
+  totalCommissions: number;
+  revenue: number;
+  profit: number;
+  marginPct: number;
+  isLegacyMaterials: boolean;
 }
 
-interface UseProjectMaterialSummaryReturn {
-  data: MaterialSummary | null;
+interface UseProjectFinancialSummaryReturn {
+  data: ProjectFinancialSummary | null;
   isLoading: boolean;
   refetch: () => void;
 }
 
-export function useProjectMaterialSummary(projectId: string): UseProjectMaterialSummaryReturn {
-  const [data, setData] = useState<MaterialSummary | null>(null);
+export function useProjectFinancialSummary(projectId: string): UseProjectFinancialSummaryReturn {
+  const [data, setData] = useState<ProjectFinancialSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetch = useCallback(async () => {
@@ -178,4 +186,9 @@ export function useProjectMaterialSummary(projectId: string): UseProjectMaterial
   }, [fetch]);
 
   return { data, isLoading, refetch: fetch };
+}
+
+/** @deprecated Use useProjectFinancialSummary instead */
+export function useProjectMaterialSummary(projectId: string) {
+  return useProjectFinancialSummary(projectId);
 }

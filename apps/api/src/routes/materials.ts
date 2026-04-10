@@ -8,6 +8,7 @@ import {
   updateMaterialLineItem,
   deleteMaterialLineItem,
   getProjectMaterialSummary,
+  getProjectFinancialSummary,
 } from '../services/material.service';
 import { prisma } from '../lib/prisma';
 
@@ -91,13 +92,14 @@ materialRouter.get(
   }
 );
 
-// GET /api/projects/:projectId/materials/summary — material cost summary for a project
+// GET /api/projects/:projectId/materials/summary — full financial summary for a project
 materialRouter.get(
   '/projects/:projectId/materials/summary',
   requireAuth,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const data = await getProjectMaterialSummary(req.params.projectId);
+      const data = await getProjectFinancialSummary(req.params.projectId);
+      if (!data) return res.status(404).json({ error: 'Project not found' });
       res.json({ data });
     } catch (err) {
       next(err);

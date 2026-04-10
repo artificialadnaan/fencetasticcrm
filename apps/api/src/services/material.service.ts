@@ -1,7 +1,8 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../middleware/error-handler';
-import type { CreateMaterialLineItemDTO, UpdateMaterialLineItemDTO } from '@fencetastic/shared';
+import { calculateCommission } from '@fencetastic/shared';
+import type { CreateMaterialLineItemDTO, UpdateMaterialLineItemDTO, PaymentMethod } from '@fencetastic/shared';
 
 // Helper: convert Prisma Decimal to number
 function d(val: Prisma.Decimal | null | undefined): number {
@@ -208,5 +209,78 @@ export async function getProjectMaterialSummary(projectId: string) {
     total: d(project?.materialsCost),
     lineItemCount: 0,
     isLegacy: true,
+  };
+}
+
+export async function getProjectFinancialSummary(projectId: string) {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    include: {
+      materialLineItems: { select: { totalCost: true } },
+      subcontractorPayments: { select: { amountOwed: true, amountPaid: true } },
+      transactions: {
+        where: { type: 'EXPENSE' },
+        select: { amount: true, materialLineItems: { select: { totalCost: true } } },
+      },
+      commissionSnapshot: true,
+    },
+  });
+
+  if (!project) return null;
+
+  // Materials: line items or legacy fallback
+  const materialTotal = project.materialLineItems.length > 0
+    ? project.materialLineItems.reduce((s, m) => s + d(m.totalCost), 0)
+    : d(project.materialsCost);
+
+  // Subs
+  const subTotal = project.subcontractorPayments.reduce((s, sp) => s + d(sp.amountPaid), 0);
+
+  // Other expenses (transaction amounts minus linked material line item totals)
+  let otherExpenses = 0;
+  for (const txn of project.transactions) {
+    const linkedTotal = txn.materialLineItems.reduce((s, m) => s + d(m.totalCost), 0);
+    otherExpenses += d(txn.amount) - linkedTotal;
+  }
+
+  // Commissions: snapshot if settled, live calc if not
+  let commissionsAdnaan: number;
+  let commissionsMeme: number;
+  if (project.commissionSnapshot) {
+    commissionsAdnaan = d(project.commissionSnapshot.adnaanCommission);
+    commissionsMeme = d(project.commissionSnapshot.memeCommission);
+  } else {
+    const subOwedTotal = project.subcontractorPayments.reduce((s, sp) => s + d(sp.amountOwed), 0);
+    const lastLedger = await prisma.aimannDebtLedger.findFirst({ orderBy: { date: 'desc' } });
+    const aimannDebtBalance = lastLedger ? d(lastLedger.runningBalance) : 0;
+    const calc = calculateCommission({
+      projectTotal: d(project.projectTotal),
+      paymentMethod: project.paymentMethod as PaymentMethod,
+      materialsCost: materialTotal,
+      subOwedTotal,
+      aimannDebtBalance,
+    });
+    commissionsAdnaan = calc.adnaanCommission;
+    commissionsMeme = calc.memeCommission;
+  }
+
+  const revenue = d(project.moneyReceived);
+  const totalCommissions = commissionsAdnaan + commissionsMeme;
+  const totalCosts = materialTotal + subTotal + otherExpenses + totalCommissions;
+  const profit = roundMoney(revenue - totalCosts);
+  const marginPct = revenue > 0 ? roundMoney((profit / revenue) * 100) : 0;
+
+  return {
+    materials: roundMoney(materialTotal),
+    materialLineItemCount: project.materialLineItems.length,
+    subcontractors: roundMoney(subTotal),
+    otherExpenses: roundMoney(otherExpenses),
+    commissionsAdnaan: roundMoney(commissionsAdnaan),
+    commissionsMeme: roundMoney(commissionsMeme),
+    totalCommissions: roundMoney(totalCommissions),
+    revenue: roundMoney(revenue),
+    profit,
+    marginPct,
+    isLegacyMaterials: project.materialLineItems.length === 0,
   };
 }
