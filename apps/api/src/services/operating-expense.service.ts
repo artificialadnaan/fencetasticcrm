@@ -8,6 +8,8 @@ function serialize(e: {
   amount: { toNumber?: () => number } | number;
   frequency: string;
   isActive: boolean;
+  effectiveFrom?: Date | null;
+  effectiveTo?: Date | null;
 }) {
   const amt = e.amount;
   const amount =
@@ -21,6 +23,8 @@ function serialize(e: {
     amount,
     frequency: e.frequency,
     isActive: e.isActive,
+    effectiveFrom: e.effectiveFrom ? e.effectiveFrom.toISOString().split('T')[0] : null,
+    effectiveTo: e.effectiveTo ? e.effectiveTo.toISOString().split('T')[0] : null,
   };
 }
 
@@ -37,6 +41,8 @@ export async function createOperatingExpense(dto: {
   description: string;
   amount: number;
   frequency: string;
+  effectiveFrom?: string | null;
+  effectiveTo?: string | null;
 }) {
   const row = await prisma.operatingExpense.create({
     data: {
@@ -44,6 +50,8 @@ export async function createOperatingExpense(dto: {
       description: dto.description,
       amount: dto.amount,
       frequency: dto.frequency as 'MONTHLY' | 'QUARTERLY' | 'ANNUAL',
+      effectiveFrom: dto.effectiveFrom ? new Date(dto.effectiveFrom) : null,
+      effectiveTo: dto.effectiveTo ? new Date(dto.effectiveTo) : null,
     },
   });
   return serialize(row);
@@ -56,6 +64,8 @@ export async function updateOperatingExpense(
     description?: string;
     amount?: number;
     frequency?: string;
+    effectiveFrom?: string | null;
+    effectiveTo?: string | null;
   }
 ) {
   const existing = await prisma.operatingExpense.findUnique({ where: { id } });
@@ -68,6 +78,8 @@ export async function updateOperatingExpense(
   if (dto.description !== undefined) data.description = dto.description;
   if (dto.amount !== undefined) data.amount = dto.amount;
   if (dto.frequency !== undefined) data.frequency = dto.frequency;
+  if (dto.effectiveFrom !== undefined) data.effectiveFrom = dto.effectiveFrom ? new Date(dto.effectiveFrom) : null;
+  if (dto.effectiveTo !== undefined) data.effectiveTo = dto.effectiveTo ? new Date(dto.effectiveTo) : null;
 
   const row = await prisma.operatingExpense.update({ where: { id }, data });
   return serialize(row);

@@ -40,6 +40,7 @@ const createSchema = z.object({
   payee: z.string().nullable().optional(),
   paymentMethod: z.string().nullable().optional(),
   projectId: z.string().uuid().nullable().optional(),
+  subcategory: z.string().max(100).nullable().optional(),
 });
 
 const updateSchema = z.object({
@@ -51,6 +52,7 @@ const updateSchema = z.object({
   payee: z.string().nullable().optional(),
   paymentMethod: z.string().nullable().optional(),
   projectId: z.string().uuid().nullable().optional(),
+  subcategory: z.string().max(100).nullable().optional(),
 });
 
 // --- Routes ---

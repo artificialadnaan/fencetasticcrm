@@ -18,6 +18,8 @@ const createSchema = z.object({
   description: z.string().min(1, 'Description is required'),
   amount: z.number().min(0, 'Amount must be >= 0'),
   frequency: frequencyEnum,
+  effectiveFrom: z.string().nullable().optional(),
+  effectiveTo: z.string().nullable().optional(),
 });
 
 const updateSchema = z.object({
@@ -25,6 +27,8 @@ const updateSchema = z.object({
   description: z.string().min(1).optional(),
   amount: z.number().min(0).optional(),
   frequency: frequencyEnum.optional(),
+  effectiveFrom: z.string().nullable().optional(),
+  effectiveTo: z.string().nullable().optional(),
 });
 
 // GET /api/operating-expenses
