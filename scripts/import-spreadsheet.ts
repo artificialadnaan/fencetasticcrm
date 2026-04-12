@@ -204,6 +204,16 @@ async function importProjects(
     MATERIALS:          col(colMap, 'materials only',          COL_FALLBACK.MATERIALS),
     SUB_PAYMENT_1:      col(colMap, 'sub payment 1',           COL_FALLBACK.SUB_PAYMENT_1),
     SUB_PAYMENT_2:      col(colMap, 'sub payment 2',           COL_FALLBACK.SUB_PAYMENT_2),
+    OUTSTANDING_RECEIVABLES: col(colMap, 'outstanding receivables', 17),
+    COMMISSION_OWED:    col(colMap, 'commission owed',         18),
+    COMMISSION_PAID:    col(colMap, 'commission paid',         19),
+    OUTSTANDING_PAYABLES: col(colMap, 'outstanding payables',  20),
+    GROSS_PROFIT:       col(colMap, 'gross profit',            21),
+    GROSS_PROFIT_PERCENT: col(colMap, 'gross profit %',        22),
+    MEMES_COMMISSION:   col(colMap, "meme's comm",             23),
+    AIMANNS_COMMISSION: col(colMap, "aimann's comm",           24),
+    NET_PROFIT:         col(colMap, 'net profit',              25),
+    NET_PROFIT_PERCENT: col(colMap, 'net profit %',            26),
   };
 
   // Skip header row (index 0)
@@ -249,6 +259,16 @@ async function importProjects(
       const customerPaid = toNum(row[C.CUSTOMER_PAID]);
       const forecastedExpenses = toNum(row[C.FORECASTED_EXPENSES]);
       const materialsCost = toNum(row[C.MATERIALS]);
+      const commissionOwed = toNum(row[C.COMMISSION_OWED]);
+      const commissionPaid = toNum(row[C.COMMISSION_PAID]);
+      const importedOutstandingReceivables = toNum(row[C.OUTSTANDING_RECEIVABLES]);
+      const importedOutstandingPayables = toNum(row[C.OUTSTANDING_PAYABLES]);
+      const importedGrossProfit = toNum(row[C.GROSS_PROFIT]);
+      const importedGrossProfitPercent = toNum(row[C.GROSS_PROFIT_PERCENT]);
+      const memesCommission = toNum(row[C.MEMES_COMMISSION]);
+      const aimannsCommission = toNum(row[C.AIMANNS_COMMISSION]);
+      const importedNetProfit = toNum(row[C.NET_PROFIT]);
+      const importedNetProfitPercent = toNum(row[C.NET_PROFIT_PERCENT]);
       const installDate = toDateOrNull(row[C.INSTALL_DATE]) ?? contractDate;
       const description = toStrOrNull(row[C.DESCRIPTION]) ?? 'Imported from spreadsheet';
       const subcontractor = toStrOrNull(row[C.SUB]);
@@ -283,6 +303,23 @@ async function importProjects(
             customerPaid,
             forecastedExpenses,
             materialsCost,
+            commissionOwed,
+            commissionPaid,
+            memesCommission,
+            aimannsCommission,
+            financeProjectMode: 'IMPORTED',
+            receivablesSource: 'IMPORTED_ACTUAL',
+            payablesSource: 'IMPORTED_ACTUAL',
+            commissionsSource: 'IMPORTED_ACTUAL',
+            profitabilitySource: 'IMPORTED_ACTUAL',
+            importedOutstandingReceivables: importedOutstandingReceivables || null,
+            importedOutstandingPayables: importedOutstandingPayables || null,
+            importedGrossProfit: importedGrossProfit || null,
+            importedGrossProfitPercent: importedGrossProfitPercent || null,
+            importedNetProfit: importedNetProfit || null,
+            importedNetProfitPercent: importedNetProfitPercent || null,
+            importedAt: new Date(),
+            importedSource: sheet['!ref'] ? status : 'SPREADSHEET_IMPORT',
             contractDate,
             installDate,
             completedDate,

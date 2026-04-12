@@ -608,6 +608,11 @@ export async function updateProject(projectId: string, dto: UpdateProjectDTO) {
 
   // Build update data — only set fields that were provided
   const updateData: Prisma.ProjectUpdateInput = {};
+  const protectsImportedFinancials =
+    current.financeProjectMode === 'IMPORTED' ||
+    current.financeProjectMode === 'MIXED' ||
+    current.financeProjectMode === 'MANUAL_OVERRIDE';
+  let importedFinancialsTouched = false;
 
   if (dto.customer !== undefined) updateData.customer = dto.customer;
   if (dto.address !== undefined) updateData.address = dto.address;
@@ -616,16 +621,21 @@ export async function updateProject(projectId: string, dto: UpdateProjectDTO) {
   if (dto.status !== undefined) updateData.status = dto.status;
   if (dto.projectTotal !== undefined) {
     updateData.projectTotal = dto.projectTotal;
-    // Recalculate moneyReceived if projectTotal or paymentMethod changes
-    const pm = dto.paymentMethod ?? current.paymentMethod;
-    updateData.moneyReceived = calcMoneyReceived(dto.projectTotal, pm);
+    importedFinancialsTouched = true;
+    if (!protectsImportedFinancials) {
+      const pm = dto.paymentMethod ?? current.paymentMethod;
+      updateData.moneyReceived = calcMoneyReceived(dto.projectTotal, pm);
+    }
   }
   if (dto.paymentMethod !== undefined) {
     updateData.paymentMethod = dto.paymentMethod;
-    // Recalculate moneyReceived if paymentMethod changes
-    const pt = dto.projectTotal ?? d(current.projectTotal);
-    updateData.moneyReceived = calcMoneyReceived(pt, dto.paymentMethod);
+    importedFinancialsTouched = true;
+    if (!protectsImportedFinancials) {
+      const pt = dto.projectTotal ?? d(current.projectTotal);
+      updateData.moneyReceived = calcMoneyReceived(pt, dto.paymentMethod);
+    }
   }
+  if (dto.moneyReceived !== undefined) updateData.moneyReceived = dto.moneyReceived;
   if (dto.forecastedExpenses !== undefined) updateData.forecastedExpenses = dto.forecastedExpenses;
   if (dto.materialsCost !== undefined) updateData.materialsCost = dto.materialsCost;
   if (dto.customerPaid !== undefined) updateData.customerPaid = dto.customerPaid;
@@ -646,6 +656,11 @@ export async function updateProject(projectId: string, dto: UpdateProjectDTO) {
   if (dto.commissionPaid !== undefined) updateData.commissionPaid = dto.commissionPaid;
   if (dto.memesCommission !== undefined) updateData.memesCommission = dto.memesCommission;
   if (dto.aimannsCommission !== undefined) updateData.aimannsCommission = dto.aimannsCommission;
+
+  if (protectsImportedFinancials && importedFinancialsTouched) {
+    updateData.financeProjectMode = 'MIXED';
+    updateData.lastManualFinanceEditAt = new Date();
+  }
 
   // Check if transitioning to COMPLETED
   const isCompletingNow =

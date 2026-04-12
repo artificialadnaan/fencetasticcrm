@@ -529,6 +529,7 @@ export interface UpdateProjectDTO {
   status?: ProjectStatus;
   projectTotal?: number;
   paymentMethod?: PaymentMethod;
+  moneyReceived?: number;
   forecastedExpenses?: number;
   materialsCost?: number;
   customerPaid?: number;

@@ -595,6 +595,55 @@ describe('Project Service', () => {
   });
 
   describe('updateProject', () => {
+    it('does not silently recalculate moneyReceived for imported projects', async () => {
+      vi.mocked(prisma.project.findUnique).mockResolvedValue({
+        id: 'p-imported',
+        customer: 'Imported Job',
+        status: ProjectStatus.OPEN,
+        paymentMethod: PaymentMethod.CASH,
+        projectTotal: { toNumber: () => 5000 },
+        customerPaid: { toNumber: () => 0 },
+        forecastedExpenses: { toNumber: () => 1000 },
+        materialsCost: { toNumber: () => 500 },
+        contractDate: new Date('2026-04-01'),
+        installDate: new Date('2026-04-10'),
+        completedDate: null,
+        estimateDate: null,
+        followUpDate: null,
+        description: 'Imported project',
+        fenceType: FenceType.WOOD,
+        moneyReceived: { toNumber: () => 4850 },
+        linearFeet: null,
+        rateTemplateId: null,
+        subcontractor: null,
+        notes: null,
+        commissionOwed: { toNumber: () => 800 },
+        commissionPaid: { toNumber: () => 300 },
+        memesCommission: { toNumber: () => 250 },
+        aimannsCommission: { toNumber: () => 150 },
+        financeProjectMode: 'IMPORTED',
+        createdById: 'user-1',
+        isDeleted: false,
+        deletedAt: null,
+        createdAt: new Date('2026-04-01'),
+        updatedAt: new Date('2026-04-05'),
+      } as never);
+      txProjectUpdateMock.mockResolvedValue({
+        id: 'p-imported',
+        status: ProjectStatus.OPEN,
+      } as never);
+
+      const { updateProject } = await import('../services/project.service');
+      await updateProject('p-imported', {
+        projectTotal: 6000,
+      });
+
+      const updateCall = txProjectUpdateMock.mock.calls[0][0];
+      expect(updateCall.data.moneyReceived).toBeUndefined();
+      expect(updateCall.data.financeProjectMode).toBe('MIXED');
+      expect(updateCall.data.lastManualFinanceEditAt).toBeInstanceOf(Date);
+    });
+
     it('ensures a follow-up sequence exists when an update persists ESTIMATE status', async () => {
       vi.mocked(prisma.project.findUnique).mockResolvedValue({
         id: 'p-open',
