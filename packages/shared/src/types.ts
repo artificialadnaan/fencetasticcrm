@@ -88,6 +88,29 @@ export enum MaterialCategory {
   OTHER = 'OTHER',
 }
 
+export enum FinanceProjectMode {
+  IMPORTED = 'IMPORTED',
+  COMPUTED = 'COMPUTED',
+  MANUAL_OVERRIDE = 'MANUAL_OVERRIDE',
+  MIXED = 'MIXED',
+  RECONCILIATION_REQUIRED = 'RECONCILIATION_REQUIRED',
+}
+
+export enum FinanceSubdomainSource {
+  IMPORTED_ACTUAL = 'IMPORTED_ACTUAL',
+  CRM_COMPUTED = 'CRM_COMPUTED',
+  MANUAL_OVERRIDE = 'MANUAL_OVERRIDE',
+  RECONCILIATION_REQUIRED = 'RECONCILIATION_REQUIRED',
+}
+
+export enum FinanceFieldSource {
+  IMPORTED_ACTUAL = 'IMPORTED_ACTUAL',
+  IMPORTED_DERIVED = 'IMPORTED_DERIVED',
+  CRM_COMPUTED = 'CRM_COMPUTED',
+  MANUAL_OVERRIDE = 'MANUAL_OVERRIDE',
+  UNSET = 'UNSET',
+}
+
 // --- Domain Models ---
 
 export interface User {
@@ -123,11 +146,42 @@ export interface Project {
   commissionPaid: number | null;
   memesCommission: number | null;
   aimannsCommission: number | null;
+  financeProjectMode: FinanceProjectMode;
+  receivablesSource: FinanceSubdomainSource;
+  payablesSource: FinanceSubdomainSource;
+  commissionsSource: FinanceSubdomainSource;
+  profitabilitySource: FinanceSubdomainSource;
+  importedOutstandingReceivables: number | null;
+  importedOutstandingPayables: number | null;
+  importedGrossProfit: number | null;
+  importedGrossProfitPercent: number | null;
+  importedNetProfit: number | null;
+  importedNetProfitPercent: number | null;
+  importedAt: string | null;
+  importedSource: string | null;
+  lastRecalculatedAt: string | null;
+  lastManualFinanceEditAt: string | null;
+  reconciliationRequiredAt: string | null;
+  reconciliationNotes: string | null;
   createdById: string;
   isDeleted: boolean;
   deletedAt: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ProjectFinanceTrust {
+  projectMode: FinanceProjectMode;
+  receivablesSource: FinanceSubdomainSource;
+  payablesSource: FinanceSubdomainSource;
+  commissionsSource: FinanceSubdomainSource;
+  profitabilitySource: FinanceSubdomainSource;
+  importedAt: string | null;
+  importedSource: string | null;
+  lastRecalculatedAt: string | null;
+  lastManualFinanceEditAt: string | null;
+  reconciliationRequiredAt: string | null;
+  reconciliationNotes: string | null;
 }
 
 export interface EstimateFollowUpSequence {

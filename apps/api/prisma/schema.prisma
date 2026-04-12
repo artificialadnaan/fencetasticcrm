@@ -47,6 +47,23 @@ model Project {
   commissionPaid     Decimal?                 @map("commission_paid") @db.Decimal(10, 2)
   memesCommission    Decimal?                 @map("memes_commission") @db.Decimal(10, 2)
   aimannsCommission  Decimal?                 @map("aimanns_commission") @db.Decimal(10, 2)
+  financeProjectMode             FinanceProjectMode      @default(COMPUTED) @map("finance_project_mode")
+  receivablesSource              FinanceSubdomainSource  @default(CRM_COMPUTED) @map("receivables_source")
+  payablesSource                 FinanceSubdomainSource  @default(CRM_COMPUTED) @map("payables_source")
+  commissionsSource              FinanceSubdomainSource  @default(CRM_COMPUTED) @map("commissions_source")
+  profitabilitySource            FinanceSubdomainSource  @default(CRM_COMPUTED) @map("profitability_source")
+  importedOutstandingReceivables Decimal?                @map("imported_outstanding_receivables") @db.Decimal(10, 2)
+  importedOutstandingPayables    Decimal?                @map("imported_outstanding_payables") @db.Decimal(10, 2)
+  importedGrossProfit            Decimal?                @map("imported_gross_profit") @db.Decimal(10, 2)
+  importedGrossProfitPercent     Decimal?                @map("imported_gross_profit_percent") @db.Decimal(10, 2)
+  importedNetProfit              Decimal?                @map("imported_net_profit") @db.Decimal(10, 2)
+  importedNetProfitPercent       Decimal?                @map("imported_net_profit_percent") @db.Decimal(10, 2)
+  importedAt                     DateTime?               @map("imported_at") @db.Timestamptz
+  importedSource                 String?                 @map("imported_source")
+  lastRecalculatedAt             DateTime?               @map("last_recalculated_at") @db.Timestamptz
+  lastManualFinanceEditAt        DateTime?               @map("last_manual_finance_edit_at") @db.Timestamptz
+  reconciliationRequiredAt       DateTime?               @map("reconciliation_required_at") @db.Timestamptz
+  reconciliationNotes            String?                 @map("reconciliation_notes") @db.Text
   createdById        String                   @map("created_by_id") @db.Uuid
   isDeleted          Boolean                  @default(false) @map("is_deleted")
   deletedAt          DateTime?                @map("deleted_at") @db.Timestamptz
@@ -66,6 +83,8 @@ model Project {
   followUpTasks           EstimateFollowUpTask[]
   materialLineItems       MaterialLineItem[]
 
+  @@index([financeProjectMode])
+  @@index([status, financeProjectMode])
   @@map("projects")
 }
 
@@ -381,4 +400,19 @@ enum MaterialCategory {
   GATES
   PANELS
   OTHER
+}
+
+enum FinanceProjectMode {
+  IMPORTED
+  COMPUTED
+  MANUAL_OVERRIDE
+  MIXED
+  RECONCILIATION_REQUIRED
+}
+
+enum FinanceSubdomainSource {
+  IMPORTED_ACTUAL
+  CRM_COMPUTED
+  MANUAL_OVERRIDE
+  RECONCILIATION_REQUIRED
 }
