@@ -13,6 +13,8 @@ import {
 import { ProjectStatus, FenceType } from '@fencetastic/shared';
 import type { JobCostingRow } from '@fencetastic/shared';
 
+const LIGHT_TABLE_CLASS = '[--table-bg:#ffffff] [--table-border:#d9e1ef] [--table-text:#111827] [--table-head-bg:#1f3864] [--table-head-text:#ffffff] [--table-row-border:#e5e7eb] [--table-row-odd:#ffffff] [--table-row-even:#f9fafb] [--table-row-hover:#f3f6fb] [--table-cell-text:#111827]';
+
 interface JobCostingReportProps {
   dateFrom?: string;
   dateTo?: string;
@@ -58,9 +60,9 @@ const FENCE_TYPE_LABELS: Record<string, string> = {
 };
 
 function marginColor(pct: number): string {
-  if (pct >= 30) return 'text-emerald-400';
-  if (pct >= 15) return 'text-amber-300';
-  return 'text-rose-400';
+  if (pct >= 30) return 'text-emerald-700';
+  if (pct >= 15) return 'text-amber-700';
+  return 'text-rose-700';
 }
 
 export function JobCostingReport({
@@ -127,7 +129,7 @@ export function JobCostingReport({
 
   if (isLoading) {
     return (
-      <DataSurface title="Job Costing" eyebrow="Reports">
+      <DataSurface title="Job Costing" eyebrow="Reports" tone="light">
         <div className="space-y-2">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="h-10 animate-pulse rounded bg-white/5" />
@@ -152,7 +154,7 @@ export function JobCostingReport({
           aria-label="Filter by status"
           value={statusFilter ?? ''}
           onChange={(e) => setStatusFilter(e.target.value || undefined)}
-          className="rounded-xl border border-white/10 bg-[#11161d] px-3 py-1.5 text-sm text-[#dbe2ee]"
+          className="rounded-xl border border-[#d1d9e6] bg-white px-3 py-1.5 text-sm text-[#111827]"
         >
           <option value="">All Statuses</option>
           {STATUS_OPTIONS.map((status) => (
@@ -165,7 +167,7 @@ export function JobCostingReport({
           aria-label="Filter by fence type"
           value={fenceTypeFilter ?? ''}
           onChange={(e) => setFenceTypeFilter(e.target.value || undefined)}
-          className="rounded-xl border border-white/10 bg-[#11161d] px-3 py-1.5 text-sm text-[#dbe2ee]"
+          className="rounded-xl border border-[#d1d9e6] bg-white px-3 py-1.5 text-sm text-[#111827]"
         >
           <option value="">All Fence Types</option>
           {FENCE_TYPE_OPTIONS.map((fenceType) => (
@@ -176,8 +178,8 @@ export function JobCostingReport({
         </select>
       </div>
 
-      <DataSurface title="Project Margin Ledger" eyebrow="Reports">
-        <DarkTableContainer>
+      <DataSurface title="Project Margin Ledger" eyebrow="Reports" tone="light">
+        <DarkTableContainer className={LIGHT_TABLE_CLASS}>
           <DarkTable>
             <thead>
               <tr>
@@ -226,7 +228,7 @@ export function JobCostingReport({
             <tbody>
               {sorted.length === 0 && (
                 <DarkTableRow>
-                  <DarkTableCell colSpan={13} className="py-8 text-center text-[#9aa6bb]">
+                  <DarkTableCell colSpan={13} className="py-8 text-center text-[#6b7280]">
                     No job costing data found.
                   </DarkTableCell>
                 </DarkTableRow>
@@ -250,17 +252,17 @@ export function JobCostingReport({
                     >
                       <DarkTableCell className="px-2">
                         {expanded ? (
-                          <ChevronDown className="h-3.5 w-3.5 text-[#9aa6bb]" />
+                          <ChevronDown className="h-3.5 w-3.5 text-[#6b7280]" />
                         ) : (
-                          <ChevronRight className="h-3.5 w-3.5 text-[#9aa6bb]" />
+                          <ChevronRight className="h-3.5 w-3.5 text-[#6b7280]" />
                         )}
                       </DarkTableCell>
                       <DarkTableCell className="font-medium">{row.customer}</DarkTableCell>
-                      <DarkTableCell className="max-w-[140px] truncate text-xs text-[#9aa6bb]">
+                      <DarkTableCell className="max-w-[140px] truncate text-xs text-[#6b7280]">
                         {row.address}
                       </DarkTableCell>
                       <DarkTableCell>
-                        <span className="inline-block rounded-full border border-white/10 bg-white/[0.06] px-2 py-0.5 text-xs font-medium text-[#dbe2ee]">
+                        <span className="inline-block rounded-full border border-[#d9e1ef] bg-[#f3f4f6] px-2 py-0.5 text-xs font-medium text-[#1f2937]">
                           {STATUS_LABELS[row.status] ?? row.status}
                         </span>
                       </DarkTableCell>
@@ -275,7 +277,7 @@ export function JobCostingReport({
                       <DarkTableCell numeric>{formatCurrency(row.commissionsMeme)}</DarkTableCell>
                       <DarkTableCell
                         numeric
-                        className={`font-semibold ${row.profit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}
+                          className={`font-semibold ${row.profit >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}
                       >
                         {formatCurrency(row.profit)}
                       </DarkTableCell>
@@ -287,24 +289,24 @@ export function JobCostingReport({
                       <DarkTableRow className="bg-white/[0.03]">
                         <DarkTableCell />
                         <DarkTableCell colSpan={12} className="py-4">
-                          <div className="space-y-1 text-sm text-[#9aa6bb]">
+                          <div className="space-y-1 text-sm text-[#4b5563]">
                             <p>
-                              <span className="font-medium text-[#f7f8fb]">Materials:</span>{' '}
+                              <span className="font-medium text-[#111827]">Materials:</span>{' '}
                               {formatCurrency(row.materials)}
                               {' | '}
-                              <span className="font-medium text-[#f7f8fb]">Subcontractors:</span>{' '}
+                              <span className="font-medium text-[#111827]">Subcontractors:</span>{' '}
                               {formatCurrency(row.subcontractors)}
                             </p>
                             <p>
-                              <span className="font-medium text-[#f7f8fb]">Other Expenses:</span>{' '}
+                              <span className="font-medium text-[#111827]">Other Expenses:</span>{' '}
                               {formatCurrency(row.otherExpenses)}
                             </p>
                             <p>
-                              <span className="font-medium text-[#f7f8fb]">Commissions:</span>{' '}
+                              <span className="font-medium text-[#111827]">Commissions:</span>{' '}
                               Adnaan {formatCurrency(row.commissionsAdnaan)} + Meme{' '}
                               {formatCurrency(row.commissionsMeme)}
                             </p>
-                            <p className="font-medium text-[#f7f8fb]">
+                            <p className="font-medium text-[#111827]">
                               Total Costs:{' '}
                               {formatCurrency(
                                 row.materials +

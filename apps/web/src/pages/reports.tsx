@@ -68,7 +68,7 @@ export default function ReportsPage() {
     () => (
       <div className="flex items-center gap-3 flex-wrap">
         {/* Tab Navigation */}
-        <div role="tablist" className="inline-flex items-center rounded-2xl border border-black/5 bg-white/65 p-1 shadow-sm">
+        <div role="tablist" className="inline-flex items-center rounded-2xl border border-[#2b436e] bg-[#f7f9fc] p-1 shadow-sm">
           {TABS.map((tab) => (
             <Button
               key={tab.id}
@@ -79,8 +79,8 @@ export default function ReportsPage() {
               size="sm"
               className={`rounded-xl px-4 text-xs sm:text-sm ${
                 activeTab === tab.id
-                  ? 'bg-slate-950 text-white hover:bg-slate-800'
-                  : 'text-slate-600 hover:bg-white hover:text-slate-950'
+                  ? 'bg-[#1f3864] text-white hover:bg-[#2e4a7a]'
+                  : 'text-[#4b5a73] hover:bg-white hover:text-[#111827]'
               }`}
               onClick={() => setActiveTab(tab.id)}
             >
@@ -91,7 +91,7 @@ export default function ReportsPage() {
 
         {/* Period toggle for P&L */}
         {activeTab === 'pnl' && (
-          <div className="inline-flex items-center rounded-2xl border border-black/5 bg-white/65 p-1 shadow-sm">
+          <div className="inline-flex items-center rounded-2xl border border-[#2b436e] bg-[#f7f9fc] p-1 shadow-sm">
             {PERIOD_OPTIONS.map((p) => (
               <Button
                 key={p}
@@ -100,8 +100,8 @@ export default function ReportsPage() {
                 size="sm"
                 className={`rounded-xl px-3 text-xs capitalize ${
                   period === p
-                    ? 'bg-slate-950 text-white hover:bg-slate-800'
-                    : 'text-slate-600 hover:bg-white hover:text-slate-950'
+                    ? 'bg-[#1f3864] text-white hover:bg-[#2e4a7a]'
+                    : 'text-[#4b5a73] hover:bg-white hover:text-[#111827]'
                 }`}
                 onClick={() => setPeriod(p)}
               >
@@ -125,15 +125,15 @@ export default function ReportsPage() {
             aria-label="Date from"
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
-            className="rounded-xl border border-black/10 bg-white/70 px-3 py-1.5 text-sm text-slate-700"
+            className="rounded-xl border border-[#d1d9e6] bg-white px-3 py-1.5 text-sm text-[#111827]"
           />
-          <span className="text-sm text-slate-400">to</span>
+          <span className="text-sm text-[#6b7280]">to</span>
           <input
             type="date"
             aria-label="Date to"
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
-            className="rounded-xl border border-black/10 bg-white/70 px-3 py-1.5 text-sm text-slate-700"
+            className="rounded-xl border border-[#d1d9e6] bg-white px-3 py-1.5 text-sm text-[#111827]"
           />
         </div>
 
@@ -143,7 +143,7 @@ export default function ReportsPage() {
           size="sm"
           onClick={exportCsv}
           disabled={isExporting}
-          className="rounded-2xl border-black/10 bg-white/70 px-4 print:hidden"
+          className="rounded-2xl border-[#d1d9e6] bg-white px-4 text-[#1f3864] print:hidden"
         >
           {isExporting ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -158,7 +158,7 @@ export default function ReportsPage() {
           variant="outline"
           size="sm"
           onClick={handlePdfExport}
-          className="rounded-2xl border-black/10 bg-white/70 px-4 print:hidden"
+          className="rounded-2xl border-[#d1d9e6] bg-white px-4 text-[#1f3864] print:hidden"
         >
           <Download className="h-4 w-4 mr-1" />
           PDF
@@ -176,7 +176,7 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6 print:space-y-4">
-      <section className="sticky top-0 z-20 rounded-[28px] border border-white/10 bg-[#0f141b]/95 px-6 py-5 shadow-[0_18px_48px_rgba(0,0,0,0.28)] backdrop-blur print:hidden">
+      <section className="sticky top-0 z-20 rounded-[28px] border border-[#d9e1ef] bg-[#f0f3f9]/95 px-6 py-5 shadow-[0_18px_48px_rgba(8,15,31,0.18)] backdrop-blur print:hidden">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           {utilityActions}
           {secondaryActions}

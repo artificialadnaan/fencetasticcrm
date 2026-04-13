@@ -103,10 +103,10 @@ export default function FinancesPage() {
   const searchSlot = useMemo(
     () => (
       <div className="relative w-full sm:w-[320px]">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6b7280]" />
         <Input
           placeholder="Search description, category, or payee..."
-          className="h-10 rounded-2xl border-black/10 bg-white/80 pl-10 shadow-sm placeholder:text-slate-400"
+          className="h-10 rounded-2xl border-[#d1d9e6] bg-white pl-10 text-[#111827] shadow-sm placeholder:text-[#6b7280]"
           value={searchText}
           onChange={(event) => {
             setSearchText(event.target.value);
@@ -120,12 +120,12 @@ export default function FinancesPage() {
 
   const periodToggle = useMemo(
     () => (
-      <div className="inline-flex items-center rounded-2xl border border-black/5 bg-white/65 p-1 shadow-sm">
+      <div className="inline-flex items-center rounded-2xl border border-[#2b436e] bg-[#f7f9fc] p-1 shadow-sm">
         <Button
           type="button"
           variant="ghost"
           size="sm"
-          className={`rounded-xl px-4 ${period === 'mtd' ? 'bg-slate-950 text-white hover:bg-slate-800' : 'text-slate-600 hover:bg-white hover:text-slate-950'}`}
+          className={`rounded-xl px-4 ${period === 'mtd' ? 'bg-[#1f3864] text-white hover:bg-[#2e4a7a]' : 'text-[#4b5a73] hover:bg-white hover:text-[#111827]'}`}
           onClick={() => setPeriod('mtd')}
         >
           MTD
@@ -134,7 +134,7 @@ export default function FinancesPage() {
           type="button"
           variant="ghost"
           size="sm"
-          className={`rounded-xl px-4 ${period === 'ytd' ? 'bg-slate-950 text-white hover:bg-slate-800' : 'text-slate-600 hover:bg-white hover:text-slate-950'}`}
+          className={`rounded-xl px-4 ${period === 'ytd' ? 'bg-[#1f3864] text-white hover:bg-[#2e4a7a]' : 'text-[#4b5a73] hover:bg-white hover:text-[#111827]'}`}
           onClick={() => setPeriod('ytd')}
         >
           YTD
@@ -153,7 +153,7 @@ export default function FinancesPage() {
           setFormErrors({});
           setDialogOpen(true);
         }}
-        className="rounded-2xl bg-[hsl(var(--brand-blue))] px-4 text-white hover:bg-[hsl(var(--brand-blue-hover))]"
+        className="rounded-2xl bg-[#10b981] px-4 text-white hover:bg-[#059669]"
       >
         <Plus className="h-4 w-4" />
         Add Transaction
@@ -183,7 +183,7 @@ export default function FinancesPage() {
             console.error('Failed to export transactions', err);
           }
         }}
-        className="rounded-2xl border-black/10 bg-white/70 px-4 shadow-sm"
+        className="rounded-2xl border-[#d1d9e6] bg-white px-4 text-[#1f3864] shadow-sm"
       >
         <Download className="h-4 w-4" />
         Export

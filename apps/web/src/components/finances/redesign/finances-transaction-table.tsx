@@ -4,7 +4,6 @@ import { TransactionType } from '@fencetastic/shared';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DataSurface } from '@/components/ui/data-surface';
 import {
   DarkTable,
   DarkTableCell,
@@ -31,17 +30,17 @@ interface FinancesTransactionTableProps {
 
 function EmptyState({ onClearFilters }: { onClearFilters: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-[24px] border border-dashed border-white/12 bg-white/[0.03] px-6 py-12 text-center">
-      <Filter className="h-10 w-10 text-[#8f9aae]" />
-      <p className="mt-4 text-lg font-semibold text-[#f7f8fb]">No transactions found</p>
-      <p className="mt-2 max-w-sm text-sm leading-6 text-[#9aa6bb]">
+    <div className="flex flex-col items-center justify-center rounded-[24px] border border-dashed border-slate-300 bg-[#f9fafb] px-6 py-12 text-center">
+      <Filter className="h-10 w-10 text-[#6b7280]" />
+      <p className="mt-4 text-lg font-semibold text-[#111827]">No transactions found</p>
+      <p className="mt-2 max-w-sm text-sm leading-6 text-[#4b5563]">
         Try broadening the search or clearing the current filters to reveal more of the ledger.
       </p>
       <Button
         type="button"
         variant="outline"
         onClick={onClearFilters}
-        className="mt-5 rounded-2xl border-white/12 bg-white/[0.04] text-[#f7f8fb] hover:bg-white/[0.08]"
+        className="mt-5 rounded-2xl border-[#d1d9e6] bg-white text-[#1f3864] hover:bg-[#f7f9fc]"
       >
         Clear Filters
       </Button>
@@ -66,16 +65,28 @@ export function FinancesTransactionTable({
   const hasFilters = Boolean(query.search || query.type || query.category || query.dateFrom || query.dateTo);
 
   return (
-    <DataSurface title="Recent transactions" eyebrow="Transaction Ledger" contentClassName="space-y-4">
-      <div className="flex flex-col gap-3 rounded-[28px] border border-white/8 bg-white/[0.03] p-3 lg:flex-row lg:items-center lg:justify-between">
+    <section className="rounded-[28px] border border-[#d9e1ef] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
+      <div className="border-b border-[#e5e7eb] px-6 py-5">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#6b7280]">
+          Transaction Ledger
+        </p>
+        <h2 className="mt-3 text-2xl font-semibold tracking-[-0.05em] text-[#111827]">
+          Recent transactions
+        </h2>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-[#4b5563]">
+          Filter and review every ledger entry from this page.
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-3 border-b border-[#e5e7eb] bg-[#f9fafb] p-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="inline-flex items-center gap-2 rounded-2xl bg-[#f0b56f] px-4 py-2 text-sm font-medium text-[#11161d] shadow-sm">
+          <div className="inline-flex items-center gap-2 rounded-2xl bg-[#1f3864] px-4 py-2 text-sm font-medium text-white shadow-sm">
             <SlidersHorizontal className="h-4 w-4" />
             Filters
           </div>
 
           <Select value={typeFilter} onValueChange={(value) => onTypeFilterChange(value as 'ALL' | TransactionType)}>
-            <SelectTrigger className="h-10 w-full rounded-2xl border-white/10 bg-[#0d1218] text-[#dbe2ee] shadow-sm sm:w-[180px]">
+            <SelectTrigger className="h-10 w-full rounded-2xl border-[#d1d9e6] bg-white text-[#111827] shadow-sm sm:w-[180px]">
               <SelectValue placeholder="All Types" />
             </SelectTrigger>
             <SelectContent>
@@ -86,7 +97,7 @@ export function FinancesTransactionTable({
           </Select>
 
           <Select value={categoryFilter} onValueChange={onCategoryFilterChange}>
-            <SelectTrigger className="h-10 w-full rounded-2xl border-white/10 bg-[#0d1218] text-[#dbe2ee] shadow-sm sm:w-[220px]">
+            <SelectTrigger className="h-10 w-full rounded-2xl border-[#d1d9e6] bg-white text-[#111827] shadow-sm sm:w-[220px]">
               <SelectValue placeholder="All Categories" />
             </SelectTrigger>
             <SelectContent>
@@ -105,7 +116,7 @@ export function FinancesTransactionTable({
             type="button"
             variant="ghost"
             onClick={onClearFilters}
-            className="h-10 rounded-2xl border border-white/8 bg-white/[0.04] px-4 text-[#dbe2ee] hover:bg-white/[0.08]"
+            className="h-10 rounded-2xl border border-[#d1d9e6] bg-white px-4 text-[#1f3864] hover:bg-[#f7f9fc]"
           >
             Clear Filters
           </Button>
@@ -113,14 +124,15 @@ export function FinancesTransactionTable({
       </div>
 
       {error && (
-        <div className="rounded-[20px] border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+        <div className="mx-4 mt-4 rounded-[20px] border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-700">
           {error}
         </div>
       )}
 
-      <DarkTableContainer>
+      <div className="p-4">
+      <DarkTableContainer className="[--table-bg:#ffffff] [--table-border:#d9e1ef] [--table-text:#111827] [--table-head-bg:#1f3864] [--table-head-text:#ffffff] [--table-row-border:#e5e7eb] [--table-row-odd:#ffffff] [--table-row-even:#f9fafb] [--table-row-hover:#f3f6fb] [--table-cell-text:#111827]">
         {isLoading ? (
-          <div className="p-10 text-center text-sm text-[#9aa6bb]">Loading transactions...</div>
+          <div className="p-10 text-center text-sm text-[#4b5563]">Loading transactions...</div>
         ) : transactions.length === 0 ? (
           <div className="p-6">
             <EmptyState onClearFilters={onClearFilters} />
@@ -140,31 +152,31 @@ export function FinancesTransactionTable({
             <tbody>
               {transactions.map((tx) => (
                 <DarkTableRow key={tx.id}>
-                  <DarkTableCell className="text-[#9aa6bb]">{formatDate(tx.date)}</DarkTableCell>
+                  <DarkTableCell className="text-[#4b5563]">{formatDate(tx.date)}</DarkTableCell>
                   <DarkTableCell>
                     <div className="flex items-center gap-2">
                       <Badge
                         className={
                           tx.type === TransactionType.INCOME
-                            ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-300'
-                            : 'border-rose-400/30 bg-rose-500/10 text-rose-300'
+                            ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-700'
+                            : 'border-rose-400/30 bg-rose-500/10 text-rose-700'
                         }
                         variant="outline"
                       >
                         {tx.type === TransactionType.INCOME ? 'Income' : 'Expense'}
                       </Badge>
                       {tx.isAutoGenerated && (
-                        <Badge className="border-white/12 bg-white/[0.06] text-[#9aa6bb]" variant="outline">
+                        <Badge className="border-[#d1d9e6] bg-[#f3f4f6] text-[#4b5563]" variant="outline">
                           auto
                         </Badge>
                       )}
                     </div>
                   </DarkTableCell>
                   <DarkTableCell className="font-medium">{tx.category}</DarkTableCell>
-                  <DarkTableCell className="text-[#dbe2ee]">{tx.description}</DarkTableCell>
-                  <DarkTableCell className="text-[#9aa6bb]">{tx.payee ?? '—'}</DarkTableCell>
+                  <DarkTableCell className="text-[#111827]">{tx.description}</DarkTableCell>
+                  <DarkTableCell className="text-[#4b5563]">{tx.payee ?? '—'}</DarkTableCell>
                   <DarkTableCell numeric className="font-semibold">
-                    <span className={tx.type === TransactionType.INCOME ? 'text-emerald-300' : 'text-rose-300'}>
+                    <span className={tx.type === TransactionType.INCOME ? 'text-emerald-700' : 'text-rose-700'}>
                       {tx.type === TransactionType.INCOME ? '+' : '-'}
                       {formatCurrency(tx.amount)}
                     </span>
@@ -176,8 +188,8 @@ export function FinancesTransactionTable({
         )}
 
         {pagination && pagination.totalPages > 1 && (
-          <div className="flex flex-col gap-3 border-t border-white/8 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-[#9aa6bb]">
+          <div className="flex flex-col gap-3 border-t border-[#e5e7eb] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-[#4b5563]">
               Page {pagination.page} of {pagination.totalPages} - {pagination.total} transactions
             </p>
             <div className="flex gap-2">
@@ -186,7 +198,7 @@ export function FinancesTransactionTable({
                 variant="outline"
                 disabled={pagination.page <= 1}
                 onClick={() => onPageChange(Math.max(1, pagination.page - 1))}
-                className="rounded-2xl border-white/10 bg-white/[0.04] text-[#f7f8fb] hover:bg-white/[0.08]"
+                className="rounded-2xl border-[#d1d9e6] bg-white text-[#1f3864] hover:bg-[#f7f9fc]"
               >
                 Previous
               </Button>
@@ -195,7 +207,7 @@ export function FinancesTransactionTable({
                 variant="outline"
                 disabled={pagination.page >= pagination.totalPages}
                 onClick={() => onPageChange(pagination.page + 1)}
-                className="rounded-2xl border-white/10 bg-white/[0.04] text-[#f7f8fb] hover:bg-white/[0.08]"
+                className="rounded-2xl border-[#d1d9e6] bg-white text-[#1f3864] hover:bg-[#f7f9fc]"
               >
                 Next
               </Button>
@@ -203,6 +215,7 @@ export function FinancesTransactionTable({
           </div>
         )}
       </DarkTableContainer>
-    </DataSurface>
+      </div>
+    </section>
   );
 }

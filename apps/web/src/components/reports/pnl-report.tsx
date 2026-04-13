@@ -15,6 +15,8 @@ import { chartTheme } from '@/components/ui/chart-theme';
 import { formatCurrency } from '@/lib/formatters';
 import { usePnlReport } from '@/hooks/use-financial-reports';
 
+const LIGHT_TABLE_CLASS = '[--table-bg:#ffffff] [--table-border:#d9e1ef] [--table-text:#111827] [--table-head-bg:#1f3864] [--table-head-text:#ffffff] [--table-row-border:#e5e7eb] [--table-row-odd:#ffffff] [--table-row-even:#f9fafb] [--table-row-hover:#f3f6fb] [--table-cell-text:#111827]';
+
 interface PnlReportProps {
   dateFrom: string;
   dateTo: string;
@@ -48,7 +50,7 @@ export function PnlReport({ dateFrom, dateTo, period }: PnlReportProps) {
 
   if (isLoading) {
     return (
-      <DataSurface title="Profit & Loss" eyebrow="Reports">
+      <DataSurface title="Profit & Loss" eyebrow="Reports" tone="light">
         <div className="space-y-2">
           {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="h-10 animate-pulse rounded bg-white/5" />
@@ -77,46 +79,46 @@ export function PnlReport({ dateFrom, dateTo, period }: PnlReportProps) {
 
   return (
     <div className="space-y-6">
-      <DataSurface title="Period Summary" eyebrow="Reports">
-        <DarkTableContainer>
+      <DataSurface title="Period Summary" eyebrow="Reports" tone="light">
+        <DarkTableContainer className={LIGHT_TABLE_CLASS}>
           <DarkTable>
             <tbody>
               <DarkTableRow>
-                <DarkTableCell className="font-medium text-[#dbe2ee]">Revenue</DarkTableCell>
-                <DarkTableCell numeric className="font-semibold text-emerald-400">
+                <DarkTableCell className="font-medium text-[#111827]">Revenue</DarkTableCell>
+                <DarkTableCell numeric className="font-semibold text-emerald-700">
                   {formatCurrency(data.totals.revenue)}
                 </DarkTableCell>
               </DarkTableRow>
               <DarkTableRow>
-                <DarkTableCell className="font-medium text-[#dbe2ee]">Cost of Goods Sold</DarkTableCell>
-                <DarkTableCell numeric className="font-semibold text-rose-400">
+                <DarkTableCell className="font-medium text-[#111827]">Cost of Goods Sold</DarkTableCell>
+                <DarkTableCell numeric className="font-semibold text-rose-700">
                   {formatCurrency(data.totals.cogs)}
                 </DarkTableCell>
               </DarkTableRow>
               <DarkTableRow className="bg-white/[0.02]">
-                <DarkTableCell className="font-semibold text-[#f7f8fb]">Gross Profit</DarkTableCell>
-                <DarkTableCell numeric className="font-semibold text-[#f7f8fb]">
+                <DarkTableCell className="font-semibold text-[#111827]">Gross Profit</DarkTableCell>
+                <DarkTableCell numeric className="font-semibold text-[#111827]">
                   {formatCurrency(data.totals.grossProfit)}
                 </DarkTableCell>
               </DarkTableRow>
               <DarkTableRow>
-                <DarkTableCell className="font-medium text-[#dbe2ee]">Operating Expenses</DarkTableCell>
-                <DarkTableCell numeric className="font-semibold text-rose-400">
+                <DarkTableCell className="font-medium text-[#111827]">Operating Expenses</DarkTableCell>
+                <DarkTableCell numeric className="font-semibold text-rose-700">
                   {formatCurrency(data.totals.operatingExpenses)}
                 </DarkTableCell>
               </DarkTableRow>
               <DarkTableRow>
-                <DarkTableCell className="font-medium text-[#dbe2ee]">Commissions</DarkTableCell>
-                <DarkTableCell numeric className="font-semibold text-rose-400">
+                <DarkTableCell className="font-medium text-[#111827]">Commissions</DarkTableCell>
+                <DarkTableCell numeric className="font-semibold text-rose-700">
                   {formatCurrency(data.totals.commissions)}
                 </DarkTableCell>
               </DarkTableRow>
               <DarkTableRow className="bg-white/[0.02]">
-                <DarkTableCell className="font-semibold text-[#f7f8fb]">Net Profit</DarkTableCell>
+                <DarkTableCell className="font-semibold text-[#111827]">Net Profit</DarkTableCell>
                 <DarkTableCell
                   numeric
-                  className={`font-bold ${
-                    data.totals.netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                    className={`font-bold ${
+                    data.totals.netProfit >= 0 ? 'text-emerald-700' : 'text-rose-700'
                   }`}
                 >
                   {formatCurrency(data.totals.netProfit)}
@@ -128,7 +130,7 @@ export function PnlReport({ dateFrom, dateTo, period }: PnlReportProps) {
       </DataSurface>
 
       {chartData.length > 0 && (
-        <DataSurface title="Revenue vs COGS" eyebrow="Reports">
+        <DataSurface title="Revenue vs COGS" eyebrow="Reports" tone="light">
           <ResponsiveContainer width="100%" height={300}>
             <ComposedChart data={chartData} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
@@ -162,8 +164,8 @@ export function PnlReport({ dateFrom, dateTo, period }: PnlReportProps) {
       )}
 
       {data.rows.length > 0 && (
-        <DataSurface title="Period Breakdown" eyebrow="Reports">
-          <DarkTableContainer>
+        <DataSurface title="Period Breakdown" eyebrow="Reports" tone="light">
+          <DarkTableContainer className={LIGHT_TABLE_CLASS}>
             <DarkTable>
                 <thead>
                   <tr>
@@ -180,23 +182,23 @@ export function PnlReport({ dateFrom, dateTo, period }: PnlReportProps) {
                   {data.rows.map((row) => (
                     <DarkTableRow key={row.month}>
                       <DarkTableCell className="font-medium">{row.month}</DarkTableCell>
-                      <DarkTableCell numeric className="text-emerald-400">
+                      <DarkTableCell numeric className="text-emerald-700">
                         {formatCurrency(row.revenue)}
                       </DarkTableCell>
-                      <DarkTableCell numeric className="text-rose-400">
+                      <DarkTableCell numeric className="text-rose-700">
                         {formatCurrency(row.cogs)}
                       </DarkTableCell>
                       <DarkTableCell numeric>{formatCurrency(row.grossProfit)}</DarkTableCell>
-                      <DarkTableCell numeric className="text-rose-400">
+                      <DarkTableCell numeric className="text-rose-700">
                         {formatCurrency(row.operatingExpenses)}
                       </DarkTableCell>
-                      <DarkTableCell numeric className="text-rose-400">
+                      <DarkTableCell numeric className="text-rose-700">
                         {formatCurrency(row.commissions)}
                       </DarkTableCell>
                       <DarkTableCell
                         numeric
                         className={`font-semibold ${
-                          row.netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                          row.netProfit >= 0 ? 'text-emerald-700' : 'text-rose-700'
                         }`}
                       >
                         {formatCurrency(row.netProfit)}
@@ -207,25 +209,25 @@ export function PnlReport({ dateFrom, dateTo, period }: PnlReportProps) {
                 <tfoot>
                   <DarkTableRow className="bg-white/[0.04] font-semibold">
                     <DarkTableCell>Total</DarkTableCell>
-                    <DarkTableCell numeric className="text-emerald-400">
+                    <DarkTableCell numeric className="text-emerald-700">
                       {formatCurrency(data.totals.revenue)}
                     </DarkTableCell>
-                    <DarkTableCell numeric className="text-rose-400">
+                    <DarkTableCell numeric className="text-rose-700">
                       {formatCurrency(data.totals.cogs)}
                     </DarkTableCell>
                     <DarkTableCell numeric>
                       {formatCurrency(data.totals.grossProfit)}
                     </DarkTableCell>
-                    <DarkTableCell numeric className="text-rose-400">
+                    <DarkTableCell numeric className="text-rose-700">
                       {formatCurrency(data.totals.operatingExpenses)}
                     </DarkTableCell>
-                    <DarkTableCell numeric className="text-rose-400">
+                    <DarkTableCell numeric className="text-rose-700">
                       {formatCurrency(data.totals.commissions)}
                     </DarkTableCell>
                     <DarkTableCell
                       numeric
                       className={`font-bold ${
-                        data.totals.netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                        data.totals.netProfit >= 0 ? 'text-emerald-700' : 'text-rose-700'
                       }`}
                     >
                       {formatCurrency(data.totals.netProfit)}

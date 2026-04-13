@@ -13,6 +13,8 @@ import {
 } from '@/components/ui/dark-table';
 import { chartTheme } from '@/components/ui/chart-theme';
 
+const LIGHT_TABLE_CLASS = '[--table-bg:#ffffff] [--table-border:#d9e1ef] [--table-text:#111827] [--table-head-bg:#1f3864] [--table-head-text:#ffffff] [--table-row-border:#e5e7eb] [--table-row-odd:#ffffff] [--table-row-even:#f9fafb] [--table-row-hover:#f3f6fb] [--table-cell-text:#111827]';
+
 interface ExpenseReportProps {
   dateFrom: string;
   dateTo: string;
@@ -55,7 +57,7 @@ export function ExpenseReport({ dateFrom, dateTo }: ExpenseReportProps) {
 
   if (isLoading) {
     return (
-      <DataSurface title="Expense Breakdown" eyebrow="Reports">
+      <DataSurface title="Expense Breakdown" eyebrow="Reports" tone="light">
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-10 animate-pulse rounded bg-white/5" />
@@ -79,13 +81,13 @@ export function ExpenseReport({ dateFrom, dateTo }: ExpenseReportProps) {
 
   return (
     <div className="space-y-4">
-      <div className="inline-flex items-center rounded-2xl border border-white/10 bg-[#11161d] p-1 shadow-[0_18px_48px_rgba(0,0,0,0.24)]">
+      <div className="inline-flex items-center rounded-2xl border border-[#2b436e] bg-[#f7f9fc] p-1 shadow-sm">
         <button
           type="button"
           className={`rounded-xl px-4 py-1.5 text-sm font-medium transition-colors ${
             subTab === 'category'
-              ? 'bg-[#f0b56f] text-[#11161d] hover:bg-[#f5c485]'
-              : 'text-[#9aa6bb] hover:bg-white/5 hover:text-[#f7f8fb]'
+              ? 'bg-[#1f3864] text-white hover:bg-[#2e4a7a]'
+              : 'text-[#4b5a73] hover:bg-white hover:text-[#111827]'
           }`}
           onClick={() => setSubTab('category')}
         >
@@ -95,8 +97,8 @@ export function ExpenseReport({ dateFrom, dateTo }: ExpenseReportProps) {
           type="button"
           className={`rounded-xl px-4 py-1.5 text-sm font-medium transition-colors ${
             subTab === 'vendor'
-              ? 'bg-[#f0b56f] text-[#11161d] hover:bg-[#f5c485]'
-              : 'text-[#9aa6bb] hover:bg-white/5 hover:text-[#f7f8fb]'
+              ? 'bg-[#1f3864] text-white hover:bg-[#2e4a7a]'
+              : 'text-[#4b5a73] hover:bg-white hover:text-[#111827]'
           }`}
           onClick={() => setSubTab('vendor')}
         >
@@ -107,7 +109,7 @@ export function ExpenseReport({ dateFrom, dateTo }: ExpenseReportProps) {
       {subTab === 'category' && (
         <div className="space-y-6">
           {pieData.length > 0 && (
-            <DataSurface title="Category Breakdown" eyebrow="Reports">
+            <DataSurface title="Category Breakdown" eyebrow="Reports" tone="light">
               <div className="flex flex-col items-center gap-6 md:flex-row">
                 <ResponsiveContainer width="100%" height={260}>
                   <PieChart>
@@ -135,7 +137,7 @@ export function ExpenseReport({ dateFrom, dateTo }: ExpenseReportProps) {
                         className="inline-block h-2.5 w-2.5 rounded-full"
                         style={{ backgroundColor: COLORS[idx % COLORS.length] }}
                       />
-                      <span className="text-[#dbe2ee]">{entry.name}</span>
+                      <span className="text-[#111827]">{entry.name}</span>
                     </div>
                   ))}
                 </div>
@@ -143,8 +145,8 @@ export function ExpenseReport({ dateFrom, dateTo }: ExpenseReportProps) {
             </DataSurface>
           )}
 
-          <DataSurface title="Category Ledger" eyebrow="Reports">
-            <DarkTableContainer>
+          <DataSurface title="Category Ledger" eyebrow="Reports" tone="light">
+            <DarkTableContainer className={LIGHT_TABLE_CLASS}>
               <DarkTable>
                 <thead>
                   <tr>
@@ -192,7 +194,7 @@ export function ExpenseReport({ dateFrom, dateTo }: ExpenseReportProps) {
                               className="bg-white/[0.03]"
                             >
                               <DarkTableCell />
-                              <DarkTableCell className="pl-10 text-xs text-[#9aa6bb]">
+                              <DarkTableCell className="pl-10 text-xs text-[#6b7280]">
                                 {sub.name}
                               </DarkTableCell>
                               <DarkTableCell numeric className="text-xs">
@@ -218,8 +220,8 @@ export function ExpenseReport({ dateFrom, dateTo }: ExpenseReportProps) {
       )}
 
       {subTab === 'vendor' && (
-        <DataSurface title="Vendor Spend" eyebrow="Reports">
-          <DarkTableContainer>
+        <DataSurface title="Vendor Spend" eyebrow="Reports" tone="light">
+          <DarkTableContainer className={LIGHT_TABLE_CLASS}>
             <DarkTable>
               <thead>
                 <tr>
@@ -232,7 +234,7 @@ export function ExpenseReport({ dateFrom, dateTo }: ExpenseReportProps) {
               <tbody>
                 {data.byVendor.length === 0 && (
                   <DarkTableRow>
-                    <DarkTableCell colSpan={4} className="py-8 text-center text-[#9aa6bb]">
+                    <DarkTableCell colSpan={4} className="py-8 text-center text-[#4b5563]">
                       No vendor data found.
                     </DarkTableCell>
                   </DarkTableRow>
@@ -240,11 +242,11 @@ export function ExpenseReport({ dateFrom, dateTo }: ExpenseReportProps) {
                 {data.byVendor.map((vendor) => (
                   <DarkTableRow key={vendor.vendor}>
                     <DarkTableCell className="font-medium">{vendor.vendor}</DarkTableCell>
-                    <DarkTableCell numeric className="font-semibold text-rose-300">
+                    <DarkTableCell numeric className="font-semibold text-rose-700">
                       {formatCurrency(vendor.totalSpend)}
                     </DarkTableCell>
                     <DarkTableCell numeric>{vendor.projectCount}</DarkTableCell>
-                    <DarkTableCell className="text-xs text-[#9aa6bb]">
+                    <DarkTableCell className="text-xs text-[#374151]">
                       {vendor.topCategories.join(', ')}
                     </DarkTableCell>
                   </DarkTableRow>

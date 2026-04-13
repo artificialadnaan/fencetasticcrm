@@ -15,6 +15,8 @@ import { chartTheme } from '@/components/ui/chart-theme';
 import { formatCurrency } from '@/lib/formatters';
 import { useCashFlowReport } from '@/hooks/use-financial-reports';
 
+const LIGHT_TABLE_CLASS = '[--table-bg:#ffffff] [--table-border:#d9e1ef] [--table-text:#111827] [--table-head-bg:#1f3864] [--table-head-text:#ffffff] [--table-row-border:#e5e7eb] [--table-row-odd:#ffffff] [--table-row-even:#f9fafb] [--table-row-hover:#f3f6fb] [--table-cell-text:#111827]';
+
 interface CashFlowReportProps {
   dateFrom: string;
   dateTo: string;
@@ -47,7 +49,7 @@ export function CashFlowReport({ dateFrom, dateTo }: CashFlowReportProps) {
 
   if (isLoading) {
     return (
-      <div className="rounded-2xl border border-black/5 bg-white/70 backdrop-blur-sm shadow-sm p-6">
+      <div className="rounded-2xl border border-[#d9e1ef] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
         <h3 className="text-lg font-semibold text-slate-950 mb-4">Cash Flow</h3>
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
@@ -68,8 +70,8 @@ export function CashFlowReport({ dateFrom, dateTo }: CashFlowReportProps) {
 
   if (!data || data.length === 0) {
     return (
-      <div className="rounded-2xl border border-black/5 bg-white/70 backdrop-blur-sm shadow-sm p-6">
-        <p className="text-sm text-slate-500 py-6 text-center">No cash flow data found.</p>
+      <div className="rounded-2xl border border-[#d9e1ef] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
+        <p className="py-6 text-center text-sm text-[#4b5563]">No cash flow data found.</p>
       </div>
     );
   }
@@ -88,25 +90,25 @@ export function CashFlowReport({ dateFrom, dateTo }: CashFlowReportProps) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <DataSurface eyebrow="Cash flow" title="Total In">
-          <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+        <DataSurface eyebrow="Cash flow" title="Total In" tone="light">
+          <p className="text-xs font-semibold uppercase tracking-widest text-[#6b7280]">
             Total In
           </p>
-          <p className="mt-2 text-2xl font-bold text-emerald-400">{formatCurrency(totalIn)}</p>
+          <p className="mt-2 text-2xl font-bold text-emerald-700">{formatCurrency(totalIn)}</p>
         </DataSurface>
-        <DataSurface eyebrow="Cash flow" title="Total Out">
-          <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+        <DataSurface eyebrow="Cash flow" title="Total Out" tone="light">
+          <p className="text-xs font-semibold uppercase tracking-widest text-[#6b7280]">
             Total Out
           </p>
-          <p className="mt-2 text-2xl font-bold text-rose-400">{formatCurrency(totalOut)}</p>
+          <p className="mt-2 text-2xl font-bold text-rose-700">{formatCurrency(totalOut)}</p>
         </DataSurface>
-        <DataSurface eyebrow="Cash flow" title="Net Cash Flow">
-          <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+        <DataSurface eyebrow="Cash flow" title="Net Cash Flow" tone="light">
+          <p className="text-xs font-semibold uppercase tracking-widest text-[#6b7280]">
             Net Cash Flow
           </p>
           <p
             className={`mt-2 text-2xl font-bold ${
-              netCashFlow >= 0 ? 'text-emerald-400' : 'text-rose-400'
+              netCashFlow >= 0 ? 'text-emerald-700' : 'text-rose-700'
             }`}
           >
             {formatCurrency(netCashFlow)}
@@ -114,7 +116,7 @@ export function CashFlowReport({ dateFrom, dateTo }: CashFlowReportProps) {
         </DataSurface>
       </div>
 
-      <DataSurface title="Cash Flow Over Time" eyebrow="Reports">
+      <DataSurface title="Cash Flow Over Time" eyebrow="Reports" tone="light">
         <ResponsiveContainer width="100%" height={300}>
           <ComposedChart data={chartData} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
@@ -157,8 +159,8 @@ export function CashFlowReport({ dateFrom, dateTo }: CashFlowReportProps) {
         </ResponsiveContainer>
       </DataSurface>
 
-      <DataSurface title="Monthly Cash Ledger" eyebrow="Reports">
-        <DarkTableContainer>
+      <DataSurface title="Monthly Cash Ledger" eyebrow="Reports" tone="light">
+        <DarkTableContainer className={LIGHT_TABLE_CLASS}>
           <DarkTable>
               <thead>
                 <tr>
@@ -173,21 +175,21 @@ export function CashFlowReport({ dateFrom, dateTo }: CashFlowReportProps) {
                 {data.map((row) => (
                   <DarkTableRow key={row.month}>
                     <DarkTableCell className="font-medium">{row.month}</DarkTableCell>
-                    <DarkTableCell numeric className="text-emerald-400">
+                    <DarkTableCell numeric className="text-emerald-700">
                       {formatCurrency(row.moneyIn)}
                     </DarkTableCell>
-                    <DarkTableCell numeric className="text-rose-400">
+                    <DarkTableCell numeric className="text-rose-700">
                       {formatCurrency(row.moneyOut)}
                     </DarkTableCell>
                     <DarkTableCell
                       numeric
                       className={`font-semibold ${
-                        row.netCashFlow >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                        row.netCashFlow >= 0 ? 'text-emerald-700' : 'text-rose-700'
                       }`}
                     >
                       {formatCurrency(row.netCashFlow)}
                     </DarkTableCell>
-                    <DarkTableCell numeric className="font-semibold text-blue-400">
+                    <DarkTableCell numeric className="font-semibold text-sky-700">
                       {formatCurrency(row.runningBalance)}
                     </DarkTableCell>
                   </DarkTableRow>
@@ -196,21 +198,21 @@ export function CashFlowReport({ dateFrom, dateTo }: CashFlowReportProps) {
               <tfoot>
                 <DarkTableRow className="bg-white/[0.04] font-semibold">
                   <DarkTableCell>Total</DarkTableCell>
-                  <DarkTableCell numeric className="text-emerald-400">
+                    <DarkTableCell numeric className="text-emerald-700">
                     {formatCurrency(totalIn)}
                   </DarkTableCell>
-                  <DarkTableCell numeric className="text-rose-400">
+                    <DarkTableCell numeric className="text-rose-700">
                     {formatCurrency(totalOut)}
                   </DarkTableCell>
                   <DarkTableCell
                     numeric
                     className={`font-bold ${
-                      netCashFlow >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                      netCashFlow >= 0 ? 'text-emerald-700' : 'text-rose-700'
                     }`}
                   >
                     {formatCurrency(netCashFlow)}
                   </DarkTableCell>
-                  <DarkTableCell numeric className="font-bold text-blue-400">
+                  <DarkTableCell numeric className="font-bold text-sky-700">
                     {data.length > 0 ? formatCurrency(data[data.length - 1].runningBalance) : '$0.00'}
                   </DarkTableCell>
                 </DarkTableRow>

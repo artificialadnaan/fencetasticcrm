@@ -10,6 +10,8 @@ import {
 } from '@/components/ui/dark-table';
 import type { CommissionSummaryPerson } from '@fencetastic/shared';
 
+const LIGHT_TABLE_CLASS = '[--table-bg:#ffffff] [--table-border:#d9e1ef] [--table-text:#111827] [--table-head-bg:#1f3864] [--table-head-text:#ffffff] [--table-row-border:#e5e7eb] [--table-row-odd:#ffffff] [--table-row-even:#f9fafb] [--table-row-hover:#f3f6fb] [--table-cell-text:#111827]';
+
 interface CommissionReportProps {
   dateFrom: string;
   dateTo: string;
@@ -24,10 +26,10 @@ function PersonTable({
 }) {
   return (
     <div className="space-y-3">
-      <h4 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#f7f8fb]">
+      <h4 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#111827]">
         {person.name}
       </h4>
-      <DarkTableContainer>
+      <DarkTableContainer className={LIGHT_TABLE_CLASS}>
         <DarkTable>
           <thead>
             <tr>
@@ -39,7 +41,7 @@ function PersonTable({
           <tbody>
             {person.rows.length === 0 && (
               <DarkTableRow>
-                <DarkTableCell colSpan={3} className="py-6 text-center text-xs text-[#8f9aae]">
+                <DarkTableCell colSpan={3} className="py-6 text-center text-xs text-[#6b7280]">
                   No entries
                 </DarkTableCell>
               </DarkTableRow>
@@ -48,7 +50,7 @@ function PersonTable({
               <DarkTableRow key={row.projectId}>
                 <DarkTableCell className="font-medium">{row.customer}</DarkTableCell>
                 <DarkTableCell numeric>{formatCurrency(row.projectTotal)}</DarkTableCell>
-                <DarkTableCell numeric className="font-semibold text-emerald-400">
+                <DarkTableCell numeric className="font-semibold text-emerald-700">
                   {formatCurrency(row.commission)}
                 </DarkTableCell>
               </DarkTableRow>
@@ -58,15 +60,15 @@ function PersonTable({
             <DarkTableRow className="bg-white/[0.03] font-semibold">
               <DarkTableCell>Period Total</DarkTableCell>
               <DarkTableCell />
-              <DarkTableCell numeric className="text-emerald-400">
+              <DarkTableCell numeric className="text-emerald-700">
                 {formatCurrency(person.periodTotal)}
               </DarkTableCell>
             </DarkTableRow>
             {showAimann && person.aimannDeductions > 0 && (
               <DarkTableRow className="text-sm">
-                <DarkTableCell className="text-[#9aa6bb]">Aimann Deductions</DarkTableCell>
+                <DarkTableCell className="text-[#4b5563]">Aimann Deductions</DarkTableCell>
                 <DarkTableCell />
-                <DarkTableCell numeric className="text-rose-400">
+                <DarkTableCell numeric className="text-rose-700">
                   -{formatCurrency(person.aimannDeductions)}
                 </DarkTableCell>
               </DarkTableRow>
@@ -74,7 +76,7 @@ function PersonTable({
             <DarkTableRow className="bg-white/[0.05] font-bold">
               <DarkTableCell>Net Payout</DarkTableCell>
               <DarkTableCell />
-              <DarkTableCell numeric className="text-emerald-400">
+              <DarkTableCell numeric className="text-emerald-700">
                 {formatCurrency(person.netPayout)}
               </DarkTableCell>
             </DarkTableRow>
@@ -90,7 +92,7 @@ export function CommissionReport({ dateFrom, dateTo }: CommissionReportProps) {
 
   if (isLoading) {
     return (
-      <DataSurface title="Commission Report" eyebrow="Reports">
+      <DataSurface title="Commission Report" eyebrow="Reports" tone="light">
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-10 animate-pulse rounded bg-white/5" />
@@ -116,27 +118,27 @@ export function CommissionReport({ dateFrom, dateTo }: CommissionReportProps) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <DataSurface eyebrow="Commissions" title="Total Adnaan Payout">
-          <p className="text-xs font-semibold uppercase tracking-widest text-[#8f9aae]">
+        <DataSurface eyebrow="Commissions" title="Total Adnaan Payout" tone="light">
+          <p className="text-xs font-semibold uppercase tracking-widest text-[#6b7280]">
             Total Adnaan Payout
           </p>
-          <p className="mt-2 text-2xl font-bold text-emerald-400">{formatCurrency(totalAdnaan)}</p>
+          <p className="mt-2 text-2xl font-bold text-emerald-700">{formatCurrency(totalAdnaan)}</p>
         </DataSurface>
-        <DataSurface eyebrow="Commissions" title="Total Meme Payout">
-          <p className="text-xs font-semibold uppercase tracking-widest text-[#8f9aae]">
+        <DataSurface eyebrow="Commissions" title="Total Meme Payout" tone="light">
+          <p className="text-xs font-semibold uppercase tracking-widest text-[#6b7280]">
             Total Meme Payout
           </p>
-          <p className="mt-2 text-2xl font-bold text-emerald-400">{formatCurrency(totalMeme)}</p>
+          <p className="mt-2 text-2xl font-bold text-emerald-700">{formatCurrency(totalMeme)}</p>
         </DataSurface>
       </div>
 
-      <DataSurface title="Settled" eyebrow="Commission Ledger" contentClassName="space-y-6">
+      <DataSurface title="Settled" eyebrow="Commission Ledger" contentClassName="space-y-6" tone="light">
         <PersonTable person={data.settled.adnaan} showAimann />
         <PersonTable person={data.settled.meme} showAimann={false} />
       </DataSurface>
 
-      <DataSurface title="Pending" eyebrow="Commission Ledger" contentClassName="space-y-6">
-        <p className="text-sm text-[#9aa6bb]">All unsettled commissions awaiting payout.</p>
+      <DataSurface title="Pending" eyebrow="Commission Ledger" contentClassName="space-y-6" tone="light">
+        <p className="text-sm text-[#4b5563]">All unsettled commissions awaiting payout.</p>
         <PersonTable person={data.pending.adnaan} showAimann />
         <PersonTable person={data.pending.meme} showAimann={false} />
       </DataSurface>

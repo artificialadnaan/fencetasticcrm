@@ -11,7 +11,7 @@ interface FinancesSummaryStripProps {
 
 function SummarySkeleton() {
   return (
-    <div className="shell-panel rounded-[28px] p-5">
+    <div className="rounded-[28px] border border-[#d9e1ef] bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
       <div className="h-3 w-24 animate-pulse rounded-full bg-slate-200" />
       <div className="mt-4 h-9 w-32 animate-pulse rounded-full bg-slate-200" />
       <div className="mt-4 h-3 w-28 animate-pulse rounded-full bg-slate-200" />
@@ -33,19 +33,19 @@ function SummaryCard({
   icon: ComponentType<{ className?: string }>;
 }) {
   return (
-    <article className="shell-panel relative overflow-hidden rounded-[28px] p-5">
+    <article className="relative overflow-hidden rounded-[28px] border border-[#d9e1ef] bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
       <div className={`absolute inset-x-5 top-0 h-1 rounded-b-full ${accent}`} />
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#6b7280]">
             {label}
           </p>
-          <p className="mt-4 text-3xl font-semibold tracking-[-0.05em] text-slate-950">
+          <p className="mt-4 text-3xl font-semibold tracking-[-0.05em] text-[#111827]">
             {value}
           </p>
-          <p className="mt-4 text-sm leading-6 text-slate-600">{detail}</p>
+          <p className="mt-4 text-sm leading-6 text-[#4b5563]">{detail}</p>
         </div>
-        <div className="rounded-2xl border border-white/70 bg-white/80 p-3 text-slate-700 shadow-sm">
+        <div className="rounded-2xl border border-[#d9e1ef] bg-[#f7f9fc] p-3 text-[#1f3864] shadow-sm">
           <Icon className="h-5 w-5" />
         </div>
       </div>
@@ -90,7 +90,7 @@ export function FinancesSummaryStrip({ summary, isLoading, period }: FinancesSum
         netProfit >= 0
           ? 'Healthy margin across the selected period.'
           : 'Loss position across the selected period.',
-      accent: netProfit >= 0 ? 'bg-slate-950' : 'bg-amber-500',
+      accent: netProfit >= 0 ? 'bg-[#1f3864]' : 'bg-amber-500',
       icon: BadgeDollarSign,
     },
   ];
