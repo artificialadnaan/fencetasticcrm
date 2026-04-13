@@ -60,8 +60,40 @@ describe('CalendarMonthGrid', () => {
       );
     });
 
-    expect(container.textContent).toContain('Estimate A');
-    expect(container.textContent).toContain('Install B');
+    expect(container.textContent).toContain('Jane Doe');
+    expect(container.textContent).toContain('Install');
+    expect(container.textContent).toContain('Follow-up');
     expect(container.textContent).toContain('+1 more');
+  });
+
+  it('renders concise project labels and event types in the month grid cards', () => {
+    act(() => {
+      root.render(
+        <CalendarMonthGrid
+          currentDate={new Date('2026-04-01')}
+          events={[
+            makeEvent({
+              id: '1',
+              start: '2026-04-10',
+              title: 'Very Long Customer Name — Install',
+              type: 'install',
+              color: '#10B981',
+              projectCustomer: 'Very Long Customer Name',
+            }),
+          ]}
+          isLoading={false}
+          selectedDate={new Date('2026-04-10')}
+          onPrevMonth={vi.fn()}
+          onNextMonth={vi.fn()}
+          onToday={vi.fn()}
+          onSelectDate={vi.fn()}
+          onSelectEvent={vi.fn()}
+          onCreateEvent={vi.fn()}
+        />
+      );
+    });
+
+    expect(container.textContent).toContain('Very Long Customer Name');
+    expect(container.textContent).toContain('Install');
   });
 });

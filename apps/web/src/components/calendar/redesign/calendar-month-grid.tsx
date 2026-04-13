@@ -26,10 +26,30 @@ const EVENT_PRIORITY: Record<string, number> = {
   site_visit: 6,
   other: 7,
 };
+const EVENT_LABELS: Record<string, string> = {
+  install: 'Install',
+  project_start: 'Start',
+  project_finish: 'Finish',
+  estimate: 'Estimate',
+  followup: 'Follow-up',
+  meeting: 'Meeting',
+  site_visit: 'Site Visit',
+  other: 'Custom',
+};
 
 function toDate(value: string) {
   const [year, month, day] = value.split('-').map(Number);
   return new Date(year, month - 1, day);
+}
+
+function getEventPrimaryLabel(event: CalendarEventView) {
+  if (event.projectCustomer) return event.projectCustomer;
+  const [headline] = event.title.split('—');
+  return headline?.trim() || event.title;
+}
+
+function getEventSecondaryLabel(event: CalendarEventView) {
+  return EVENT_LABELS[event.type] ?? event.type;
 }
 
 interface CalendarMonthGridProps {
@@ -165,16 +185,20 @@ export function CalendarMonthGrid({
                       triggerEvent.stopPropagation();
                       onSelectEvent(event);
                     }}
-                    className="flex w-full items-start gap-2 rounded-2xl border border-white/8 bg-[#151d27] px-3 py-2 text-left transition hover:border-white/16 hover:bg-[#19222d]"
+                    className="flex min-h-[78px] w-full items-start gap-2 rounded-2xl border border-white/8 bg-[#151d27] px-3 py-2.5 text-left transition hover:border-white/16 hover:bg-[#19222d]"
                   >
                     <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: event.color }} />
                     <span className="min-w-0">
-                      <span className="block truncate text-sm font-medium text-[#f7f8fb]">{event.title}</span>
-                      <span className="block truncate text-xs text-[#93a0b4]">{event.projectCustomer || event.type}</span>
+                      <span className="block line-clamp-2 text-sm font-semibold leading-5 text-[#f7f8fb]">
+                        {getEventPrimaryLabel(event)}
+                      </span>
+                      <span className="mt-1 block text-xs font-medium uppercase tracking-[0.12em] text-[#aeb9cb]">
+                        {getEventSecondaryLabel(event)}
+                      </span>
                     </span>
                   </button>
                 )) : (
-                  <div className="rounded-[18px] border border-dashed border-white/10 bg-white/[0.02] px-3 py-5 text-center text-[11px] leading-5 text-[#6f7d91]">
+                  <div className="rounded-[18px] border border-dashed border-white/10 bg-white/[0.02] px-3 py-5 text-center text-[11px] leading-5 text-[#78859a]">
                     Quiet day
                   </div>
                 )}
