@@ -21,18 +21,6 @@ function makeEvent(overrides: Partial<CalendarEventView> = {}): CalendarEventVie
   };
 }
 
-function findEventMixValue(container: HTMLElement, label: string) {
-  const labelNode = Array.from(container.querySelectorAll('span')).find(
-    (node) => node.textContent === label
-  );
-
-  if (!labelNode?.parentElement?.textContent) {
-    throw new Error(`Could not find event mix row for ${label}`);
-  }
-
-  return labelNode.parentElement.textContent.replace(label, '').trim();
-}
-
 describe('CalendarSideInsights', () => {
   let container: HTMLDivElement;
   let root: Root;
@@ -41,47 +29,50 @@ describe('CalendarSideInsights', () => {
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-04-08T10:30:00.000Z'));
   });
 
   afterEach(() => {
-    vi.useRealTimers();
     act(() => {
       root.unmount();
     });
     container.remove();
   });
 
-  it('counts follow-up calendar events from task-backed follow-up items', () => {
+  it('renders the selected-day panel with ops-console contrast classes', () => {
     act(() => {
       root.render(
         <CalendarSideInsights
           currentDate={new Date('2026-04-10T00:00:00.000Z')}
+          selectedDate={new Date('2026-04-13T00:00:00.000Z')}
+          selectedDayEvents={[makeEvent({ start: '2026-04-13', end: '2026-04-13' })]}
+          monthEvents={[makeEvent()]}
           isLoading={false}
           onOpenEvent={vi.fn()}
-          onViewFullSchedule={vi.fn()}
-          events={[
-            makeEvent(),
-            makeEvent({
-              id: 'followup-task-2',
-              start: '2026-05-01',
-              end: '2026-05-01',
-            }),
-            makeEvent({
-              id: 'install-project-1',
-              title: 'Jane Doe — Install',
-              start: '2026-04-20',
-              end: '2026-04-20',
-              type: 'install',
-              color: '#10B981',
-              searchText: 'jane doe install',
-            }),
-          ]}
+          onCreateEvent={vi.fn()}
         />
       );
     });
 
-    expect(findEventMixValue(container, 'Follow-up')).toBe('1');
+    expect(container.textContent).toContain('Selected day');
+    expect(container.querySelector('section')?.className).toContain('bg-[#11161d]');
+  });
+
+  it('surfaces selected-day events in the agenda panel', () => {
+    act(() => {
+      root.render(
+        <CalendarSideInsights
+          currentDate={new Date('2026-04-10T00:00:00.000Z')}
+          selectedDate={new Date('2026-04-13T00:00:00.000Z')}
+          selectedDayEvents={[makeEvent({ title: 'Install for Baker', start: '2026-04-13', end: '2026-04-13', type: 'install', color: '#10B981' })]}
+          monthEvents={[makeEvent()]}
+          isLoading={false}
+          onOpenEvent={vi.fn()}
+          onCreateEvent={vi.fn()}
+        />
+      );
+    });
+
+    expect(container.textContent).toContain('Install for Baker');
+    expect(Array.from(container.querySelectorAll('button')).some((button) => button.textContent?.includes('Add event'))).toBe(true);
   });
 });

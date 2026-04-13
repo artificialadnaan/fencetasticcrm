@@ -1,157 +1,124 @@
-import { CalendarClock, CheckCircle2, MapPinned, PencilLine, Sparkles } from 'lucide-react';
-import { addDays, endOfMonth, format, isWithinInterval, startOfDay, startOfMonth } from 'date-fns';
+import { CalendarClock, CheckCircle2, MapPinned, Sparkles } from 'lucide-react';
+import { endOfMonth, format, isWithinInterval, startOfMonth } from 'date-fns';
 import { Button } from '@/components/ui/button';
+import { DataSurface } from '@/components/ui/data-surface';
 import { cn } from '@/lib/utils';
 import type { CalendarEventView } from './calendar-types';
 
 interface CalendarSideInsightsProps {
-  events: CalendarEventView[];
+  monthEvents: CalendarEventView[];
+  selectedDayEvents: CalendarEventView[];
+  selectedDate: Date;
   currentDate: Date;
   isLoading: boolean;
   onOpenEvent: (event: CalendarEventView) => void;
-  onViewFullSchedule: () => void;
+  onCreateEvent: () => void;
 }
 
 export function CalendarSideInsights({
-  events,
+  monthEvents,
+  selectedDayEvents,
+  selectedDate,
   currentDate,
   isLoading,
   onOpenEvent,
-  onViewFullSchedule,
+  onCreateEvent,
 }: CalendarSideInsightsProps) {
-  const today = startOfDay(new Date());
-  const next48h = addDays(today, 2);
-
-  const upcoming = events
-    .filter((event) => {
-      const eventDate = new Date(`${event.start}T00:00:00`);
-      return eventDate >= today && eventDate < next48h;
-    })
-    .sort((a, b) => a.start.localeCompare(b.start))
-    .slice(0, 4);
-
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
-  const monthEvents = events.filter((event) =>
+  const eventsInMonth = monthEvents.filter((event) =>
     isWithinInterval(new Date(`${event.start}T00:00:00`), { start: monthStart, end: monthEnd })
   );
 
-  const installCount = monthEvents.filter((event) => event.type === 'install').length;
-  const followUpCount = monthEvents.filter((event) => event.type === 'followup').length;
-  const estimateCount = monthEvents.filter((event) => event.type === 'estimate').length;
-  const projectLinkedCount = monthEvents.filter((event) => event.projectId).length;
-
-  const total = Math.max(monthEvents.length, 1);
+  const installCount = eventsInMonth.filter((event) => event.type === 'install').length;
+  const followUpCount = eventsInMonth.filter((event) => event.type === 'followup').length;
+  const estimateCount = eventsInMonth.filter((event) => event.type === 'estimate').length;
+  const customCount = eventsInMonth.filter((event) => !event.projectId).length;
+  const total = Math.max(eventsInMonth.length, 1);
 
   return (
     <aside className="space-y-5">
-      <section className="shell-panel rounded-[32px] p-5 md:p-6">
-        <div className="flex items-start justify-between gap-4 border-b border-black/5 pb-5">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-              Upcoming Next 48h
-            </p>
-            <h2 className="mt-3 text-xl font-semibold tracking-[-0.04em] text-slate-950">
-              {format(currentDate, 'MMMM d')}
-            </h2>
-          </div>
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-700">
-            {isLoading ? '...' : `${upcoming.length} due`}
-          </div>
-        </div>
-
-        <div className="mt-5 space-y-3">
+      <DataSurface
+        eyebrow="Selected day"
+        title={format(selectedDate, 'EEEE, MMM d')}
+        className="bg-[#11161d]"
+        actions={(
+          <Button
+            type="button"
+            onClick={onCreateEvent}
+            className="rounded-2xl bg-[#f59e0b] px-4 text-[#11161d] hover:bg-[#f6b94d]"
+          >
+            Add event
+          </Button>
+        )}
+      >
+        <div className="space-y-3">
           {isLoading ? (
             [0, 1, 2].map((item) => (
-              <div key={item} className="h-24 animate-pulse rounded-[24px] bg-slate-200/70" />
+              <div key={item} className="h-24 animate-pulse rounded-[24px] bg-white/5" />
             ))
-          ) : upcoming.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-[28px] border border-dashed border-slate-300 bg-white/50 px-6 py-10 text-center">
-              <Sparkles className="h-10 w-10 text-slate-400" />
-              <p className="mt-4 text-lg font-semibold text-slate-900">No events due immediately</p>
-              <p className="mt-2 max-w-sm text-sm leading-6 text-slate-600">
-                The next installs, estimates, and follow-ups will surface here automatically.
+          ) : selectedDayEvents.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-[24px] border border-dashed border-white/10 bg-white/[0.02] px-6 py-10 text-center">
+              <Sparkles className="h-10 w-10 text-[#718096]" />
+              <p className="mt-4 text-lg font-semibold text-[#f7f8fb]">No scheduled items</p>
+              <p className="mt-2 max-w-sm text-sm leading-6 text-[#93a0b4]">
+                Use Add event to place a follow-up, install, or meeting on this day.
               </p>
             </div>
           ) : (
-            upcoming.map((event) => {
-              const eventDate = new Date(`${event.start}T00:00:00`);
-              const isLinked = Boolean(event.projectId);
-              return (
-                <button
-                  key={event.id}
-                  type="button"
-                  onClick={() => onOpenEvent(event)}
-                  className="w-full rounded-[24px] border border-black/5 bg-white/80 px-4 py-4 text-left shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:bg-white"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <p className="text-base font-semibold text-slate-950">{event.title}</p>
-                      <p className="mt-1 truncate text-sm text-slate-600">
-                        {event.projectCustomer
-                          ? `${event.projectCustomer}${event.projectAddress ? ` • ${event.projectAddress}` : ''}`
-                          : 'Standalone calendar event'}
-                      </p>
+            selectedDayEvents.map((event) => (
+              <button
+                key={event.id}
+                type="button"
+                onClick={() => onOpenEvent(event)}
+                className="w-full rounded-[24px] border border-white/8 bg-[#151d27] px-4 py-4 text-left shadow-sm transition-colors hover:border-white/16 hover:bg-[#19222d]"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: event.color }} />
+                      <p className="truncate text-base font-semibold text-[#f7f8fb]">{event.title}</p>
                     </div>
-                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
-                      {isLinked ? 'Project' : 'Custom'}
-                    </span>
+                    <p className="mt-2 truncate text-sm text-[#93a0b4]">
+                      {event.projectCustomer
+                        ? `${event.projectCustomer}${event.projectAddress ? ` • ${event.projectAddress}` : ''}`
+                        : 'Standalone calendar event'}
+                    </p>
                   </div>
-                  <div className="mt-4 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 text-sm text-slate-700">
-                      <CalendarClock className="h-4 w-4" />
-                      {format(eventDate, 'EEE, MMM d')}
-                    </div>
-                    <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
-                      {isLinked ? <MapPinned className="h-3.5 w-3.5" /> : <PencilLine className="h-3.5 w-3.5" />}
-                      {isLinked ? 'Open project' : 'Edit event'}
-                    </div>
+                  <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#d7deea]">
+                    {event.type}
+                  </span>
+                </div>
+                <div className="mt-4 flex items-center justify-between gap-3 text-xs text-[#9aa6bb]">
+                  <div className="flex items-center gap-2">
+                    <CalendarClock className="h-3.5 w-3.5" />
+                    {format(new Date(`${event.start}T00:00:00`), 'EEE, MMM d')}
                   </div>
-                </button>
-              );
-            })
+                  <div className="flex items-center gap-1.5">
+                    <MapPinned className="h-3.5 w-3.5" />
+                    {event.projectId ? 'Open project' : 'Edit event'}
+                  </div>
+                </div>
+              </button>
+            ))
           )}
         </div>
+      </DataSurface>
 
-        <Button
-          type="button"
-          onClick={onViewFullSchedule}
-          variant="outline"
-          className="mt-5 w-full rounded-2xl border-black/10 bg-white/70 px-4 shadow-sm"
-        >
-          <CheckCircle2 className="h-4 w-4" />
-          View Full Schedule
-        </Button>
-      </section>
-
-      <section className="shell-panel rounded-[32px] p-5 md:p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-              Month Mix
-            </p>
-            <h3 className="mt-3 text-xl font-semibold tracking-[-0.04em] text-slate-950">
-              {format(currentDate, 'MMMM')} schedule load
-            </h3>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700">
-            {monthEvents.length} events
-          </div>
-        </div>
-
-        <div className="mt-5 space-y-3">
+      <DataSurface eyebrow="Month mix" title={`${format(currentDate, 'MMMM')} schedule load`}>
+        <div className="space-y-3">
           {[
             { label: 'Install', value: installCount, color: 'bg-emerald-500' },
             { label: 'Follow-up', value: followUpCount, color: 'bg-amber-500' },
             { label: 'Estimate', value: estimateCount, color: 'bg-sky-500' },
-            { label: 'Project-linked', value: projectLinkedCount, color: 'bg-slate-900' },
+            { label: 'Custom', value: customCount, color: 'bg-fuchsia-500' },
           ].map((item) => (
-            <div key={item.label} className="rounded-[22px] border border-black/5 bg-white/75 p-4">
+            <div key={item.label} className="rounded-[22px] border border-white/8 bg-white/[0.02] p-4">
               <div className="flex items-center justify-between gap-3">
-                <span className="text-sm font-medium text-slate-800">{item.label}</span>
-                <span className="text-sm font-semibold text-slate-950">{item.value}</span>
+                <span className="text-sm font-medium text-[#dbe2ee]">{item.label}</span>
+                <span className="text-sm font-semibold text-[#f7f8fb]">{item.value}</span>
               </div>
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/6">
                 <div
                   className={cn('h-full rounded-full', item.color)}
                   style={{ width: `${Math.max((item.value / total) * 100, item.value > 0 ? 12 : 0)}%` }}
@@ -159,8 +126,18 @@ export function CalendarSideInsights({
               </div>
             </div>
           ))}
+
+          <div className="rounded-[22px] border border-white/8 bg-[#151d27] px-4 py-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-medium text-[#dbe2ee]">Events this month</p>
+              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-300">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                {eventsInMonth.length} scheduled
+              </span>
+            </div>
+          </div>
         </div>
-      </section>
+      </DataSurface>
     </aside>
   );
 }

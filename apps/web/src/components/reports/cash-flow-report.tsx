@@ -9,6 +9,9 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import { DataSurface } from '@/components/ui/data-surface';
+import { DarkTable, DarkTableCell, DarkTableContainer, DarkTableHeader, DarkTableRow } from '@/components/ui/dark-table';
+import { chartTheme } from '@/components/ui/chart-theme';
 import { formatCurrency } from '@/lib/formatters';
 import { useCashFlowReport } from '@/hooks/use-financial-reports';
 
@@ -28,8 +31,8 @@ function ChartTooltip({
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-lg border bg-white px-3 py-2 text-sm shadow-md">
-      <p className="font-medium mb-1">{label}</p>
+    <div className="rounded-lg border px-3 py-2 text-sm shadow-md" style={{ background: chartTheme.tooltipBg, borderColor: chartTheme.tooltipBorder }}>
+      <p className="mb-1 font-medium text-[#f7f8fb]">{label}</p>
       {payload.map((entry) => (
         <p key={entry.name} style={{ color: entry.color }}>
           {entry.name}: {formatCurrency(entry.value)}
@@ -84,50 +87,47 @@ export function CashFlowReport({ dateFrom, dateTo }: CashFlowReportProps) {
 
   return (
     <div className="space-y-6">
-      {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="rounded-2xl border border-black/5 bg-white/70 backdrop-blur-sm shadow-sm p-6">
+        <DataSurface eyebrow="Cash flow" title="Total In">
           <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
             Total In
           </p>
-          <p className="mt-2 text-2xl font-bold text-emerald-600">{formatCurrency(totalIn)}</p>
-        </div>
-        <div className="rounded-2xl border border-black/5 bg-white/70 backdrop-blur-sm shadow-sm p-6">
+          <p className="mt-2 text-2xl font-bold text-emerald-400">{formatCurrency(totalIn)}</p>
+        </DataSurface>
+        <DataSurface eyebrow="Cash flow" title="Total Out">
           <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
             Total Out
           </p>
-          <p className="mt-2 text-2xl font-bold text-red-500">{formatCurrency(totalOut)}</p>
-        </div>
-        <div className="rounded-2xl border border-black/5 bg-white/70 backdrop-blur-sm shadow-sm p-6">
+          <p className="mt-2 text-2xl font-bold text-rose-400">{formatCurrency(totalOut)}</p>
+        </DataSurface>
+        <DataSurface eyebrow="Cash flow" title="Net Cash Flow">
           <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
             Net Cash Flow
           </p>
           <p
             className={`mt-2 text-2xl font-bold ${
-              netCashFlow >= 0 ? 'text-emerald-600' : 'text-red-500'
+              netCashFlow >= 0 ? 'text-emerald-400' : 'text-rose-400'
             }`}
           >
             {formatCurrency(netCashFlow)}
           </p>
-        </div>
+        </DataSurface>
       </div>
 
-      {/* Chart */}
-      <div className="rounded-2xl border border-black/5 bg-white/70 backdrop-blur-sm shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-slate-950 mb-4">Cash Flow Over Time</h3>
+      <DataSurface title="Cash Flow Over Time" eyebrow="Reports">
         <ResponsiveContainer width="100%" height={300}>
           <ComposedChart data={chartData} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
             <XAxis
               dataKey="month"
-              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+              tick={{ fontSize: 11, fill: chartTheme.axis }}
               tickLine={false}
               axisLine={false}
             />
             <YAxis
               yAxisId="left"
               tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`}
-              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+              tick={{ fontSize: 11, fill: chartTheme.axis }}
               tickLine={false}
               axisLine={false}
               width={52}
@@ -136,92 +136,88 @@ export function CashFlowReport({ dateFrom, dateTo }: CashFlowReportProps) {
               yAxisId="right"
               orientation="right"
               tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`}
-              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+              tick={{ fontSize: 11, fill: chartTheme.axis }}
               tickLine={false}
               axisLine={false}
               width={52}
             />
             <Tooltip content={<ChartTooltip />} />
             <Legend wrapperStyle={{ fontSize: 12 }} />
-            <Bar yAxisId="left" dataKey="Money In" fill="#10B981" radius={[3, 3, 0, 0]} />
-            <Bar yAxisId="left" dataKey="Money Out" fill="#EF4444" radius={[3, 3, 0, 0]} />
+            <Bar yAxisId="left" dataKey="Money In" fill={chartTheme.revenue} radius={[3, 3, 0, 0]} />
+            <Bar yAxisId="left" dataKey="Money Out" fill="#fb7185" radius={[3, 3, 0, 0]} />
             <Line
               yAxisId="right"
               type="monotone"
               dataKey="Running Balance"
-              stroke="#3B82F6"
+              stroke={chartTheme.balance}
               strokeWidth={2}
               dot={{ r: 4 }}
             />
           </ComposedChart>
         </ResponsiveContainer>
-      </div>
+      </DataSurface>
 
-      {/* Detail Table */}
-      <div className="rounded-2xl border border-black/5 bg-white/70 backdrop-blur-sm shadow-sm p-6">
-        <div className="rounded-lg border border-black/5 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+      <DataSurface title="Monthly Cash Ledger" eyebrow="Reports">
+        <DarkTableContainer>
+          <DarkTable>
               <thead>
-                <tr className="border-b border-black/5 text-xs text-slate-500">
-                  <th className="text-left py-2 px-4">Month</th>
-                  <th className="text-right py-2 px-4">Money In</th>
-                  <th className="text-right py-2 px-4">Money Out</th>
-                  <th className="text-right py-2 px-4">Net</th>
-                  <th className="text-right py-2 px-4">Running Balance</th>
+                <tr>
+                  <DarkTableHeader sticky>Month</DarkTableHeader>
+                  <DarkTableHeader sticky className="text-right">Money In</DarkTableHeader>
+                  <DarkTableHeader sticky className="text-right">Money Out</DarkTableHeader>
+                  <DarkTableHeader sticky className="text-right">Net</DarkTableHeader>
+                  <DarkTableHeader sticky className="text-right">Running Balance</DarkTableHeader>
                 </tr>
               </thead>
               <tbody>
                 {data.map((row) => (
-                  <tr
-                    key={row.month}
-                    className="border-b border-black/5 hover:bg-slate-50/60 transition-colors"
-                  >
-                    <td className="py-2 px-4 font-medium">{row.month}</td>
-                    <td className="py-2 px-4 text-right text-emerald-600">
+                  <DarkTableRow key={row.month}>
+                    <DarkTableCell className="font-medium">{row.month}</DarkTableCell>
+                    <DarkTableCell numeric className="text-emerald-400">
                       {formatCurrency(row.moneyIn)}
-                    </td>
-                    <td className="py-2 px-4 text-right text-red-500">
+                    </DarkTableCell>
+                    <DarkTableCell numeric className="text-rose-400">
                       {formatCurrency(row.moneyOut)}
-                    </td>
-                    <td
-                      className={`py-2 px-4 text-right font-semibold ${
-                        row.netCashFlow >= 0 ? 'text-emerald-600' : 'text-red-500'
+                    </DarkTableCell>
+                    <DarkTableCell
+                      numeric
+                      className={`font-semibold ${
+                        row.netCashFlow >= 0 ? 'text-emerald-400' : 'text-rose-400'
                       }`}
                     >
                       {formatCurrency(row.netCashFlow)}
-                    </td>
-                    <td className="py-2 px-4 text-right font-semibold text-blue-600">
+                    </DarkTableCell>
+                    <DarkTableCell numeric className="font-semibold text-blue-400">
                       {formatCurrency(row.runningBalance)}
-                    </td>
-                  </tr>
+                    </DarkTableCell>
+                  </DarkTableRow>
                 ))}
               </tbody>
               <tfoot>
-                <tr className="border-t font-semibold text-sm bg-slate-50/60">
-                  <td className="py-2 px-4">Total</td>
-                  <td className="py-2 px-4 text-right text-emerald-600">
+                <DarkTableRow className="bg-white/[0.04] font-semibold">
+                  <DarkTableCell>Total</DarkTableCell>
+                  <DarkTableCell numeric className="text-emerald-400">
                     {formatCurrency(totalIn)}
-                  </td>
-                  <td className="py-2 px-4 text-right text-red-500">
+                  </DarkTableCell>
+                  <DarkTableCell numeric className="text-rose-400">
                     {formatCurrency(totalOut)}
-                  </td>
-                  <td
-                    className={`py-2 px-4 text-right font-bold ${
-                      netCashFlow >= 0 ? 'text-emerald-600' : 'text-red-500'
+                  </DarkTableCell>
+                  <DarkTableCell
+                    numeric
+                    className={`font-bold ${
+                      netCashFlow >= 0 ? 'text-emerald-400' : 'text-rose-400'
                     }`}
                   >
                     {formatCurrency(netCashFlow)}
-                  </td>
-                  <td className="py-2 px-4 text-right font-bold text-blue-600">
+                  </DarkTableCell>
+                  <DarkTableCell numeric className="font-bold text-blue-400">
                     {data.length > 0 ? formatCurrency(data[data.length - 1].runningBalance) : '$0.00'}
-                  </td>
-                </tr>
+                  </DarkTableCell>
+                </DarkTableRow>
               </tfoot>
-            </table>
-          </div>
-        </div>
-      </div>
+          </DarkTable>
+        </DarkTableContainer>
+      </DataSurface>
     </div>
   );
 }

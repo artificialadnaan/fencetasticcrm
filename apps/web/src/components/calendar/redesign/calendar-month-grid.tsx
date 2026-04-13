@@ -3,18 +3,29 @@ import {
   endOfMonth,
   endOfWeek,
   format,
+  isSameDay,
   isSameMonth,
   isToday,
   startOfMonth,
   startOfWeek,
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, CalendarDays, Clock3, Plus, CalendarRange } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { DataSurface } from '@/components/ui/data-surface';
 import { cn } from '@/lib/utils';
-import { formatDate } from '@/lib/formatters';
 import type { CalendarEventView } from './calendar-types';
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const EVENT_PRIORITY: Record<string, number> = {
+  install: 0,
+  project_start: 1,
+  project_finish: 2,
+  estimate: 3,
+  followup: 4,
+  meeting: 5,
+  site_visit: 6,
+  other: 7,
+};
 
 function toDate(value: string) {
   const [year, month, day] = value.split('-').map(Number);
@@ -25,6 +36,7 @@ interface CalendarMonthGridProps {
   currentDate: Date;
   events: CalendarEventView[];
   isLoading: boolean;
+  selectedDate: Date;
   onPrevMonth: () => void;
   onNextMonth: () => void;
   onToday: () => void;
@@ -37,6 +49,7 @@ export function CalendarMonthGrid({
   currentDate,
   events,
   isLoading,
+  selectedDate,
   onPrevMonth,
   onNextMonth,
   onToday,
@@ -48,7 +61,6 @@ export function CalendarMonthGrid({
   const monthEnd = endOfMonth(currentDate);
   const gridStart = startOfWeek(monthStart, { weekStartsOn: 0 });
   const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
-
   const days = eachDayOfInterval({ start: gridStart, end: gridEnd });
 
   const eventsByDay = new Map<string, CalendarEventView[]>();
@@ -67,160 +79,126 @@ export function CalendarMonthGrid({
   }
 
   return (
-    <section className="shell-panel rounded-[32px] p-4 md:p-6">
-      <div className="flex flex-col gap-4 border-b border-black/5 pb-5 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-            Command Timeline
-          </p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-slate-950">
-            {format(currentDate, 'MMMM yyyy')}
-          </h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            Month view of installs, estimate follow-ups, and project events, with live search and client-side project lookup.
-          </p>
-        </div>
-
+    <DataSurface
+      eyebrow="Schedule board"
+      title={format(currentDate, 'MMMM yyyy')}
+      actions={(
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={onPrevMonth}
-            className="rounded-2xl border-black/10 bg-white/70 px-4 shadow-sm"
-          >
+          <Button variant="outline" onClick={onPrevMonth} className="rounded-2xl border-white/10 bg-white/[0.03] text-[#dce4f2] hover:bg-white/[0.08]">
             <ChevronLeft className="h-4 w-4" />
-            Previous
           </Button>
-          <Button
-            variant="outline"
-            onClick={onToday}
-            className="rounded-2xl border-black/10 bg-white/70 px-4 shadow-sm"
-          >
-            <CalendarRange className="h-4 w-4" />
+          <Button variant="outline" onClick={onToday} className="rounded-2xl border-white/10 bg-white/[0.03] text-[#dce4f2] hover:bg-white/[0.08]">
             Today
           </Button>
-          <Button
-            variant="outline"
-            onClick={onNextMonth}
-            className="rounded-2xl border-black/10 bg-white/70 px-4 shadow-sm"
-          >
-            Next
+          <Button variant="outline" onClick={onNextMonth} className="rounded-2xl border-white/10 bg-white/[0.03] text-[#dce4f2] hover:bg-white/[0.08]">
             <ChevronRight className="h-4 w-4" />
           </Button>
-          <Button
-            onClick={onCreateEvent}
-            className="rounded-2xl bg-slate-950 px-4 text-white hover:bg-slate-800"
-          >
+          <Button onClick={onCreateEvent} className="rounded-2xl bg-[#f59e0b] text-[#11161d] hover:bg-[#f6b94d]">
             <Plus className="h-4 w-4" />
             Add Event
           </Button>
         </div>
-      </div>
-
-      <div className="mt-5 flex flex-wrap items-center gap-3 text-xs font-medium text-slate-600">
-        <span className="inline-flex items-center gap-2 rounded-full bg-sky-50 px-3 py-1 text-sky-700">
-          <CalendarDays className="h-3.5 w-3.5" />
+      )}
+      contentClassName="px-4 py-4 md:px-6 md:py-5"
+    >
+      <div className="mb-4 flex flex-wrap items-center gap-3 text-xs font-medium text-[#9aa6bb]">
+        <span className="inline-flex items-center gap-2 rounded-full border border-white/8 bg-white/[0.03] px-3 py-1.5">
+          <CalendarDays className="h-3.5 w-3.5 text-[#f59e0b]" />
           {events.length} visible events
         </span>
-        <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-slate-700">
-          <Clock3 className="h-3.5 w-3.5" />
-          Tap a day to add, tap a custom event to edit
+        <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1.5 text-emerald-300">
+          Select a day to inspect and add schedule items
         </span>
       </div>
 
-      <div className="mt-5 grid grid-cols-7 gap-px overflow-hidden rounded-[28px] border border-black/5 bg-slate-200/70">
+      <div className="grid grid-cols-7 gap-px overflow-hidden rounded-[28px] border border-white/8 bg-white/6">
         {WEEKDAY_LABELS.map((label) => (
-          <div key={label} className="bg-white/90 px-3 py-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+          <div
+            key={label}
+            className="bg-[#131a22] px-3 py-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#8f9aae]"
+          >
             {label}
           </div>
         ))}
 
         {days.map((day) => {
           const key = format(day, 'yyyy-MM-dd');
-          const dayEvents = (eventsByDay.get(key) ?? []).slice().sort((a, b) => a.title.localeCompare(b.title));
-          const dayHasEvents = dayEvents.length > 0;
+          const dayEvents = (eventsByDay.get(key) ?? []).slice().sort((a, b) => {
+            const priorityDelta = (EVENT_PRIORITY[a.type] ?? 99) - (EVENT_PRIORITY[b.type] ?? 99);
+            return priorityDelta === 0 ? a.title.localeCompare(b.title) : priorityDelta;
+          });
+          const visibleEvents = dayEvents.slice(0, 2);
+          const hiddenCount = Math.max(dayEvents.length - visibleEvents.length, 0);
+          const isSelected = isSameDay(day, selectedDate);
 
           return (
             <div
               key={key}
               className={cn(
-                'min-h-[140px] bg-white px-3 py-3 transition-colors',
-                isSameMonth(day, currentDate) ? 'text-slate-900' : 'bg-slate-50 text-slate-400'
+                'min-h-[156px] border border-white/6 bg-[#0f141b] p-3 text-left transition',
+                !isSameMonth(day, currentDate) && 'bg-[#0b1016] text-[#5f6d82]',
+                isSelected && 'border-[#f59e0b] bg-[#141b23]',
+                isToday(day) && 'ring-1 ring-inset ring-emerald-400/55',
               )}
             >
-              <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center justify-between gap-2">
                 <button
                   type="button"
-                  className={cn(
-                    'inline-flex h-8 min-w-8 items-center justify-center rounded-full px-2 text-sm font-semibold transition-colors',
-                    isToday(day)
-                      ? 'bg-slate-950 text-white shadow-sm'
-                      : 'text-slate-700 hover:bg-slate-100'
-                  )}
                   onClick={() => onSelectDate(day)}
-                  aria-label={`Create event on ${formatDate(key)}`}
+                  className={cn('text-lg font-semibold', isSameMonth(day, currentDate) ? 'text-[#f7f8fb]' : 'text-[#69778c]')}
                 >
                   {format(day, 'd')}
                 </button>
-                {isToday(day) && (
-                  <span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                {isToday(day) ? (
+                  <span className="rounded-full bg-[#143227] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8ef0c2]">
                     Today
                   </span>
-                )}
+                ) : null}
               </div>
 
               <div className="mt-3 space-y-2">
-                {dayHasEvents ? (
-                  dayEvents.slice(0, 3).map((event) => (
-                    <button
-                      key={event.id}
-                      type="button"
-                      onClick={() => onSelectEvent(event)}
-                      className="block w-full rounded-[18px] border border-black/5 bg-white px-3 py-2 text-left shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md"
-                    >
-                      <div className="flex items-start gap-2">
-                        <span
-                          className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full"
-                          style={{ backgroundColor: event.color }}
-                        />
-                        <div className="min-w-0">
-                          <p className="truncate text-[13px] font-medium text-slate-950">
-                            {event.title}
-                          </p>
-                          <p className="mt-1 truncate text-[11px] text-slate-500">
-                            {event.projectCustomer
-                              ? `${event.projectCustomer}${event.projectAddress ? ` • ${event.projectAddress}` : ''}`
-                              : 'Standalone calendar event'}
-                          </p>
-                        </div>
-                      </div>
-                    </button>
-                  ))
-                ) : (
-                  <div className="rounded-[18px] border border-dashed border-slate-300 bg-slate-50 px-3 py-5 text-center text-[11px] leading-5 text-slate-500">
+                {visibleEvents.length > 0 ? visibleEvents.map((event) => (
+                  <button
+                    key={event.id}
+                    type="button"
+                    onClick={(triggerEvent) => {
+                      triggerEvent.stopPropagation();
+                      onSelectEvent(event);
+                    }}
+                    className="flex w-full items-start gap-2 rounded-2xl border border-white/8 bg-[#151d27] px-3 py-2 text-left transition hover:border-white/16 hover:bg-[#19222d]"
+                  >
+                    <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: event.color }} />
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-medium text-[#f7f8fb]">{event.title}</span>
+                      <span className="block truncate text-xs text-[#93a0b4]">{event.projectCustomer || event.type}</span>
+                    </span>
+                  </button>
+                )) : (
+                  <div className="rounded-[18px] border border-dashed border-white/10 bg-white/[0.02] px-3 py-5 text-center text-[11px] leading-5 text-[#6f7d91]">
                     Quiet day
                   </div>
                 )}
 
-                {dayEvents.length > 3 && (
+                {hiddenCount > 0 ? (
                   <button
                     type="button"
-                    className="w-full rounded-full bg-slate-100 px-3 py-2 text-center text-[11px] font-medium text-slate-700 transition-colors hover:bg-slate-200"
                     onClick={() => onSelectDate(day)}
+                    className="px-1 text-xs font-medium text-[#f6bf74]"
                   >
-                    +{dayEvents.length - 3} more
+                    +{hiddenCount} more
                   </button>
-                )}
+                ) : null}
               </div>
             </div>
           );
         })}
       </div>
 
-      {isLoading && (
-        <div className="mt-5 rounded-[28px] border border-dashed border-slate-300 bg-white/55 px-6 py-8 text-center text-sm text-slate-500">
+      {isLoading ? (
+        <div className="mt-5 rounded-[28px] border border-dashed border-white/10 bg-white/[0.03] px-6 py-8 text-center text-sm text-[#93a0b4]">
           Loading calendar events...
         </div>
-      )}
-    </section>
+      ) : null}
+    </DataSurface>
   );
 }

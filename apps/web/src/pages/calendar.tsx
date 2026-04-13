@@ -106,18 +106,33 @@ export default function CalendarPage() {
   const deferredSearch = useDeferredValue(searchText.trim().toLowerCase());
 
   useEffect(() => {
-    api.get('/projects?limit=500&sortBy=customer&sortDir=asc')
-      .then((res) => {
-        const raw = res.data?.data ?? res.data ?? [];
+    const loadProjects = async () => {
+      const collected: ProjectOption[] = [];
+      let page = 1;
+      let totalPages = 1;
+
+      while (page <= totalPages) {
+        const res = await api.get(`/projects?page=${page}&limit=100&sortBy=customer&sortDir=asc`);
+        const raw = res.data?.data ?? [];
         const arr = Array.isArray(raw) ? raw : [];
-        setProjects(
-          arr.map((project: { id: string; customer: string; address: string }) => ({
+        const pagination = res.data?.pagination;
+        totalPages = typeof pagination?.totalPages === 'number' ? pagination.totalPages : 1;
+
+        collected.push(
+          ...arr.map((project: { id: string; customer: string; address: string }) => ({
             id: project.id,
             customer: project.customer,
             address: project.address,
-          }))
+          })),
         );
-      })
+
+        page += 1;
+      }
+
+      setProjects(collected);
+    };
+
+    loadProjects()
       .catch((err) => {
         console.error('Failed to load projects for calendar lookup', err);
       });
@@ -159,10 +174,25 @@ export default function CalendarPage() {
   const monthEvents = useMemo(() => {
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(currentDate);
-    return filteredEvents.filter((event) =>
-      isWithinInterval(toLocalDate(event.start), { start: monthStart, end: monthEnd })
-    );
+    return filteredEvents.filter((event) => {
+      const start = toLocalDate(event.start);
+      const end = toLocalDate(event.end ?? event.start);
+      return start <= monthEnd && end >= monthStart;
+    });
   }, [currentDate, filteredEvents]);
+
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
+
+  const selectedDayEvents = useMemo(
+    () =>
+      filteredEvents.filter((event) => {
+        const day = toLocalDate(format(selectedDate, 'yyyy-MM-dd'));
+        const start = toLocalDate(event.start);
+        const end = toLocalDate(event.end ?? event.start);
+        return isWithinInterval(day, { start, end });
+      }),
+    [filteredEvents, selectedDate],
+  );
 
   const openCreateDialog = useCallback((dateStr?: string) => {
     setEditingEvent(null);
@@ -268,6 +298,35 @@ export default function CalendarPage() {
     setTypeFilter('ALL');
   }, []);
 
+  const handlePrevMonth = useCallback(() => {
+    setCurrentDate((value) => {
+      const next = subMonths(value, 1);
+      setSelectedDate(next);
+      return next;
+    });
+  }, []);
+
+  const handleNextMonth = useCallback(() => {
+    setCurrentDate((value) => {
+      const next = addMonths(value, 1);
+      setSelectedDate(next);
+      return next;
+    });
+  }, []);
+
+  const handleToday = useCallback(() => {
+    const today = new Date();
+    setCurrentDate(today);
+    setSelectedDate(today);
+  }, []);
+
+  const handleSelectDate = useCallback((date: Date) => {
+    setSelectedDate(date);
+    if (date.getFullYear() !== currentDate.getFullYear() || date.getMonth() !== currentDate.getMonth()) {
+      setCurrentDate(date);
+    }
+  }, [currentDate]);
+
   const searchSlot = useMemo(() => {
     const hasFilters = Boolean(searchText.trim() || typeFilter !== 'ALL');
 
@@ -331,7 +390,7 @@ export default function CalendarPage() {
       <Button
         type="button"
         variant="outline"
-        onClick={() => setCurrentDate(new Date())}
+        onClick={handleToday}
         className="rounded-2xl border-black/10 bg-white/70 px-4 shadow-sm"
       >
         Today
@@ -398,20 +457,23 @@ export default function CalendarPage() {
           currentDate={currentDate}
           events={monthEvents}
           isLoading={isLoading}
-          onPrevMonth={() => setCurrentDate((value) => subMonths(value, 1))}
-          onNextMonth={() => setCurrentDate((value) => addMonths(value, 1))}
-          onToday={() => setCurrentDate(new Date())}
-          onSelectDate={(date) => openCreateDialog(format(date, 'yyyy-MM-dd'))}
+          selectedDate={selectedDate}
+          onPrevMonth={handlePrevMonth}
+          onNextMonth={handleNextMonth}
+          onToday={handleToday}
+          onSelectDate={handleSelectDate}
           onSelectEvent={handleEventClick}
           onCreateEvent={() => openCreateDialog()}
         />
 
         <CalendarSideInsights
           currentDate={currentDate}
-          events={filteredEvents}
+          selectedDate={selectedDate}
+          selectedDayEvents={selectedDayEvents}
+          monthEvents={filteredEvents}
           isLoading={isLoading}
           onOpenEvent={handleEventClick}
-          onViewFullSchedule={() => setCurrentDate(new Date())}
+          onCreateEvent={() => openCreateDialog(format(selectedDate, 'yyyy-MM-dd'))}
         />
       </div>
 

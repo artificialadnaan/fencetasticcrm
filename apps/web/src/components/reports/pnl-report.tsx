@@ -9,6 +9,9 @@ import {
   Line,
   ComposedChart,
 } from 'recharts';
+import { DataSurface } from '@/components/ui/data-surface';
+import { DarkTable, DarkTableCell, DarkTableContainer, DarkTableHeader, DarkTableRow } from '@/components/ui/dark-table';
+import { chartTheme } from '@/components/ui/chart-theme';
 import { formatCurrency } from '@/lib/formatters';
 import { usePnlReport } from '@/hooks/use-financial-reports';
 
@@ -29,8 +32,8 @@ function ChartTooltip({
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-lg border bg-white px-3 py-2 text-sm shadow-md">
-      <p className="font-medium mb-1">{label}</p>
+    <div className="rounded-lg border px-3 py-2 text-sm shadow-md" style={{ background: chartTheme.tooltipBg, borderColor: chartTheme.tooltipBorder }}>
+      <p className="mb-1 font-medium text-[#f7f8fb]">{label}</p>
       {payload.map((entry) => (
         <p key={entry.name} style={{ color: entry.color }}>
           {entry.name}: {formatCurrency(entry.value)}
@@ -45,14 +48,13 @@ export function PnlReport({ dateFrom, dateTo, period }: PnlReportProps) {
 
   if (isLoading) {
     return (
-      <div className="rounded-2xl border border-black/5 bg-white/70 backdrop-blur-sm shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-slate-950 mb-4">Profit & Loss</h3>
+      <DataSurface title="Profit & Loss" eyebrow="Reports">
         <div className="space-y-2">
           {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-10 animate-pulse rounded bg-slate-200" />
+            <div key={i} className="h-10 animate-pulse rounded bg-white/5" />
           ))}
         </div>
-      </div>
+      </DataSurface>
     );
   }
 
@@ -75,172 +77,164 @@ export function PnlReport({ dateFrom, dateTo, period }: PnlReportProps) {
 
   return (
     <div className="space-y-6">
-      {/* Summary Table */}
-      <div className="rounded-2xl border border-black/5 bg-white/70 backdrop-blur-sm shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-slate-950 mb-4">Period Summary</h3>
-        <div className="rounded-lg border border-black/5 overflow-hidden">
-          <table className="w-full text-sm">
+      <DataSurface title="Period Summary" eyebrow="Reports">
+        <DarkTableContainer>
+          <DarkTable>
             <tbody>
-              <tr className="border-b border-black/5">
-                <td className="py-2.5 px-4 font-medium text-slate-700">Revenue</td>
-                <td className="py-2.5 px-4 text-right font-semibold text-emerald-600">
+              <DarkTableRow>
+                <DarkTableCell className="font-medium text-[#dbe2ee]">Revenue</DarkTableCell>
+                <DarkTableCell numeric className="font-semibold text-emerald-400">
                   {formatCurrency(data.totals.revenue)}
-                </td>
-              </tr>
-              <tr className="border-b border-black/5">
-                <td className="py-2.5 px-4 font-medium text-slate-700">Cost of Goods Sold</td>
-                <td className="py-2.5 px-4 text-right font-semibold text-red-500">
+                </DarkTableCell>
+              </DarkTableRow>
+              <DarkTableRow>
+                <DarkTableCell className="font-medium text-[#dbe2ee]">Cost of Goods Sold</DarkTableCell>
+                <DarkTableCell numeric className="font-semibold text-rose-400">
                   {formatCurrency(data.totals.cogs)}
-                </td>
-              </tr>
-              <tr className="border-b border-black/5 bg-slate-50/60">
-                <td className="py-2.5 px-4 font-semibold text-slate-900">Gross Profit</td>
-                <td className="py-2.5 px-4 text-right font-semibold text-slate-900">
+                </DarkTableCell>
+              </DarkTableRow>
+              <DarkTableRow className="bg-white/[0.02]">
+                <DarkTableCell className="font-semibold text-[#f7f8fb]">Gross Profit</DarkTableCell>
+                <DarkTableCell numeric className="font-semibold text-[#f7f8fb]">
                   {formatCurrency(data.totals.grossProfit)}
-                </td>
-              </tr>
-              <tr className="border-b border-black/5">
-                <td className="py-2.5 px-4 font-medium text-slate-700">Operating Expenses</td>
-                <td className="py-2.5 px-4 text-right font-semibold text-red-500">
+                </DarkTableCell>
+              </DarkTableRow>
+              <DarkTableRow>
+                <DarkTableCell className="font-medium text-[#dbe2ee]">Operating Expenses</DarkTableCell>
+                <DarkTableCell numeric className="font-semibold text-rose-400">
                   {formatCurrency(data.totals.operatingExpenses)}
-                </td>
-              </tr>
-              <tr className="border-b border-black/5">
-                <td className="py-2.5 px-4 font-medium text-slate-700">Commissions</td>
-                <td className="py-2.5 px-4 text-right font-semibold text-red-500">
+                </DarkTableCell>
+              </DarkTableRow>
+              <DarkTableRow>
+                <DarkTableCell className="font-medium text-[#dbe2ee]">Commissions</DarkTableCell>
+                <DarkTableCell numeric className="font-semibold text-rose-400">
                   {formatCurrency(data.totals.commissions)}
-                </td>
-              </tr>
-              <tr className="bg-slate-50/60">
-                <td className="py-2.5 px-4 font-semibold text-slate-900">Net Profit</td>
-                <td
-                  className={`py-2.5 px-4 text-right font-bold ${
-                    data.totals.netProfit >= 0 ? 'text-emerald-600' : 'text-red-500'
+                </DarkTableCell>
+              </DarkTableRow>
+              <DarkTableRow className="bg-white/[0.02]">
+                <DarkTableCell className="font-semibold text-[#f7f8fb]">Net Profit</DarkTableCell>
+                <DarkTableCell
+                  numeric
+                  className={`font-bold ${
+                    data.totals.netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'
                   }`}
                 >
                   {formatCurrency(data.totals.netProfit)}
-                </td>
-              </tr>
+                </DarkTableCell>
+              </DarkTableRow>
             </tbody>
-          </table>
-        </div>
-      </div>
+          </DarkTable>
+        </DarkTableContainer>
+      </DataSurface>
 
-      {/* Chart */}
       {chartData.length > 0 && (
-        <div className="rounded-2xl border border-black/5 bg-white/70 backdrop-blur-sm shadow-sm p-6">
-          <h3 className="text-lg font-semibold text-slate-950 mb-4">Revenue vs COGS</h3>
+        <DataSurface title="Revenue vs COGS" eyebrow="Reports">
           <ResponsiveContainer width="100%" height={300}>
             <ComposedChart data={chartData} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
               <XAxis
                 dataKey="period"
-                tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                tick={{ fontSize: 11, fill: chartTheme.axis }}
                 tickLine={false}
                 axisLine={false}
               />
               <YAxis
                 tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`}
-                tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                tick={{ fontSize: 11, fill: chartTheme.axis }}
                 tickLine={false}
                 axisLine={false}
                 width={52}
               />
               <Tooltip content={<ChartTooltip />} />
               <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Bar dataKey="Revenue" fill="#10B981" radius={[3, 3, 0, 0]} />
-              <Bar dataKey="COGS" fill="#EF4444" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="Revenue" fill={chartTheme.revenue} radius={[3, 3, 0, 0]} />
+              <Bar dataKey="COGS" fill="#fb7185" radius={[3, 3, 0, 0]} />
               <Line
                 type="monotone"
                 dataKey="Net Profit"
-                stroke="#3B82F6"
+                stroke={chartTheme.balance}
                 strokeWidth={2}
                 dot={{ r: 4 }}
               />
             </ComposedChart>
           </ResponsiveContainer>
-        </div>
+        </DataSurface>
       )}
 
-      {/* Detail Table */}
       {data.rows.length > 0 && (
-        <div className="rounded-2xl border border-black/5 bg-white/70 backdrop-blur-sm shadow-sm p-6">
-          <h3 className="text-lg font-semibold text-slate-950 mb-4">Period Breakdown</h3>
-          <div className="rounded-lg border border-black/5 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+        <DataSurface title="Period Breakdown" eyebrow="Reports">
+          <DarkTableContainer>
+            <DarkTable>
                 <thead>
-                  <tr className="border-b border-black/5 text-xs text-slate-500">
-                    <th className="text-left py-2 px-4">Period</th>
-                    <th className="text-right py-2 px-4">Revenue</th>
-                    <th className="text-right py-2 px-4">COGS</th>
-                    <th className="text-right py-2 px-4">Gross Profit</th>
-                    <th className="text-right py-2 px-4">Op. Expenses</th>
-                    <th className="text-right py-2 px-4">Commissions</th>
-                    <th className="text-right py-2 px-4">Net Profit</th>
+                  <tr>
+                    <DarkTableHeader sticky>Period</DarkTableHeader>
+                    <DarkTableHeader sticky className="text-right">Revenue</DarkTableHeader>
+                    <DarkTableHeader sticky className="text-right">COGS</DarkTableHeader>
+                    <DarkTableHeader sticky className="text-right">Gross Profit</DarkTableHeader>
+                    <DarkTableHeader sticky className="text-right">Op. Expenses</DarkTableHeader>
+                    <DarkTableHeader sticky className="text-right">Commissions</DarkTableHeader>
+                    <DarkTableHeader sticky className="text-right">Net Profit</DarkTableHeader>
                   </tr>
                 </thead>
                 <tbody>
                   {data.rows.map((row) => (
-                    <tr
-                      key={row.month}
-                      className="border-b border-black/5 hover:bg-slate-50/60 transition-colors"
-                    >
-                      <td className="py-2 px-4 font-medium">{row.month}</td>
-                      <td className="py-2 px-4 text-right text-emerald-600">
+                    <DarkTableRow key={row.month}>
+                      <DarkTableCell className="font-medium">{row.month}</DarkTableCell>
+                      <DarkTableCell numeric className="text-emerald-400">
                         {formatCurrency(row.revenue)}
-                      </td>
-                      <td className="py-2 px-4 text-right text-red-500">
+                      </DarkTableCell>
+                      <DarkTableCell numeric className="text-rose-400">
                         {formatCurrency(row.cogs)}
-                      </td>
-                      <td className="py-2 px-4 text-right">{formatCurrency(row.grossProfit)}</td>
-                      <td className="py-2 px-4 text-right text-red-500">
+                      </DarkTableCell>
+                      <DarkTableCell numeric>{formatCurrency(row.grossProfit)}</DarkTableCell>
+                      <DarkTableCell numeric className="text-rose-400">
                         {formatCurrency(row.operatingExpenses)}
-                      </td>
-                      <td className="py-2 px-4 text-right text-red-500">
+                      </DarkTableCell>
+                      <DarkTableCell numeric className="text-rose-400">
                         {formatCurrency(row.commissions)}
-                      </td>
-                      <td
-                        className={`py-2 px-4 text-right font-semibold ${
-                          row.netProfit >= 0 ? 'text-emerald-600' : 'text-red-500'
+                      </DarkTableCell>
+                      <DarkTableCell
+                        numeric
+                        className={`font-semibold ${
+                          row.netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'
                         }`}
                       >
                         {formatCurrency(row.netProfit)}
-                      </td>
-                    </tr>
+                      </DarkTableCell>
+                    </DarkTableRow>
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr className="border-t font-semibold text-sm bg-slate-50/60">
-                    <td className="py-2 px-4">Total</td>
-                    <td className="py-2 px-4 text-right text-emerald-600">
+                  <DarkTableRow className="bg-white/[0.04] font-semibold">
+                    <DarkTableCell>Total</DarkTableCell>
+                    <DarkTableCell numeric className="text-emerald-400">
                       {formatCurrency(data.totals.revenue)}
-                    </td>
-                    <td className="py-2 px-4 text-right text-red-500">
+                    </DarkTableCell>
+                    <DarkTableCell numeric className="text-rose-400">
                       {formatCurrency(data.totals.cogs)}
-                    </td>
-                    <td className="py-2 px-4 text-right">
+                    </DarkTableCell>
+                    <DarkTableCell numeric>
                       {formatCurrency(data.totals.grossProfit)}
-                    </td>
-                    <td className="py-2 px-4 text-right text-red-500">
+                    </DarkTableCell>
+                    <DarkTableCell numeric className="text-rose-400">
                       {formatCurrency(data.totals.operatingExpenses)}
-                    </td>
-                    <td className="py-2 px-4 text-right text-red-500">
+                    </DarkTableCell>
+                    <DarkTableCell numeric className="text-rose-400">
                       {formatCurrency(data.totals.commissions)}
-                    </td>
-                    <td
-                      className={`py-2 px-4 text-right font-bold ${
-                        data.totals.netProfit >= 0 ? 'text-emerald-600' : 'text-red-500'
+                    </DarkTableCell>
+                    <DarkTableCell
+                      numeric
+                      className={`font-bold ${
+                        data.totals.netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'
                       }`}
                     >
                       {formatCurrency(data.totals.netProfit)}
-                    </td>
-                  </tr>
+                    </DarkTableCell>
+                  </DarkTableRow>
                 </tfoot>
-              </table>
-            </div>
-          </div>
-        </div>
+            </DarkTable>
+          </DarkTableContainer>
+        </DataSurface>
       )}
     </div>
   );

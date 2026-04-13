@@ -3,6 +3,15 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { formatCurrency } from '@/lib/formatters';
 import { useExpenseReport } from '@/hooks/use-financial-reports';
+import { DataSurface } from '@/components/ui/data-surface';
+import {
+  DarkTable,
+  DarkTableCell,
+  DarkTableContainer,
+  DarkTableHeader,
+  DarkTableRow,
+} from '@/components/ui/dark-table';
+import { chartTheme } from '@/components/ui/chart-theme';
 
 interface ExpenseReportProps {
   dateFrom: string;
@@ -20,9 +29,12 @@ function CategoryTooltip({
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-lg border bg-white px-3 py-2 text-sm shadow-md">
-      <p className="font-medium">{payload[0].name}</p>
-      <p className="text-slate-600">{formatCurrency(payload[0].value)}</p>
+    <div
+      className="rounded-lg border px-3 py-2 text-sm shadow-md"
+      style={{ background: chartTheme.tooltipBg, borderColor: chartTheme.tooltipBorder }}
+    >
+      <p className="font-medium text-[#f7f8fb]">{payload[0].name}</p>
+      <p className="text-[#9aa6bb]">{formatCurrency(payload[0].value)}</p>
     </div>
   );
 }
@@ -43,14 +55,13 @@ export function ExpenseReport({ dateFrom, dateTo }: ExpenseReportProps) {
 
   if (isLoading) {
     return (
-      <div className="rounded-2xl border border-black/5 bg-white/70 backdrop-blur-sm shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-slate-950 mb-4">Expense Breakdown</h3>
+      <DataSurface title="Expense Breakdown" eyebrow="Reports">
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-10 animate-pulse rounded bg-slate-200" />
+            <div key={i} className="h-10 animate-pulse rounded bg-white/5" />
           ))}
         </div>
-      </div>
+      </DataSurface>
     );
   }
 
@@ -68,14 +79,13 @@ export function ExpenseReport({ dateFrom, dateTo }: ExpenseReportProps) {
 
   return (
     <div className="space-y-4">
-      {/* Sub-Tab Toggle */}
-      <div className="inline-flex items-center rounded-2xl border border-black/5 bg-white/65 p-1 shadow-sm">
+      <div className="inline-flex items-center rounded-2xl border border-white/10 bg-[#11161d] p-1 shadow-[0_18px_48px_rgba(0,0,0,0.24)]">
         <button
           type="button"
           className={`rounded-xl px-4 py-1.5 text-sm font-medium transition-colors ${
             subTab === 'category'
-              ? 'bg-slate-950 text-white hover:bg-slate-800'
-              : 'text-slate-600 hover:bg-white hover:text-slate-950'
+              ? 'bg-[#f0b56f] text-[#11161d] hover:bg-[#f5c485]'
+              : 'text-[#9aa6bb] hover:bg-white/5 hover:text-[#f7f8fb]'
           }`}
           onClick={() => setSubTab('category')}
         >
@@ -85,8 +95,8 @@ export function ExpenseReport({ dateFrom, dateTo }: ExpenseReportProps) {
           type="button"
           className={`rounded-xl px-4 py-1.5 text-sm font-medium transition-colors ${
             subTab === 'vendor'
-              ? 'bg-slate-950 text-white hover:bg-slate-800'
-              : 'text-slate-600 hover:bg-white hover:text-slate-950'
+              ? 'bg-[#f0b56f] text-[#11161d] hover:bg-[#f5c485]'
+              : 'text-[#9aa6bb] hover:bg-white/5 hover:text-[#f7f8fb]'
           }`}
           onClick={() => setSubTab('vendor')}
         >
@@ -96,11 +106,9 @@ export function ExpenseReport({ dateFrom, dateTo }: ExpenseReportProps) {
 
       {subTab === 'category' && (
         <div className="space-y-6">
-          {/* Donut Chart */}
           {pieData.length > 0 && (
-            <div className="rounded-2xl border border-black/5 bg-white/70 backdrop-blur-sm shadow-sm p-6">
-              <h3 className="text-lg font-semibold text-slate-950 mb-4">Category Breakdown</h3>
-              <div className="flex flex-col md:flex-row items-center gap-6">
+            <DataSurface title="Category Breakdown" eyebrow="Reports">
+              <div className="flex flex-col items-center gap-6 md:flex-row">
                 <ResponsiveContainer width="100%" height={260}>
                   <PieChart>
                     <Pie
@@ -127,23 +135,22 @@ export function ExpenseReport({ dateFrom, dateTo }: ExpenseReportProps) {
                         className="inline-block h-2.5 w-2.5 rounded-full"
                         style={{ backgroundColor: COLORS[idx % COLORS.length] }}
                       />
-                      <span className="text-slate-700">{entry.name}</span>
+                      <span className="text-[#dbe2ee]">{entry.name}</span>
                     </div>
                   ))}
                 </div>
               </div>
-            </div>
+            </DataSurface>
           )}
 
-          {/* Category Table */}
-          <div className="rounded-2xl border border-black/5 bg-white/70 backdrop-blur-sm shadow-sm p-6">
-            <div className="rounded-lg border border-black/5 overflow-hidden">
-              <table className="w-full text-sm">
+          <DataSurface title="Category Ledger" eyebrow="Reports">
+            <DarkTableContainer>
+              <DarkTable>
                 <thead>
-                  <tr className="border-b border-black/5 text-xs text-slate-500">
-                    <th className="w-4 py-2 px-2" />
-                    <th className="text-left py-2 px-4">Category</th>
-                    <th className="text-right py-2 px-4">Total</th>
+                  <tr>
+                    <DarkTableHeader sticky className="w-4 px-2" />
+                    <DarkTableHeader sticky>Category</DarkTableHeader>
+                    <DarkTableHeader sticky className="text-right">Total</DarkTableHeader>
                   </tr>
                 </thead>
                 <tbody>
@@ -151,101 +158,101 @@ export function ExpenseReport({ dateFrom, dateTo }: ExpenseReportProps) {
                     const expanded = expandedCategories.has(cat.category);
                     return (
                       <Fragment key={cat.category}>
-                        <tr
-                          className="border-b border-black/5 hover:bg-slate-50/60 cursor-pointer transition-colors"
+                        <DarkTableRow
+                          className="cursor-pointer"
                           onClick={() => toggleCategory(cat.category)}
                           tabIndex={0}
                           role="button"
-                          aria-expanded={expandedCategories.has(cat.category)}
+                          aria-expanded={expanded}
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCategory(cat.category); }
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              toggleCategory(cat.category);
+                            }
                           }}
                         >
-                          <td className="py-2 px-2">
+                          <DarkTableCell className="px-2">
                             {cat.subcategories.length > 0 ? (
                               expanded ? (
-                                <ChevronDown className="h-3.5 w-3.5 text-slate-500" />
+                                <ChevronDown className="h-3.5 w-3.5 text-[#9aa6bb]" />
                               ) : (
-                                <ChevronRight className="h-3.5 w-3.5 text-slate-500" />
+                                <ChevronRight className="h-3.5 w-3.5 text-[#9aa6bb]" />
                               )
                             ) : null}
-                          </td>
-                          <td className="py-2 px-4 font-medium">{cat.category}</td>
-                          <td className="py-2 px-4 text-right font-semibold">
+                          </DarkTableCell>
+                          <DarkTableCell className="font-medium">{cat.category}</DarkTableCell>
+                          <DarkTableCell numeric className="font-semibold">
                             {formatCurrency(cat.total)}
-                          </td>
-                        </tr>
+                          </DarkTableCell>
+                        </DarkTableRow>
                         {expanded &&
                           cat.subcategories.map((sub) => (
-                            <tr
+                            <DarkTableRow
                               key={`${cat.category}-${sub.name}`}
-                              className="bg-slate-50/40 border-b border-black/5"
+                              className="bg-white/[0.03]"
                             >
-                              <td />
-                              <td className="py-1.5 px-4 pl-10 text-xs text-slate-600">
+                              <DarkTableCell />
+                              <DarkTableCell className="pl-10 text-xs text-[#9aa6bb]">
                                 {sub.name}
-                              </td>
-                              <td className="py-1.5 px-4 text-right text-xs">
+                              </DarkTableCell>
+                              <DarkTableCell numeric className="text-xs">
                                 {formatCurrency(sub.amount)}
-                              </td>
-                            </tr>
+                              </DarkTableCell>
+                            </DarkTableRow>
                           ))}
                       </Fragment>
                     );
                   })}
                 </tbody>
                 <tfoot>
-                  <tr className="border-t font-semibold text-sm bg-slate-50/60">
-                    <td />
-                    <td className="py-2 px-4">Total</td>
-                    <td className="py-2 px-4 text-right">{formatCurrency(data.total)}</td>
-                  </tr>
+                  <DarkTableRow className="bg-white/[0.05] font-semibold">
+                    <DarkTableCell />
+                    <DarkTableCell>Total</DarkTableCell>
+                    <DarkTableCell numeric>{formatCurrency(data.total)}</DarkTableCell>
+                  </DarkTableRow>
                 </tfoot>
-              </table>
-            </div>
-          </div>
+              </DarkTable>
+            </DarkTableContainer>
+          </DataSurface>
         </div>
       )}
 
       {subTab === 'vendor' && (
-        <div className="rounded-2xl border border-black/5 bg-white/70 backdrop-blur-sm shadow-sm p-6">
-          <div className="rounded-lg border border-black/5 overflow-hidden">
-            <table className="w-full text-sm">
+        <DataSurface title="Vendor Spend" eyebrow="Reports">
+          <DarkTableContainer>
+            <DarkTable>
               <thead>
-                <tr className="border-b border-black/5 text-xs text-slate-500">
-                  <th className="text-left py-2 px-4">Vendor</th>
-                  <th className="text-right py-2 px-4">Total Spend</th>
-                  <th className="text-right py-2 px-4"># Projects</th>
-                  <th className="text-left py-2 px-4">Top Categories</th>
+                <tr>
+                  <DarkTableHeader sticky>Vendor</DarkTableHeader>
+                  <DarkTableHeader sticky className="text-right">Total Spend</DarkTableHeader>
+                  <DarkTableHeader sticky className="text-right"># Projects</DarkTableHeader>
+                  <DarkTableHeader sticky>Top Categories</DarkTableHeader>
                 </tr>
               </thead>
               <tbody>
                 {data.byVendor.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="py-8 text-center text-slate-500">
+                  <DarkTableRow>
+                    <DarkTableCell colSpan={4} className="py-8 text-center text-[#9aa6bb]">
                       No vendor data found.
-                    </td>
-                  </tr>
+                    </DarkTableCell>
+                  </DarkTableRow>
                 )}
-                {data.byVendor.map((v) => (
-                  <tr
-                    key={v.vendor}
-                    className="border-b border-black/5 hover:bg-slate-50/60 transition-colors"
-                  >
-                    <td className="py-2 px-4 font-medium">{v.vendor}</td>
-                    <td className="py-2 px-4 text-right font-semibold">
-                      {formatCurrency(v.totalSpend)}
-                    </td>
-                    <td className="py-2 px-4 text-right">{v.projectCount}</td>
-                    <td className="py-2 px-4 text-xs text-slate-600">
-                      {v.topCategories.join(', ')}
-                    </td>
-                  </tr>
+                {data.byVendor.map((vendor) => (
+                  <DarkTableRow key={vendor.vendor}>
+                    <DarkTableCell className="font-medium">{vendor.vendor}</DarkTableCell>
+                    <DarkTableCell numeric className="font-semibold text-rose-300">
+                      {formatCurrency(vendor.totalSpend)}
+                    </DarkTableCell>
+                    <DarkTableCell numeric>{vendor.projectCount}</DarkTableCell>
+                    <DarkTableCell className="text-xs text-[#9aa6bb]">
+                      {vendor.topCategories.join(', ')}
+                    </DarkTableCell>
+                  </DarkTableRow>
                 ))}
               </tbody>
-            </table>
-          </div>
-        </div>
+            </DarkTable>
+          </DarkTableContainer>
+        </DataSurface>
       )}
     </div>
   );

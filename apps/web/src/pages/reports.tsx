@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Download, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -43,7 +43,7 @@ export default function ReportsPage() {
   const exportExtraParams = activeTab === 'pnl' ? { period } : activeTab === 'job-costing' ? jobCostingFilters : undefined;
   const { exportCsv, isExporting } = useExportReport(activeTab, { dateFrom, dateTo }, exportExtraParams);
 
-  const handlePdfExport = async () => {
+  const handlePdfExport = useCallback(async () => {
     try {
       const params = new URLSearchParams({ dateFrom, dateTo });
       if (activeTab === 'pnl') params.set('period', period);
@@ -62,7 +62,7 @@ export default function ReportsPage() {
     } catch {
       toast.error('Failed to export PDF');
     }
-  };
+  }, [activeTab, dateFrom, dateTo, jobCostingFilters, period]);
 
   const utilityActions = useMemo(
     () => (
@@ -165,19 +165,24 @@ export default function ReportsPage() {
         </Button>
       </div>
     ),
-    [dateFrom, dateTo, exportCsv, isExporting, activeTab, period],
+    [dateFrom, dateTo, exportCsv, handlePdfExport, isExporting],
   );
 
   usePageShell({
     eyebrow: 'Financial Reports',
     title: 'Reports',
     subtitle: 'P&L, job costing, commissions, expenses, and cash flow.',
-    utilityActions,
-    secondaryActions,
   });
 
   return (
     <div className="space-y-6 print:space-y-4">
+      <section className="sticky top-0 z-20 rounded-[28px] border border-white/10 bg-[#0f141b]/95 px-6 py-5 shadow-[0_18px_48px_rgba(0,0,0,0.28)] backdrop-blur print:hidden">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          {utilityActions}
+          {secondaryActions}
+        </div>
+      </section>
+
       {activeTab === 'pnl' && (
         <PnlReport dateFrom={dateFrom} dateTo={dateTo} period={period} />
       )}

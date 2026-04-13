@@ -4,35 +4,44 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 262.1 83.3% 57.8%;
+    --background: 222 33% 7%;
+    --foreground: 220 24% 96%;
+    --card: 220 24% 11%;
+    --card-foreground: 220 24% 96%;
+    --popover: 220 24% 11%;
+    --popover-foreground: 220 24% 96%;
+    --primary: 208 72% 62%;
     --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --secondary: 220 20% 16%;
+    --secondary-foreground: 220 22% 92%;
+    --muted: 220 18% 15%;
+    --muted-foreground: 220 12% 66%;
+    --accent: 220 18% 18%;
+    --accent-foreground: 220 22% 92%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 262.1 83.3% 57.8%;
+    --border: 218 17% 22%;
+    --input: 218 17% 22%;
+    --ring: 35 88% 58%;
     --radius: 0.5rem;
-    --shell-sidebar: 221 42% 13%;
-    --shell-sidebar-foreground: 214 32% 90%;
-    --shell-sidebar-border: 219 28% 20%;
-    --shell-canvas: 40 34% 94%;
-    --shell-panel: 35 30% 97%;
-    --shell-glass: 0 0% 100%;
-    --shell-accent: 217 72% 62%;
-    --brand-blue: 205 56% 56%;
-    --brand-blue-hover: 207 44% 44%;
+    --shell-sidebar: 220 28% 10%;
+    --shell-sidebar-foreground: 214 32% 92%;
+    --shell-sidebar-border: 219 20% 20%;
+    --shell-canvas: 222 33% 7%;
+    --shell-panel: 220 24% 11%;
+    --shell-glass: 220 24% 14%;
+    --shell-accent: 35 88% 58%;
+    --brand-blue: 208 72% 62%;
+    --brand-blue-hover: 208 64% 54%;
+    --ops-bg: 222 24% 8%;
+    --ops-panel: 219 25% 11%;
+    --ops-panel-raised: 220 20% 14%;
+    --ops-border: 220 14% 24%;
+    --ops-text: 220 25% 97%;
+    --ops-text-muted: 220 12% 66%;
+    --ops-amber: 35 88% 58%;
+    --ops-emerald: 160 84% 44%;
+    --ops-blue: 212 92% 64%;
   }
 }
 
@@ -44,6 +53,9 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background:
+      radial-gradient(circle at top, rgba(134, 150, 183, 0.14), transparent 28%),
+      linear-gradient(180deg, #090d12 0%, #0d1218 100%);
   }
 }
 
@@ -56,30 +68,30 @@
   .shell-canvas {
     background-color: hsl(var(--shell-canvas));
     background-image:
-      radial-gradient(circle at top, rgba(104, 133, 196, 0.16), transparent 32%),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(243, 236, 223, 0.95));
+      radial-gradient(circle at top, rgba(152, 170, 202, 0.12), transparent 30%),
+      linear-gradient(180deg, rgba(9, 13, 18, 1), rgba(13, 18, 24, 0.98));
   }
 
   .shell-sidebar {
     background:
-      radial-gradient(circle at top, rgba(111, 154, 255, 0.16), transparent 26%),
-      linear-gradient(180deg, hsl(var(--shell-sidebar)), #0b1220 100%);
+      radial-gradient(circle at top, rgba(245, 158, 11, 0.12), transparent 22%),
+      linear-gradient(180deg, hsl(var(--shell-sidebar)), #0a0f15 100%);
     color: hsl(var(--shell-sidebar-foreground));
   }
 
   .shell-glass {
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.62));
-    border: 1px solid rgba(255, 255, 255, 0.52);
+    background: linear-gradient(180deg, rgba(22, 29, 38, 0.9), rgba(17, 22, 29, 0.82));
+    border: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow:
-      0 18px 50px rgba(32, 41, 57, 0.08),
-      inset 0 1px 0 rgba(255, 255, 255, 0.65);
+      0 18px 50px rgba(0, 0, 0, 0.28),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
     backdrop-filter: blur(18px);
   }
 
   .shell-panel {
     background: hsl(var(--shell-panel));
-    border: 1px solid rgba(94, 82, 60, 0.08);
-    box-shadow: 0 10px 30px rgba(43, 33, 18, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.24);
   }
 
   .btn-brand {
@@ -88,5 +100,9 @@
   }
   .btn-brand:hover {
     background-color: hsl(var(--brand-blue-hover));
+  }
+
+  .ops-text-muted {
+    color: hsl(var(--ops-text-muted));
   }
 }

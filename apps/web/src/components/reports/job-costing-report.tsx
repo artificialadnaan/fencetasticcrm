@@ -2,6 +2,14 @@ import { Fragment, useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { formatCurrency } from '@/lib/formatters';
 import { useJobCostingReport } from '@/hooks/use-financial-reports';
+import { DataSurface } from '@/components/ui/data-surface';
+import {
+  DarkTable,
+  DarkTableCell,
+  DarkTableContainer,
+  DarkTableHeader,
+  DarkTableRow,
+} from '@/components/ui/dark-table';
 import { ProjectStatus, FenceType } from '@fencetastic/shared';
 import type { JobCostingRow } from '@fencetastic/shared';
 
@@ -50,25 +58,28 @@ const FENCE_TYPE_LABELS: Record<string, string> = {
 };
 
 function marginColor(pct: number): string {
-  if (pct >= 30) return 'text-emerald-600';
-  if (pct >= 15) return 'text-amber-500';
-  return 'text-red-500';
+  if (pct >= 30) return 'text-emerald-400';
+  if (pct >= 15) return 'text-amber-300';
+  return 'text-rose-400';
 }
 
-export function JobCostingReport({ dateFrom, dateTo, onFiltersChange }: JobCostingReportProps & { onFiltersChange?: (filters: Record<string, string>) => void }) {
+export function JobCostingReport({
+  dateFrom,
+  dateTo,
+  onFiltersChange,
+}: JobCostingReportProps & { onFiltersChange?: (filters: Record<string, string>) => void }) {
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const [fenceTypeFilter, setFenceTypeFilter] = useState<string | undefined>(undefined);
+  const [sortField, setSortField] = useState<SortField>('customer');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
-  // Report active filters to parent for export sync
   useEffect(() => {
     const filters: Record<string, string> = {};
     if (statusFilter) filters.status = statusFilter;
     if (fenceTypeFilter) filters.fenceType = fenceTypeFilter;
     onFiltersChange?.(filters);
   }, [statusFilter, fenceTypeFilter, onFiltersChange]);
-  const [sortField, setSortField] = useState<SortField>('customer');
-  const [sortDir, setSortDir] = useState<SortDir>('asc');
-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   const { data, isLoading, error } = useJobCostingReport({
     dateFrom: dateFrom ?? '',
@@ -93,7 +104,7 @@ export function JobCostingReport({ dateFrom, dateTo, onFiltersChange }: JobCosti
 
   function handleSort(field: SortField) {
     if (sortField === field) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+      setSortDir((dir) => (dir === 'asc' ? 'desc' : 'asc'));
     } else {
       setSortField(field);
       setSortDir('asc');
@@ -111,19 +122,18 @@ export function JobCostingReport({ dateFrom, dateTo, onFiltersChange }: JobCosti
 
   function sortIndicator(field: SortField) {
     if (sortField !== field) return '';
-    return sortDir === 'asc' ? ' \u2191' : ' \u2193';
+    return sortDir === 'asc' ? ' ↑' : ' ↓';
   }
 
   if (isLoading) {
     return (
-      <div className="rounded-2xl border border-black/5 bg-white/70 backdrop-blur-sm shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-slate-950 mb-4">Job Costing</h3>
+      <DataSurface title="Job Costing" eyebrow="Reports">
         <div className="space-y-2">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-10 animate-pulse rounded bg-slate-200" />
+            <div key={i} className="h-10 animate-pulse rounded bg-white/5" />
           ))}
         </div>
-      </div>
+      </DataSurface>
     );
   }
 
@@ -137,18 +147,17 @@ export function JobCostingReport({ dateFrom, dateTo, onFiltersChange }: JobCosti
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <select
           aria-label="Filter by status"
           value={statusFilter ?? ''}
           onChange={(e) => setStatusFilter(e.target.value || undefined)}
-          className="rounded-xl border border-black/10 bg-white/70 px-3 py-1.5 text-sm text-slate-700"
+          className="rounded-xl border border-white/10 bg-[#11161d] px-3 py-1.5 text-sm text-[#dbe2ee]"
         >
           <option value="">All Statuses</option>
-          {STATUS_OPTIONS.map((s) => (
-            <option key={s} value={s}>
-              {STATUS_LABELS[s] ?? s}
+          {STATUS_OPTIONS.map((status) => (
+            <option key={status} value={status}>
+              {STATUS_LABELS[status] ?? status}
             </option>
           ))}
         </select>
@@ -156,161 +165,166 @@ export function JobCostingReport({ dateFrom, dateTo, onFiltersChange }: JobCosti
           aria-label="Filter by fence type"
           value={fenceTypeFilter ?? ''}
           onChange={(e) => setFenceTypeFilter(e.target.value || undefined)}
-          className="rounded-xl border border-black/10 bg-white/70 px-3 py-1.5 text-sm text-slate-700"
+          className="rounded-xl border border-white/10 bg-[#11161d] px-3 py-1.5 text-sm text-[#dbe2ee]"
         >
           <option value="">All Fence Types</option>
-          {FENCE_TYPE_OPTIONS.map((f) => (
-            <option key={f} value={f}>
-              {FENCE_TYPE_LABELS[f] ?? f}
+          {FENCE_TYPE_OPTIONS.map((fenceType) => (
+            <option key={fenceType} value={fenceType}>
+              {FENCE_TYPE_LABELS[fenceType] ?? fenceType}
             </option>
           ))}
         </select>
       </div>
 
-      {/* Table */}
-      <div className="rounded-2xl border border-black/5 bg-white/70 backdrop-blur-sm shadow-sm p-6">
-        <div className="rounded-lg border border-black/5 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-black/5 text-xs text-slate-500">
-                  <th className="w-4 py-2 px-2" />
-                  {([
-                    ['customer', 'Customer'],
-                    ['address', 'Address'],
-                    ['status', 'Status'],
-                    ['fenceType', 'Fence Type'],
-                    ['revenue', 'Revenue'],
-                    ['materials', 'Materials'],
-                    ['subcontractors', 'Subs'],
-                    ['otherExpenses', 'Other'],
-                    ['commissionsAdnaan', 'Comm (A)'],
-                    ['commissionsMeme', 'Comm (M)'],
-                    ['profit', 'Profit'],
-                    ['marginPct', 'Margin %'],
-                  ] as [SortField, string][]).map(([field, label]) => (
-                    <th
-                      key={field}
-                      role="button"
+      <DataSurface title="Project Margin Ledger" eyebrow="Reports">
+        <DarkTableContainer>
+          <DarkTable>
+            <thead>
+              <tr>
+                <DarkTableHeader sticky className="w-4 px-2" />
+                {([
+                  ['customer', 'Customer'],
+                  ['address', 'Address'],
+                  ['status', 'Status'],
+                  ['fenceType', 'Fence Type'],
+                  ['revenue', 'Revenue'],
+                  ['materials', 'Materials'],
+                  ['subcontractors', 'Subs'],
+                  ['otherExpenses', 'Other'],
+                  ['commissionsAdnaan', 'Comm (A)'],
+                  ['commissionsMeme', 'Comm (M)'],
+                  ['profit', 'Profit'],
+                  ['marginPct', 'Margin %'],
+                ] as [SortField, string][]).map(([field, label]) => (
+                  <DarkTableHeader
+                    key={field}
+                    sticky
+                    role="button"
+                    tabIndex={0}
+                    className={`cursor-pointer whitespace-nowrap hover:text-[#f7f8fb] ${
+                      field === 'customer' ||
+                      field === 'address' ||
+                      field === 'status' ||
+                      field === 'fenceType'
+                        ? 'text-left'
+                        : 'text-right'
+                    }`}
+                    onClick={() => handleSort(field)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleSort(field);
+                      }
+                    }}
+                  >
+                    {label}
+                    {sortIndicator(field)}
+                  </DarkTableHeader>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.length === 0 && (
+                <DarkTableRow>
+                  <DarkTableCell colSpan={13} className="py-8 text-center text-[#9aa6bb]">
+                    No job costing data found.
+                  </DarkTableCell>
+                </DarkTableRow>
+              )}
+              {sorted.map((row) => {
+                const expanded = expandedRows.has(row.projectId);
+                return (
+                  <Fragment key={row.projectId}>
+                    <DarkTableRow
+                      className="cursor-pointer"
+                      onClick={() => toggleRow(row.projectId)}
                       tabIndex={0}
-                      className={`py-2 px-3 cursor-pointer hover:text-slate-900 whitespace-nowrap ${
-                        field === 'customer' || field === 'address' || field === 'status' || field === 'fenceType'
-                          ? 'text-left'
-                          : 'text-right'
-                      }`}
-                      onClick={() => handleSort(field)}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort(field); } }}
+                      role="button"
+                      aria-expanded={expanded}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          toggleRow(row.projectId);
+                        }
+                      }}
                     >
-                      {label}
-                      {sortIndicator(field)}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {sorted.length === 0 && (
-                  <tr>
-                    <td colSpan={13} className="py-8 text-center text-slate-500">
-                      No job costing data found.
-                    </td>
-                  </tr>
-                )}
-                {sorted.map((row) => {
-                  const expanded = expandedRows.has(row.projectId);
-                  return (
-                    <Fragment key={row.projectId}>
-                      <tr
-                        className="border-b border-black/5 hover:bg-slate-50/60 cursor-pointer transition-colors"
-                        onClick={() => toggleRow(row.projectId)}
-                        tabIndex={0}
-                        role="button"
-                        aria-expanded={expanded}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            toggleRow(row.projectId);
-                          }
-                        }}
+                      <DarkTableCell className="px-2">
+                        {expanded ? (
+                          <ChevronDown className="h-3.5 w-3.5 text-[#9aa6bb]" />
+                        ) : (
+                          <ChevronRight className="h-3.5 w-3.5 text-[#9aa6bb]" />
+                        )}
+                      </DarkTableCell>
+                      <DarkTableCell className="font-medium">{row.customer}</DarkTableCell>
+                      <DarkTableCell className="max-w-[140px] truncate text-xs text-[#9aa6bb]">
+                        {row.address}
+                      </DarkTableCell>
+                      <DarkTableCell>
+                        <span className="inline-block rounded-full border border-white/10 bg-white/[0.06] px-2 py-0.5 text-xs font-medium text-[#dbe2ee]">
+                          {STATUS_LABELS[row.status] ?? row.status}
+                        </span>
+                      </DarkTableCell>
+                      <DarkTableCell className="text-xs">
+                        {FENCE_TYPE_LABELS[row.fenceType] ?? row.fenceType}
+                      </DarkTableCell>
+                      <DarkTableCell numeric>{formatCurrency(row.revenue)}</DarkTableCell>
+                      <DarkTableCell numeric>{formatCurrency(row.materials)}</DarkTableCell>
+                      <DarkTableCell numeric>{formatCurrency(row.subcontractors)}</DarkTableCell>
+                      <DarkTableCell numeric>{formatCurrency(row.otherExpenses)}</DarkTableCell>
+                      <DarkTableCell numeric>{formatCurrency(row.commissionsAdnaan)}</DarkTableCell>
+                      <DarkTableCell numeric>{formatCurrency(row.commissionsMeme)}</DarkTableCell>
+                      <DarkTableCell
+                        numeric
+                        className={`font-semibold ${row.profit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}
                       >
-                        <td className="py-2 px-2">
-                          {expanded ? (
-                            <ChevronDown className="h-3.5 w-3.5 text-slate-500" />
-                          ) : (
-                            <ChevronRight className="h-3.5 w-3.5 text-slate-500" />
-                          )}
-                        </td>
-                        <td className="py-2 px-3 font-medium">{row.customer}</td>
-                        <td className="py-2 px-3 text-slate-500 text-xs truncate max-w-[140px]">
-                          {row.address}
-                        </td>
-                        <td className="py-2 px-3">
-                          <span className="inline-block rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium">
-                            {STATUS_LABELS[row.status] ?? row.status}
-                          </span>
-                        </td>
-                        <td className="py-2 px-3 text-xs">
-                          {FENCE_TYPE_LABELS[row.fenceType] ?? row.fenceType}
-                        </td>
-                        <td className="py-2 px-3 text-right">{formatCurrency(row.revenue)}</td>
-                        <td className="py-2 px-3 text-right">{formatCurrency(row.materials)}</td>
-                        <td className="py-2 px-3 text-right">{formatCurrency(row.subcontractors)}</td>
-                        <td className="py-2 px-3 text-right">{formatCurrency(row.otherExpenses)}</td>
-                        <td className="py-2 px-3 text-right">{formatCurrency(row.commissionsAdnaan)}</td>
-                        <td className="py-2 px-3 text-right">{formatCurrency(row.commissionsMeme)}</td>
-                        <td
-                          className={`py-2 px-3 text-right font-semibold ${
-                            row.profit >= 0 ? 'text-emerald-600' : 'text-red-500'
-                          }`}
-                        >
-                          {formatCurrency(row.profit)}
-                        </td>
-                        <td className={`py-2 px-3 text-right font-semibold ${marginColor(row.marginPct)}`}>
-                          {row.marginPct.toFixed(1)}%
-                        </td>
-                      </tr>
-                      {expanded && (
-                        <tr className="bg-slate-50/40">
-                          <td />
-                          <td colSpan={12} className="py-3 px-4">
-                            <div className="px-0 py-1 text-sm space-y-1 text-slate-600">
-                              <p>
-                                <span className="font-medium text-slate-900">Materials:</span>{' '}
-                                {formatCurrency(row.materials)}
-                                {' | '}
-                                <span className="font-medium text-slate-900">Subcontractors:</span>{' '}
-                                {formatCurrency(row.subcontractors)}
-                              </p>
-                              <p>
-                                <span className="font-medium text-slate-900">Other Expenses:</span>{' '}
-                                {formatCurrency(row.otherExpenses)}
-                              </p>
-                              <p>
-                                <span className="font-medium text-slate-900">Commissions:</span>{' '}
-                                Adnaan {formatCurrency(row.commissionsAdnaan)} + Meme{' '}
-                                {formatCurrency(row.commissionsMeme)}
-                              </p>
-                              <p className="font-medium text-slate-900">
-                                Total Costs:{' '}
-                                {formatCurrency(
-                                  row.materials +
-                                    row.subcontractors +
-                                    row.otherExpenses +
-                                    row.commissionsAdnaan +
-                                    row.commissionsMeme,
-                                )}
-                              </p>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+                        {formatCurrency(row.profit)}
+                      </DarkTableCell>
+                      <DarkTableCell numeric className={`font-semibold ${marginColor(row.marginPct)}`}>
+                        {row.marginPct.toFixed(1)}%
+                      </DarkTableCell>
+                    </DarkTableRow>
+                    {expanded && (
+                      <DarkTableRow className="bg-white/[0.03]">
+                        <DarkTableCell />
+                        <DarkTableCell colSpan={12} className="py-4">
+                          <div className="space-y-1 text-sm text-[#9aa6bb]">
+                            <p>
+                              <span className="font-medium text-[#f7f8fb]">Materials:</span>{' '}
+                              {formatCurrency(row.materials)}
+                              {' | '}
+                              <span className="font-medium text-[#f7f8fb]">Subcontractors:</span>{' '}
+                              {formatCurrency(row.subcontractors)}
+                            </p>
+                            <p>
+                              <span className="font-medium text-[#f7f8fb]">Other Expenses:</span>{' '}
+                              {formatCurrency(row.otherExpenses)}
+                            </p>
+                            <p>
+                              <span className="font-medium text-[#f7f8fb]">Commissions:</span>{' '}
+                              Adnaan {formatCurrency(row.commissionsAdnaan)} + Meme{' '}
+                              {formatCurrency(row.commissionsMeme)}
+                            </p>
+                            <p className="font-medium text-[#f7f8fb]">
+                              Total Costs:{' '}
+                              {formatCurrency(
+                                row.materials +
+                                  row.subcontractors +
+                                  row.otherExpenses +
+                                  row.commissionsAdnaan +
+                                  row.commissionsMeme,
+                              )}
+                            </p>
+                          </div>
+                        </DarkTableCell>
+                      </DarkTableRow>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </DarkTable>
+        </DarkTableContainer>
+      </DataSurface>
     </div>
   );
 }

@@ -1,5 +1,13 @@
 import { formatCurrency } from '@/lib/formatters';
 import { useCommissionReport } from '@/hooks/use-financial-reports';
+import { DataSurface } from '@/components/ui/data-surface';
+import {
+  DarkTable,
+  DarkTableCell,
+  DarkTableContainer,
+  DarkTableHeader,
+  DarkTableRow,
+} from '@/components/ui/dark-table';
 import type { CommissionSummaryPerson } from '@fencetastic/shared';
 
 interface CommissionReportProps {
@@ -15,65 +23,64 @@ function PersonTable({
   showAimann: boolean;
 }) {
   return (
-    <div className="space-y-2">
-      <h4 className="text-sm font-semibold text-slate-800">{person.name}</h4>
-      <div className="rounded-lg border border-black/5 overflow-hidden">
-        <table className="w-full text-sm">
+    <div className="space-y-3">
+      <h4 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#f7f8fb]">
+        {person.name}
+      </h4>
+      <DarkTableContainer>
+        <DarkTable>
           <thead>
-            <tr className="border-b border-black/5 text-xs text-slate-500">
-              <th className="text-left py-2 px-4">Project</th>
-              <th className="text-right py-2 px-4">Project Total</th>
-              <th className="text-right py-2 px-4">Commission</th>
+            <tr>
+              <DarkTableHeader sticky>Project</DarkTableHeader>
+              <DarkTableHeader sticky className="text-right">Project Total</DarkTableHeader>
+              <DarkTableHeader sticky className="text-right">Commission</DarkTableHeader>
             </tr>
           </thead>
           <tbody>
             {person.rows.length === 0 && (
-              <tr>
-                <td colSpan={3} className="py-4 text-center text-slate-500 text-xs">
+              <DarkTableRow>
+                <DarkTableCell colSpan={3} className="py-6 text-center text-xs text-[#8f9aae]">
                   No entries
-                </td>
-              </tr>
+                </DarkTableCell>
+              </DarkTableRow>
             )}
             {person.rows.map((row) => (
-              <tr
-                key={row.projectId}
-                className="border-b border-black/5 hover:bg-slate-50/60 transition-colors"
-              >
-                <td className="py-2 px-4 font-medium">{row.customer}</td>
-                <td className="py-2 px-4 text-right">{formatCurrency(row.projectTotal)}</td>
-                <td className="py-2 px-4 text-right text-emerald-600">
+              <DarkTableRow key={row.projectId}>
+                <DarkTableCell className="font-medium">{row.customer}</DarkTableCell>
+                <DarkTableCell numeric>{formatCurrency(row.projectTotal)}</DarkTableCell>
+                <DarkTableCell numeric className="font-semibold text-emerald-400">
                   {formatCurrency(row.commission)}
-                </td>
-              </tr>
+                </DarkTableCell>
+              </DarkTableRow>
             ))}
           </tbody>
           <tfoot>
-            <tr className="border-t border-black/5 font-semibold text-sm">
-              <td className="py-2 px-4">Period Total</td>
-              <td className="py-2 px-4" />
-              <td className="py-2 px-4 text-right text-emerald-600">
+            <DarkTableRow className="bg-white/[0.03] font-semibold">
+              <DarkTableCell>Period Total</DarkTableCell>
+              <DarkTableCell />
+              <DarkTableCell numeric className="text-emerald-400">
                 {formatCurrency(person.periodTotal)}
-              </td>
-            </tr>
+              </DarkTableCell>
+            </DarkTableRow>
             {showAimann && person.aimannDeductions > 0 && (
-              <tr className="text-sm">
-                <td className="py-1 px-4 text-slate-600">Aimann Deductions</td>
-                <td className="py-1 px-4" />
-                <td className="py-1 px-4 text-right text-red-500">
+              <DarkTableRow className="text-sm">
+                <DarkTableCell className="text-[#9aa6bb]">Aimann Deductions</DarkTableCell>
+                <DarkTableCell />
+                <DarkTableCell numeric className="text-rose-400">
                   -{formatCurrency(person.aimannDeductions)}
-                </td>
-              </tr>
+                </DarkTableCell>
+              </DarkTableRow>
             )}
-            <tr className="font-bold text-sm bg-slate-50/60">
-              <td className="py-2 px-4">Net Payout</td>
-              <td className="py-2 px-4" />
-              <td className="py-2 px-4 text-right text-emerald-600">
+            <DarkTableRow className="bg-white/[0.05] font-bold">
+              <DarkTableCell>Net Payout</DarkTableCell>
+              <DarkTableCell />
+              <DarkTableCell numeric className="text-emerald-400">
                 {formatCurrency(person.netPayout)}
-              </td>
-            </tr>
+              </DarkTableCell>
+            </DarkTableRow>
           </tfoot>
-        </table>
-      </div>
+        </DarkTable>
+      </DarkTableContainer>
     </div>
   );
 }
@@ -83,14 +90,13 @@ export function CommissionReport({ dateFrom, dateTo }: CommissionReportProps) {
 
   if (isLoading) {
     return (
-      <div className="rounded-2xl border border-black/5 bg-white/70 backdrop-blur-sm shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-slate-950 mb-4">Commission Report</h3>
+      <DataSurface title="Commission Report" eyebrow="Reports">
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-10 animate-pulse rounded bg-slate-200" />
+            <div key={i} className="h-10 animate-pulse rounded bg-white/5" />
           ))}
         </div>
-      </div>
+      </DataSurface>
     );
   }
 
@@ -104,42 +110,36 @@ export function CommissionReport({ dateFrom, dateTo }: CommissionReportProps) {
 
   if (!data) return null;
 
-  const totalAdnaan =
-    data.settled.adnaan.netPayout + data.pending.adnaan.netPayout;
-  const totalMeme =
-    data.settled.meme.netPayout + data.pending.meme.netPayout;
+  const totalAdnaan = data.settled.adnaan.netPayout + data.pending.adnaan.netPayout;
+  const totalMeme = data.settled.meme.netPayout + data.pending.meme.netPayout;
 
   return (
     <div className="space-y-6">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="rounded-2xl border border-black/5 bg-white/70 backdrop-blur-sm shadow-sm p-6">
-          <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <DataSurface eyebrow="Commissions" title="Total Adnaan Payout">
+          <p className="text-xs font-semibold uppercase tracking-widest text-[#8f9aae]">
             Total Adnaan Payout
           </p>
-          <p className="mt-2 text-2xl font-bold text-emerald-600">{formatCurrency(totalAdnaan)}</p>
-        </div>
-        <div className="rounded-2xl border border-black/5 bg-white/70 backdrop-blur-sm shadow-sm p-6">
-          <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+          <p className="mt-2 text-2xl font-bold text-emerald-400">{formatCurrency(totalAdnaan)}</p>
+        </DataSurface>
+        <DataSurface eyebrow="Commissions" title="Total Meme Payout">
+          <p className="text-xs font-semibold uppercase tracking-widest text-[#8f9aae]">
             Total Meme Payout
           </p>
-          <p className="mt-2 text-2xl font-bold text-emerald-600">{formatCurrency(totalMeme)}</p>
-        </div>
+          <p className="mt-2 text-2xl font-bold text-emerald-400">{formatCurrency(totalMeme)}</p>
+        </DataSurface>
       </div>
 
-      {/* Settled Section */}
-      <div className="rounded-2xl border border-black/5 bg-white/70 backdrop-blur-sm shadow-sm p-6 space-y-6">
-        <h3 className="text-lg font-semibold text-slate-950">Settled</h3>
+      <DataSurface title="Settled" eyebrow="Commission Ledger" contentClassName="space-y-6">
         <PersonTable person={data.settled.adnaan} showAimann />
         <PersonTable person={data.settled.meme} showAimann={false} />
-      </div>
+      </DataSurface>
 
-      {/* Pending Section */}
-      <div className="rounded-2xl border border-black/5 bg-white/70 backdrop-blur-sm shadow-sm p-6 space-y-6">
-        <h3 className="text-lg font-semibold text-slate-950">Pending (all unsettled)</h3>
+      <DataSurface title="Pending" eyebrow="Commission Ledger" contentClassName="space-y-6">
+        <p className="text-sm text-[#9aa6bb]">All unsettled commissions awaiting payout.</p>
         <PersonTable person={data.pending.adnaan} showAimann />
         <PersonTable person={data.pending.meme} showAimann={false} />
-      </div>
+      </DataSurface>
     </div>
   );
 }

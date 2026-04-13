@@ -4,6 +4,14 @@ import { TransactionType } from '@fencetastic/shared';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DataSurface } from '@/components/ui/data-surface';
+import {
+  DarkTable,
+  DarkTableCell,
+  DarkTableContainer,
+  DarkTableHeader,
+  DarkTableRow,
+} from '@/components/ui/dark-table';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 
 interface FinancesTransactionTableProps {
@@ -23,13 +31,18 @@ interface FinancesTransactionTableProps {
 
 function EmptyState({ onClearFilters }: { onClearFilters: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-[24px] border border-dashed border-slate-300 bg-white/55 px-6 py-12 text-center">
-      <Filter className="h-10 w-10 text-slate-400" />
-      <p className="mt-4 text-lg font-semibold text-slate-950">No transactions found</p>
-      <p className="mt-2 max-w-sm text-sm leading-6 text-slate-600">
+    <div className="flex flex-col items-center justify-center rounded-[24px] border border-dashed border-white/12 bg-white/[0.03] px-6 py-12 text-center">
+      <Filter className="h-10 w-10 text-[#8f9aae]" />
+      <p className="mt-4 text-lg font-semibold text-[#f7f8fb]">No transactions found</p>
+      <p className="mt-2 max-w-sm text-sm leading-6 text-[#9aa6bb]">
         Try broadening the search or clearing the current filters to reveal more of the ledger.
       </p>
-      <Button type="button" variant="outline" onClick={onClearFilters} className="mt-5 rounded-2xl border-black/10 bg-white/70">
+      <Button
+        type="button"
+        variant="outline"
+        onClick={onClearFilters}
+        className="mt-5 rounded-2xl border-white/12 bg-white/[0.04] text-[#f7f8fb] hover:bg-white/[0.08]"
+      >
         Clear Filters
       </Button>
     </div>
@@ -53,30 +66,16 @@ export function FinancesTransactionTable({
   const hasFilters = Boolean(query.search || query.type || query.category || query.dateFrom || query.dateTo);
 
   return (
-    <section className="shell-panel rounded-[32px] p-4 md:p-6">
-      <div className="flex flex-col gap-4 border-b border-black/5 pb-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-            Transaction Ledger
-          </p>
-          <h2 className="mt-3 text-2xl font-semibold tracking-[-0.05em] text-slate-950">
-            Recent transactions
-          </h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            Filter and review every ledger entry from this page.
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-4 flex flex-col gap-3 rounded-[28px] border border-black/5 bg-white/55 p-3 lg:flex-row lg:items-center lg:justify-between">
+    <DataSurface title="Recent transactions" eyebrow="Transaction Ledger" contentClassName="space-y-4">
+      <div className="flex flex-col gap-3 rounded-[28px] border border-white/8 bg-white/[0.03] p-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-4 py-2 text-sm font-medium text-white shadow-sm">
+          <div className="inline-flex items-center gap-2 rounded-2xl bg-[#f0b56f] px-4 py-2 text-sm font-medium text-[#11161d] shadow-sm">
             <SlidersHorizontal className="h-4 w-4" />
             Filters
           </div>
 
           <Select value={typeFilter} onValueChange={(value) => onTypeFilterChange(value as 'ALL' | TransactionType)}>
-            <SelectTrigger className="h-10 w-full rounded-2xl border-black/10 bg-white/80 shadow-sm sm:w-[180px]">
+            <SelectTrigger className="h-10 w-full rounded-2xl border-white/10 bg-[#0d1218] text-[#dbe2ee] shadow-sm sm:w-[180px]">
               <SelectValue placeholder="All Types" />
             </SelectTrigger>
             <SelectContent>
@@ -87,7 +86,7 @@ export function FinancesTransactionTable({
           </Select>
 
           <Select value={categoryFilter} onValueChange={onCategoryFilterChange}>
-            <SelectTrigger className="h-10 w-full rounded-2xl border-black/10 bg-white/80 shadow-sm sm:w-[220px]">
+            <SelectTrigger className="h-10 w-full rounded-2xl border-white/10 bg-[#0d1218] text-[#dbe2ee] shadow-sm sm:w-[220px]">
               <SelectValue placeholder="All Categories" />
             </SelectTrigger>
             <SelectContent>
@@ -102,80 +101,83 @@ export function FinancesTransactionTable({
         </div>
 
         {hasFilters && (
-          <Button type="button" variant="ghost" onClick={onClearFilters} className="h-10 rounded-2xl border border-black/5 bg-white/60 px-4 text-slate-700 hover:bg-white">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onClearFilters}
+            className="h-10 rounded-2xl border border-white/8 bg-white/[0.04] px-4 text-[#dbe2ee] hover:bg-white/[0.08]"
+          >
             Clear Filters
           </Button>
         )}
       </div>
 
       {error && (
-        <div className="mt-4 rounded-[20px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+        <div className="rounded-[20px] border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
           {error}
         </div>
       )}
 
-      <div className="mt-4 overflow-hidden rounded-[28px] border border-black/5 bg-white/70">
+      <DarkTableContainer>
         {isLoading ? (
-          <div className="p-10 text-center text-sm text-slate-500">Loading transactions...</div>
+          <div className="p-10 text-center text-sm text-[#9aa6bb]">Loading transactions...</div>
         ) : transactions.length === 0 ? (
           <div className="p-6">
             <EmptyState onClearFilters={onClearFilters} />
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full border-collapse text-left">
-              <thead className="bg-slate-950 text-white">
-                <tr>
-                  <th className="px-5 py-4 text-[10px] font-semibold uppercase tracking-[0.24em] text-white/70">Date</th>
-                  <th className="px-5 py-4 text-[10px] font-semibold uppercase tracking-[0.24em] text-white/70">Type</th>
-                  <th className="px-5 py-4 text-[10px] font-semibold uppercase tracking-[0.24em] text-white/70">Category</th>
-                  <th className="px-5 py-4 text-[10px] font-semibold uppercase tracking-[0.24em] text-white/70">Description</th>
-                  <th className="px-5 py-4 text-[10px] font-semibold uppercase tracking-[0.24em] text-white/70">Payee</th>
-                  <th className="px-5 py-4 text-[10px] font-semibold uppercase tracking-[0.24em] text-right text-white/70">Amount</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {transactions.map((tx, index) => (
-                  <tr key={tx.id} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'}>
-                    <td className="px-5 py-4 text-sm text-slate-600">{formatDate(tx.date)}</td>
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-2">
-                        <Badge
-                          className={
-                            tx.type === TransactionType.INCOME
-                              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                              : 'border-rose-200 bg-rose-50 text-rose-700'
-                          }
-                          variant="outline"
-                        >
-                          {tx.type === TransactionType.INCOME ? 'Income' : 'Expense'}
+          <DarkTable>
+            <thead>
+              <tr>
+                <DarkTableHeader sticky>Date</DarkTableHeader>
+                <DarkTableHeader sticky>Type</DarkTableHeader>
+                <DarkTableHeader sticky>Category</DarkTableHeader>
+                <DarkTableHeader sticky>Description</DarkTableHeader>
+                <DarkTableHeader sticky>Payee</DarkTableHeader>
+                <DarkTableHeader sticky className="text-right">Amount</DarkTableHeader>
+              </tr>
+            </thead>
+            <tbody>
+              {transactions.map((tx) => (
+                <DarkTableRow key={tx.id}>
+                  <DarkTableCell className="text-[#9aa6bb]">{formatDate(tx.date)}</DarkTableCell>
+                  <DarkTableCell>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        className={
+                          tx.type === TransactionType.INCOME
+                            ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-300'
+                            : 'border-rose-400/30 bg-rose-500/10 text-rose-300'
+                        }
+                        variant="outline"
+                      >
+                        {tx.type === TransactionType.INCOME ? 'Income' : 'Expense'}
+                      </Badge>
+                      {tx.isAutoGenerated && (
+                        <Badge className="border-white/12 bg-white/[0.06] text-[#9aa6bb]" variant="outline">
+                          auto
                         </Badge>
-                        {tx.isAutoGenerated && (
-                          <Badge className="border-slate-200 bg-slate-100 text-slate-500" variant="outline">
-                            auto
-                          </Badge>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-5 py-4 text-sm font-medium text-slate-900">{tx.category}</td>
-                    <td className="px-5 py-4 text-sm text-slate-600">{tx.description}</td>
-                    <td className="px-5 py-4 text-sm text-slate-500">{tx.payee ?? '—'}</td>
-                    <td className="px-5 py-4 text-right text-sm font-semibold">
-                      <span className={tx.type === TransactionType.INCOME ? 'text-emerald-700' : 'text-rose-700'}>
-                        {tx.type === TransactionType.INCOME ? '+' : '-'}
-                        {formatCurrency(tx.amount)}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      )}
+                    </div>
+                  </DarkTableCell>
+                  <DarkTableCell className="font-medium">{tx.category}</DarkTableCell>
+                  <DarkTableCell className="text-[#dbe2ee]">{tx.description}</DarkTableCell>
+                  <DarkTableCell className="text-[#9aa6bb]">{tx.payee ?? '—'}</DarkTableCell>
+                  <DarkTableCell numeric className="font-semibold">
+                    <span className={tx.type === TransactionType.INCOME ? 'text-emerald-300' : 'text-rose-300'}>
+                      {tx.type === TransactionType.INCOME ? '+' : '-'}
+                      {formatCurrency(tx.amount)}
+                    </span>
+                  </DarkTableCell>
+                </DarkTableRow>
+              ))}
+            </tbody>
+          </DarkTable>
         )}
 
         {pagination && pagination.totalPages > 1 && (
-          <div className="flex flex-col gap-3 border-t border-black/5 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-slate-600">
+          <div className="flex flex-col gap-3 border-t border-white/8 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-[#9aa6bb]">
               Page {pagination.page} of {pagination.totalPages} - {pagination.total} transactions
             </p>
             <div className="flex gap-2">
@@ -184,7 +186,7 @@ export function FinancesTransactionTable({
                 variant="outline"
                 disabled={pagination.page <= 1}
                 onClick={() => onPageChange(Math.max(1, pagination.page - 1))}
-                className="rounded-2xl border-black/10 bg-white/70"
+                className="rounded-2xl border-white/10 bg-white/[0.04] text-[#f7f8fb] hover:bg-white/[0.08]"
               >
                 Previous
               </Button>
@@ -193,14 +195,14 @@ export function FinancesTransactionTable({
                 variant="outline"
                 disabled={pagination.page >= pagination.totalPages}
                 onClick={() => onPageChange(pagination.page + 1)}
-                className="rounded-2xl border-black/10 bg-white/70"
+                className="rounded-2xl border-white/10 bg-white/[0.04] text-[#f7f8fb] hover:bg-white/[0.08]"
               >
                 Next
               </Button>
             </div>
           </div>
         )}
-      </div>
-    </section>
+      </DarkTableContainer>
+    </DataSurface>
   );
 }
