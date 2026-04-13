@@ -77,8 +77,8 @@ export function GridViewSummaryStrip({
   const hasUnavailableState = Boolean(error);
   const projectValue = sum(projects.map((project) => project.projectTotal));
   const collected = sum(projects.map((project) => project.moneyReceived));
-  const receivables = sum(projects.map((project) => project.outstandingReceivables));
-  const netProfit = sum(projects.map((project) => project.netProfitDollar));
+  const receivables = sum(projects.map((project) => project.outstandingReceivables ?? 0));
+  const netProfit = sum(projects.map((project) => project.netProfitDollar ?? 0));
   const activeRows = projects.filter((project) =>
     [ProjectStatus.ESTIMATE, ProjectStatus.OPEN, ProjectStatus.IN_PROGRESS].includes(project.status)
   ).length;

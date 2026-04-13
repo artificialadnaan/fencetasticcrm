@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import {
   type DashboardFollowUpTask,
+  type DashboardCommandItem,
   EstimateFollowUpSequenceStatus,
   EstimateFollowUpTaskKind,
   EstimateFollowUpTaskStatus,
@@ -19,6 +20,39 @@ function d(val: Prisma.Decimal | null | undefined): number {
 
 function toDateString(date: Date): string {
   return date.toISOString().split('T')[0];
+}
+
+function resolveOutstandingReceivables(project: {
+  projectTotal: Prisma.Decimal | null;
+  customerPaid: Prisma.Decimal | null;
+  importedOutstandingReceivables?: Prisma.Decimal | null;
+  receivablesSource?: string | null;
+}) : { amount: number; unresolvedImported: boolean } {
+  const computedOutstanding = Math.max(d(project.projectTotal) - d(project.customerPaid), 0);
+
+  if (
+    (project.receivablesSource === 'IMPORTED_ACTUAL' ||
+      project.receivablesSource === 'RECONCILIATION_REQUIRED')
+  ) {
+    if (
+      project.importedOutstandingReceivables !== null &&
+      project.importedOutstandingReceivables !== undefined
+    ) {
+      return {
+        amount: Math.max(d(project.importedOutstandingReceivables), 0),
+        unresolvedImported: false,
+      };
+    }
+    return {
+      amount: computedOutstanding,
+      unresolvedImported: true,
+    };
+  }
+
+  return {
+    amount: computedOutstanding,
+    unresolvedImported: false,
+  };
 }
 
 export interface MonthlyRevenueExpense {
@@ -142,6 +176,11 @@ export interface DashboardData {
     outstandingReceivables: number;
     aimannDebtBalance: number;
   };
+  commandQueue: {
+    actionNeeded: DashboardCommandItem[];
+    moneyAtRisk: DashboardCommandItem[];
+    scheduleBlockers: DashboardCommandItem[];
+  };
   monthlyRevenueExpenses: MonthlyRevenueExpense[];
   projectTypeBreakdown: ProjectTypeBreakdown[];
   todaysFollowUps: DashboardFollowUpTask[];
@@ -167,6 +206,8 @@ export async function getDashboardData(): Promise<DashboardData> {
     followUpProjects,
     recentNotes,
     upcomingInstallProjects,
+    moneyRiskProjects,
+    scheduleBlockerProjects,
   ] = await Promise.all([
     // Revenue MTD: sum moneyReceived from snapshots for COMPLETED this month
     prisma.commissionSnapshot.findMany({
@@ -191,7 +232,12 @@ export async function getDashboardData(): Promise<DashboardData> {
         isDeleted: false,
         status: { not: ProjectStatus.ESTIMATE },
       },
-      select: { projectTotal: true, customerPaid: true },
+      select: {
+        projectTotal: true,
+        customerPaid: true,
+        importedOutstandingReceivables: true,
+        receivablesSource: true,
+      },
     }),
 
     // Aimann debt balance
@@ -287,6 +333,38 @@ export async function getDashboardData(): Promise<DashboardData> {
       orderBy: { installDate: 'asc' },
       take: 5,
     }),
+    prisma.project.findMany({
+      where: {
+        isDeleted: false,
+        status: { in: [ProjectStatus.OPEN, ProjectStatus.IN_PROGRESS, ProjectStatus.COMPLETED] },
+      },
+      select: {
+        id: true,
+        customer: true,
+        address: true,
+        projectTotal: true,
+        customerPaid: true,
+        importedOutstandingReceivables: true,
+        receivablesSource: true,
+        financeProjectMode: true,
+      },
+      orderBy: { updatedAt: 'desc' },
+    }),
+    prisma.project.findMany({
+      where: {
+        isDeleted: false,
+        status: { in: [ProjectStatus.OPEN, ProjectStatus.IN_PROGRESS] },
+        subcontractor: null,
+      },
+      select: {
+        id: true,
+        customer: true,
+        address: true,
+        financeProjectMode: true,
+      },
+      take: 5,
+      orderBy: { installDate: 'asc' },
+    }),
   ]);
 
   // KPIs
@@ -296,10 +374,7 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   const outstandingReceivables = Number(
     receivablesAgg
-      .reduce((sum, p) => {
-        const owed = d(p.projectTotal) - d(p.customerPaid);
-        return sum + (owed > 0 ? owed : 0);
-      }, 0)
+      .reduce((sum, p) => sum + resolveOutstandingReceivables(p).amount, 0)
       .toFixed(2)
   );
 
@@ -377,12 +452,68 @@ export async function getDashboardData(): Promise<DashboardData> {
     installDate: toDateString(p.installDate),
   }));
 
+  const actionNeeded: DashboardCommandItem[] = todaysFollowUps.slice(0, 5).map((task) => ({
+    id: `followup-${task.id}`,
+    projectId: task.projectId,
+    customer: task.customer,
+    address: task.address,
+    title: 'Follow-up due',
+    reason: `${task.kind.replaceAll('_', ' ')} follow-up due ${task.dueDate}`,
+    urgency: task.dueDate < toDateString(now) ? 'HIGH' : 'MEDIUM',
+    financeProjectMode: null,
+  }));
+
+  const moneyAtRisk: DashboardCommandItem[] = (moneyRiskProjects ?? [])
+    .map((project) => {
+      const receivableState = resolveOutstandingReceivables(project);
+      const outstanding = receivableState.amount;
+      const urgency: DashboardCommandItem['urgency'] =
+        outstanding >= 5000
+          ? 'HIGH'
+          : outstanding >= 1500
+            ? 'MEDIUM'
+            : 'LOW';
+      return {
+        id: `risk-${project.id}`,
+        projectId: project.id,
+        customer: project.customer,
+        address: project.address,
+        title: receivableState.unresolvedImported ? 'Imported receivable needs reconciliation' : 'Outstanding receivable',
+        reason: receivableState.unresolvedImported
+          ? `Spreadsheet receivable missing; computed fallback ${outstanding.toFixed(2)}`
+          : `Balance due ${outstanding.toFixed(2)}`,
+        urgency,
+        financeProjectMode: project.financeProjectMode as DashboardCommandItem['financeProjectMode'],
+        outstanding,
+      };
+    })
+    .filter((project) => project.outstanding > 0)
+    .sort((left, right) => right.outstanding - left.outstanding)
+    .slice(0, 5)
+    .map(({ outstanding: _outstanding, ...item }) => item);
+
+  const scheduleBlockers: DashboardCommandItem[] = (scheduleBlockerProjects ?? []).map((project) => ({
+    id: `schedule-${project.id}`,
+    projectId: project.id,
+    customer: project.customer,
+    address: project.address,
+    title: 'Crew assignment missing',
+    reason: 'Project is active with no subcontractor assigned',
+    urgency: 'MEDIUM',
+    financeProjectMode: project.financeProjectMode as DashboardCommandItem['financeProjectMode'],
+  }));
+
   return {
     kpis: {
       revenueMTD,
       openProjects: openProjectsCount,
       outstandingReceivables,
       aimannDebtBalance,
+    },
+    commandQueue: {
+      actionNeeded,
+      moneyAtRisk,
+      scheduleBlockers,
     },
     monthlyRevenueExpenses,
     projectTypeBreakdown,

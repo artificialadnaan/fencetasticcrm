@@ -361,7 +361,7 @@ function buildColumns(
       cell: info => {
         const v = info.getValue();
         return (
-          <span className={cn('whitespace-nowrap tabular-nums font-semibold', v >= 0 ? 'text-emerald-700' : 'text-rose-600')}>
+          <span className={cn('whitespace-nowrap tabular-nums font-semibold', v == null || v >= 0 ? 'text-emerald-700' : 'text-rose-600')}>
             {formatCurrency(v)}
           </span>
         );
@@ -374,8 +374,8 @@ function buildColumns(
       cell: info => {
         const v = info.getValue();
         return (
-          <span className={cn('whitespace-nowrap tabular-nums font-semibold', v >= 0 ? 'text-emerald-700' : 'text-rose-600')}>
-            {v.toFixed(1)}%
+          <span className={cn('whitespace-nowrap tabular-nums font-semibold', v == null || v >= 0 ? 'text-emerald-700' : 'text-rose-600')}>
+            {v == null ? '—' : `${v.toFixed(1)}%`}
           </span>
         );
       },
@@ -416,7 +416,7 @@ function buildColumns(
       cell: info => {
         const v = info.getValue();
         return (
-          <span className={cn('whitespace-nowrap tabular-nums font-semibold', v >= 0 ? 'text-emerald-700' : 'text-rose-600')}>
+          <span className={cn('whitespace-nowrap tabular-nums font-semibold', v == null || v >= 0 ? 'text-emerald-700' : 'text-rose-600')}>
             {formatCurrency(v)}
           </span>
         );
@@ -429,8 +429,8 @@ function buildColumns(
       cell: info => {
         const v = info.getValue();
         return (
-          <span className={cn('whitespace-nowrap tabular-nums font-semibold', v >= 0 ? 'text-emerald-700' : 'text-rose-600')}>
-            {v.toFixed(1)}%
+          <span className={cn('whitespace-nowrap tabular-nums font-semibold', v == null || v >= 0 ? 'text-emerald-700' : 'text-rose-600')}>
+            {v == null ? '—' : `${v.toFixed(1)}%`}
           </span>
         );
       },

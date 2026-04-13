@@ -7,9 +7,19 @@ export const projectColumns: ColumnDef<ProjectListItem>[] = [
   {
     accessorKey: 'customer',
     header: 'Customer',
-    cell: ({ row }) => (
-      <span className="font-medium">{row.getValue('customer')}</span>
-    ),
+    cell: ({ row }) => {
+      const mode = row.original.financeProjectMode;
+      return (
+        <div className="space-y-1">
+          <span className="font-medium">{row.getValue('customer')}</span>
+          {mode ? (
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              {mode.replace(/_/g, ' ')}
+            </div>
+          ) : null}
+        </div>
+      );
+    },
   },
   {
     accessorKey: 'address',
@@ -47,9 +57,9 @@ export const projectColumns: ColumnDef<ProjectListItem>[] = [
     header: 'Receivable',
     meta: { className: 'hidden lg:table-cell' },
     cell: ({ row }) => {
-      const receivable = row.getValue('receivable') as number;
+      const receivable = row.getValue('receivable') as number | null;
       return (
-        <span className={`font-mono ${receivable > 0 ? 'text-amber-600' : 'text-green-600'}`}>
+        <span className={`font-mono ${receivable != null && receivable > 0 ? 'text-amber-600' : 'text-green-600'}`}>
           {formatCurrency(receivable)}
         </span>
       );
@@ -60,9 +70,9 @@ export const projectColumns: ColumnDef<ProjectListItem>[] = [
     header: 'Profit %',
     meta: { className: 'hidden lg:table-cell' },
     cell: ({ row }) => {
-      const pct = row.getValue('profitPercent') as number;
+      const pct = row.getValue('profitPercent') as number | null;
       return (
-        <span className={`font-mono ${pct < 0 ? 'text-red-600' : 'text-green-600'}`}>
+        <span className={`font-mono ${pct != null && pct < 0 ? 'text-red-600' : 'text-green-600'}`}>
           {formatPercent(pct)}
         </span>
       );

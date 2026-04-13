@@ -3,7 +3,7 @@
  * formatCurrency(1234.5) → "$1,234.50"
  */
 export function formatCurrency(value: number | null | undefined): string {
-  if (value == null || isNaN(value)) return '$0.00';
+  if (value == null || isNaN(value)) return '—';
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -34,6 +34,7 @@ export function formatDate(dateStr: string | null | undefined): string {
  * Format a percentage with one decimal place.
  * formatPercent(23.5) → "23.5%"
  */
-export function formatPercent(value: number): string {
+export function formatPercent(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return '—';
   return `${value.toFixed(1)}%`;
 }

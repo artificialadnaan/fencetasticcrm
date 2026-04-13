@@ -18,11 +18,23 @@ export function ProjectBreakdownTable({
   page,
   onPageChange,
 }: ProjectBreakdownTableProps) {
+  const modeStyles: Record<CommissionByProject['financeProjectMode'], string> = {
+    IMPORTED: 'bg-emerald-100 text-emerald-800',
+    COMPUTED: 'bg-slate-200 text-slate-700',
+    MANUAL_OVERRIDE: 'bg-amber-100 text-amber-800',
+    MIXED: 'bg-orange-100 text-orange-800',
+    RECONCILIATION_REQUIRED: 'bg-rose-100 text-rose-800',
+  };
+
   return (
     <section className="shell-panel rounded-[28px] p-6 md:p-8">
       <h2 className="text-2xl font-semibold tracking-[-0.05em] text-slate-950">
         Per-Project Breakdown
       </h2>
+      <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+        Imported historical settlements stay tagged as imported, while CRM-native and manually adjusted
+        rows surface their provenance directly in the table.
+      </p>
 
       <div className="mt-6 rounded-[28px] border border-black/5 bg-white/55 overflow-hidden">
         <div className="overflow-x-auto">
@@ -61,7 +73,19 @@ export function ProjectBreakdownTable({
                     key={row.projectId}
                     className={`border-b border-black/5 transition-colors hover:bg-slate-50/60 ${i % 2 === 0 ? '' : 'bg-slate-50/40'}`}
                   >
-                    <td className="px-4 py-3 font-medium text-slate-950">{row.customer}</td>
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-slate-950">{row.customer}</div>
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-[0.12em] ${modeStyles[row.financeProjectMode]}`}
+                        >
+                          {row.financeProjectMode.replace(/_/g, ' ')}
+                        </span>
+                        {row.importedSource ? (
+                          <span className="text-xs text-slate-500">{row.importedSource}</span>
+                        ) : null}
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-right text-slate-950">{formatCurrency(row.projectTotal)}</td>
                     <td className="hidden md:table-cell px-4 py-3 text-right text-green-600">
                       {formatCurrency(row.adnaanCommission)}

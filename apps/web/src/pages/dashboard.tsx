@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useDashboard } from '@/hooks/use-dashboard';
 import { usePageShell } from '@/components/layout/page-shell';
 import { DashboardKpiStrip } from '@/components/dashboard/redesign/dashboard-kpi-strip';
+import { DashboardCommandQueue } from '@/components/dashboard/redesign/dashboard-command-queue';
 import { DashboardRevenuePanel } from '@/components/dashboard/redesign/dashboard-revenue-panel';
 import { DashboardProjectBreakdown } from '@/components/dashboard/redesign/dashboard-project-breakdown';
 import { DashboardFollowupsPanel } from '@/components/dashboard/redesign/dashboard-followups-panel';
@@ -85,6 +86,8 @@ export default function DashboardPage() {
         )}
 
         <DashboardKpiStrip kpis={data?.kpis ?? null} isLoading={isLoading} />
+
+        <DashboardCommandQueue queue={data?.commandQueue ?? null} isLoading={isLoading} />
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.9fr)]">
           <DashboardRevenuePanel

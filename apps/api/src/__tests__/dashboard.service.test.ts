@@ -3,6 +3,7 @@ import {
   EstimateFollowUpSequenceStatus,
   EstimateFollowUpTaskKind,
   EstimateFollowUpTaskStatus,
+  FinanceFieldSource,
   ProjectStatus,
 } from '@fencetastic/shared';
 
@@ -243,6 +244,78 @@ describe('dashboard.service follow-up reads', () => {
     const result = await getDashboardData();
 
     expect(result.todaysFollowUps).toEqual([]);
+
+    vi.useRealTimers();
+  });
+
+  it('uses imported receivables truth for the outstanding receivables KPI', async () => {
+    prismaMock.prisma.commissionSnapshot.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    prismaMock.prisma.project.count.mockResolvedValue(2);
+    prismaMock.prisma.project.findMany
+      .mockResolvedValueOnce([
+        {
+          projectTotal: 10000,
+          customerPaid: 9800,
+          importedOutstandingReceivables: 0,
+          receivablesSource: FinanceFieldSource.IMPORTED_ACTUAL,
+        },
+        {
+          projectTotal: 12000,
+          customerPaid: 11000,
+          importedOutstandingReceivables: 3500,
+          receivablesSource: FinanceFieldSource.IMPORTED_ACTUAL,
+        },
+        {
+          projectTotal: 5000,
+          customerPaid: 4500,
+          importedOutstandingReceivables: null,
+          receivablesSource: FinanceFieldSource.CRM_COMPUTED,
+        },
+        {
+          projectTotal: 9000,
+          customerPaid: 7000,
+          importedOutstandingReceivables: null,
+          receivablesSource: FinanceFieldSource.IMPORTED_ACTUAL,
+        },
+      ])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 'p-imported-missing',
+          customer: 'Imported Missing',
+          address: '77 Ledger St',
+          projectTotal: 9000,
+          customerPaid: 7000,
+          importedOutstandingReceivables: null,
+          receivablesSource: FinanceFieldSource.IMPORTED_ACTUAL,
+          financeProjectMode: 'IMPORTED',
+        },
+      ])
+      .mockResolvedValueOnce([]);
+    prismaMock.prisma.aimannDebtLedger.findFirst.mockResolvedValue(null);
+    prismaMock.prisma.project.groupBy.mockResolvedValue([]);
+    prismaMock.prisma.estimateFollowUpTask.findMany.mockResolvedValue([]);
+    prismaMock.prisma.projectNote.findMany.mockResolvedValue([]);
+
+    const { getDashboardData } = await import('../services/dashboard.service');
+    const result = await getDashboardData();
+
+    expect(result.kpis.outstandingReceivables).toBe(6000);
+    expect(result.commandQueue.moneyAtRisk.find((item) => item.title === 'Imported receivable needs reconciliation')).toEqual(
+      expect.objectContaining({
+        title: 'Imported receivable needs reconciliation',
+      })
+    );
+    expect(prismaMock.prisma.project.findMany.mock.calls[0][0]).toEqual(
+      expect.objectContaining({
+        select: expect.objectContaining({
+          importedOutstandingReceivables: true,
+          receivablesSource: true,
+        }),
+      })
+    );
 
     vi.useRealTimers();
   });

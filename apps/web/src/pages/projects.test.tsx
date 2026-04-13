@@ -40,6 +40,7 @@ function makeProject(overrides: Partial<Record<string, unknown>> = {}) {
     address: '123 Oak St',
     fenceType: 'WOOD',
     status: 'OPEN',
+    financeProjectMode: 'IMPORTED',
     projectTotal: 5000,
     moneyReceived: 4500,
     customerPaid: 1500,

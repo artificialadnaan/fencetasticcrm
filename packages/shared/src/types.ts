@@ -434,13 +434,13 @@ export interface GridProjectRow {
   subPayment2: number | null;
   commissionOwed: number | null;
   commissionPaid: number | null;
-  outstandingPayables: number;
-  profitDollar: number;
-  profitPercent: number;
+  outstandingPayables: number | null;
+  profitDollar: number | null;
+  profitPercent: number | null;
   memesCommission: number | null;
   aimannsCommission: number | null;
-  netProfitDollar: number;
-  netProfitPercent: number;
+  netProfitDollar: number | null;
+  netProfitPercent: number | null;
   fenceType: FenceType;
 }
 
@@ -561,14 +561,14 @@ export interface ProjectListQuery {
 }
 
 export interface CommissionPreview {
-  moneyReceived: number;
-  totalExpenses: number;
-  adnaanCommission: number;
-  memeCommission: number;
-  grossProfit: number;
-  aimannDeduction: number;
-  netProfit: number;
-  profitPercent: number;
+  moneyReceived: number | null;
+  totalExpenses: number | null;
+  adnaanCommission: number | null;
+  memeCommission: number | null;
+  grossProfit: number | null;
+  aimannDeduction: number | null;
+  netProfit: number | null;
+  profitPercent: number | null;
 }
 
 export interface ProjectListItem {
@@ -577,12 +577,13 @@ export interface ProjectListItem {
   address: string;
   fenceType: FenceType;
   status: ProjectStatus;
+  financeProjectMode: FinanceProjectMode;
   projectTotal: number;
   moneyReceived: number;
   customerPaid: number;
   installDate: string;
-  receivable: number;
-  profitPercent: number;
+  receivable: number | null;
+  profitPercent: number | null;
 }
 
 export interface ProjectDetail extends Project {
@@ -679,6 +680,8 @@ export interface CommissionByProject {
   aimannDeduction: number;
   netProfit: number;
   completedDate: string;
+  financeProjectMode: FinanceProjectMode;
+  importedSource: string | null;
 }
 
 export interface PipelineProjection {
@@ -759,6 +762,17 @@ export interface DashboardActivityItem {
   createdAt: string;
 }
 
+export interface DashboardCommandItem {
+  id: string;
+  projectId: string;
+  customer: string;
+  address: string;
+  title: string;
+  reason: string;
+  urgency: 'HIGH' | 'MEDIUM' | 'LOW';
+  financeProjectMode?: FinanceProjectMode | null;
+}
+
 export interface DashboardUpcomingInstall {
   id: string;
   customer: string;
@@ -774,6 +788,11 @@ export interface DashboardData {
     openProjects: number;
     outstandingReceivables: number;
     aimannDebtBalance: number;
+  };
+  commandQueue: {
+    actionNeeded: DashboardCommandItem[];
+    moneyAtRisk: DashboardCommandItem[];
+    scheduleBlockers: DashboardCommandItem[];
   };
   monthlyRevenueExpenses: MonthlyRevenueExpense[];
   projectTypeBreakdown: ProjectTypeBreakdown[];

@@ -438,6 +438,232 @@ describe('Project Service', () => {
   });
 
   describe('getProjectById', () => {
+    it('returns finance provenance metadata on project detail responses', async () => {
+      vi.mocked(prisma.project.findUnique).mockResolvedValue({
+        id: 'p-finance',
+        customer: 'Imported Finance Test',
+        address: '321 Ledger Ln',
+        description: 'Imported project',
+        fenceType: FenceType.WOOD,
+        status: ProjectStatus.OPEN,
+        projectTotal: { toNumber: () => 5000 },
+        paymentMethod: PaymentMethod.CASH,
+        moneyReceived: { toNumber: () => 4850 },
+        customerPaid: { toNumber: () => 2500 },
+        forecastedExpenses: { toNumber: () => 1000 },
+        materialsCost: { toNumber: () => 400 },
+        contractDate: new Date('2026-03-26'),
+        installDate: new Date('2026-04-20'),
+        completedDate: null,
+        estimateDate: null,
+        followUpDate: null,
+        linearFeet: null,
+        rateTemplateId: null,
+        subcontractor: null,
+        notes: null,
+        commissionOwed: { toNumber: () => 700 },
+        commissionPaid: { toNumber: () => 200 },
+        memesCommission: { toNumber: () => 300 },
+        aimannsCommission: { toNumber: () => 150 },
+        financeProjectMode: 'IMPORTED',
+        receivablesSource: 'IMPORTED_ACTUAL',
+        payablesSource: 'IMPORTED_ACTUAL',
+        commissionsSource: 'IMPORTED_ACTUAL',
+        profitabilitySource: 'IMPORTED_ACTUAL',
+        importedOutstandingReceivables: { toNumber: () => 0 },
+        importedOutstandingPayables: { toNumber: () => 0 },
+        importedGrossProfit: { toNumber: () => 0 },
+        importedGrossProfitPercent: null,
+        importedNetProfit: { toNumber: () => 0 },
+        importedNetProfitPercent: null,
+        importedAt: new Date('2026-04-01T10:00:00Z'),
+        importedSource: 'Open',
+        lastRecalculatedAt: null,
+        lastManualFinanceEditAt: null,
+        reconciliationRequiredAt: null,
+        reconciliationNotes: null,
+        createdById: 'user-1',
+        isDeleted: false,
+        deletedAt: null,
+        createdAt: new Date('2026-03-26'),
+        updatedAt: new Date('2026-03-26'),
+        subcontractorPayments: [],
+        projectNotes: [],
+        commissionSnapshot: null,
+      } as never);
+      vi.mocked(prisma.subcontractorPayment.aggregate).mockResolvedValue({
+        _sum: { amountOwed: null },
+      } as never);
+      vi.mocked(prisma.transaction.aggregate).mockResolvedValue({
+        _sum: { amount: null },
+        _count: { _all: 0 },
+      } as never);
+      vi.mocked(prisma.aimannDebtLedger.findFirst).mockResolvedValue(null);
+
+      const { getProjectById } = await import('../services/project.service');
+      const result = await getProjectById('p-finance');
+
+      expect(result.financeProjectMode).toBe('IMPORTED');
+      expect(result.receivablesSource).toBe('IMPORTED_ACTUAL');
+      expect(result.importedOutstandingReceivables).toBe(0);
+      expect(result.importedGrossProfitPercent).toBeNull();
+      expect(result.importedSource).toBe('Open');
+    });
+
+    it('prefers imported historical gross and net values in the detail finance preview', async () => {
+      vi.mocked(prisma.project.findUnique).mockResolvedValue({
+        id: 'p-imported-detail',
+        customer: 'Imported Preview Test',
+        address: '789 Audit Ave',
+        description: 'Imported completed project',
+        fenceType: FenceType.WOOD,
+        status: ProjectStatus.COMPLETED,
+        projectTotal: { toNumber: () => 5000 },
+        paymentMethod: PaymentMethod.CASH,
+        moneyReceived: { toNumber: () => 4850 },
+        customerPaid: { toNumber: () => 4850 },
+        forecastedExpenses: { toNumber: () => 1000 },
+        materialsCost: { toNumber: () => 400 },
+        contractDate: new Date('2026-03-26'),
+        installDate: new Date('2026-04-20'),
+        completedDate: new Date('2026-04-20'),
+        estimateDate: null,
+        followUpDate: null,
+        linearFeet: null,
+        rateTemplateId: null,
+        subcontractor: null,
+        notes: null,
+        commissionOwed: { toNumber: () => 700 },
+        commissionPaid: { toNumber: () => 700 },
+        memesCommission: { toNumber: () => 300 },
+        aimannsCommission: { toNumber: () => 150 },
+        financeProjectMode: 'IMPORTED',
+        receivablesSource: 'IMPORTED_ACTUAL',
+        payablesSource: 'IMPORTED_ACTUAL',
+        commissionsSource: 'IMPORTED_ACTUAL',
+        profitabilitySource: 'IMPORTED_ACTUAL',
+        importedOutstandingReceivables: { toNumber: () => 0 },
+        importedOutstandingPayables: { toNumber: () => 0 },
+        importedGrossProfit: { toNumber: () => 2300 },
+        importedGrossProfitPercent: { toNumber: () => 46 },
+        importedNetProfit: { toNumber: () => 1850 },
+        importedNetProfitPercent: { toNumber: () => 37 },
+        importedAt: new Date('2026-04-01T10:00:00Z'),
+        importedSource: 'Completed Projects',
+        lastRecalculatedAt: null,
+        lastManualFinanceEditAt: null,
+        reconciliationRequiredAt: null,
+        reconciliationNotes: null,
+        createdById: 'user-1',
+        isDeleted: false,
+        deletedAt: null,
+        createdAt: new Date('2026-03-26'),
+        updatedAt: new Date('2026-03-26'),
+        subcontractorPayments: [],
+        projectNotes: [],
+        commissionSnapshot: {
+          id: 'snap-1',
+          projectId: 'p-imported-detail',
+          moneyReceived: { toNumber: () => 4800 },
+          totalExpenses: { toNumber: () => 1800 },
+          adnaanCommission: { toNumber: () => 500 },
+          memeCommission: { toNumber: () => 250 },
+          grossProfit: { toNumber: () => 2500 },
+          aimannDeduction: { toNumber: () => 100 },
+          debtBalanceBefore: { toNumber: () => 0 },
+          debtBalanceAfter: { toNumber: () => 0 },
+          netProfit: { toNumber: () => 2150 },
+          settledAt: new Date('2026-04-20'),
+        },
+      } as never);
+      vi.mocked(prisma.subcontractorPayment.aggregate).mockResolvedValue({
+        _sum: { amountOwed: null },
+      } as never);
+      vi.mocked(prisma.transaction.aggregate).mockResolvedValue({
+        _sum: { amount: null },
+        _count: { _all: 0 },
+      } as never);
+      vi.mocked(prisma.aimannDebtLedger.findFirst).mockResolvedValue(null);
+
+      const { getProjectById } = await import('../services/project.service');
+      const result = await getProjectById('p-imported-detail');
+
+      expect(result.commissionPreview.grossProfit).toBe(2300);
+      expect(result.commissionPreview.netProfit).toBe(1850);
+      expect(result.commissionPreview.adnaanCommission).toBe(700);
+      expect(result.commissionPreview.aimannDeduction).toBe(150);
+    });
+
+    it('does not let stale imported profit percentages override manual profitability mode', async () => {
+      vi.mocked(prisma.project.findUnique).mockResolvedValue({
+        id: 'p-manual-profit',
+        customer: 'Manual Profit Job',
+        address: '22 Oak St',
+        description: 'Manual finance override',
+        fenceType: FenceType.WOOD,
+        status: ProjectStatus.OPEN,
+        projectTotal: { toNumber: () => 10000 },
+        paymentMethod: PaymentMethod.CASH,
+        moneyReceived: { toNumber: () => 9800 },
+        customerPaid: { toNumber: () => 7000 },
+        forecastedExpenses: { toNumber: () => 4100 },
+        materialsCost: { toNumber: () => 1200 },
+        contractDate: new Date('2026-03-26'),
+        installDate: new Date('2026-04-20'),
+        completedDate: null,
+        estimateDate: null,
+        followUpDate: null,
+        linearFeet: null,
+        rateTemplateId: null,
+        subcontractor: null,
+        notes: null,
+        commissionOwed: { toNumber: () => 1000 },
+        commissionPaid: { toNumber: () => 1000 },
+        memesCommission: { toNumber: () => 500 },
+        aimannsCommission: { toNumber: () => 250 },
+        financeProjectMode: 'MANUAL_OVERRIDE',
+        receivablesSource: 'MANUAL_OVERRIDE',
+        payablesSource: 'MANUAL_OVERRIDE',
+        commissionsSource: 'MANUAL_OVERRIDE',
+        profitabilitySource: 'MANUAL_OVERRIDE',
+        importedOutstandingReceivables: { toNumber: () => 3000 },
+        importedOutstandingPayables: { toNumber: () => 0 },
+        importedGrossProfit: { toNumber: () => 9999 },
+        importedGrossProfitPercent: { toNumber: () => 88 },
+        importedNetProfit: { toNumber: () => 8888 },
+        importedNetProfitPercent: { toNumber: () => 77 },
+        importedAt: new Date('2026-04-01T10:00:00Z'),
+        importedSource: 'Open',
+        lastRecalculatedAt: null,
+        lastManualFinanceEditAt: new Date('2026-04-10T10:00:00Z'),
+        reconciliationRequiredAt: null,
+        reconciliationNotes: null,
+        createdById: 'user-1',
+        isDeleted: false,
+        deletedAt: null,
+        createdAt: new Date('2026-03-26'),
+        updatedAt: new Date('2026-03-26'),
+        subcontractorPayments: [],
+        projectNotes: [],
+        commissionSnapshot: null,
+      } as never);
+      vi.mocked(prisma.subcontractorPayment.aggregate).mockResolvedValue({
+        _sum: { amountOwed: null },
+      } as never);
+      vi.mocked(prisma.transaction.aggregate).mockResolvedValue({
+        _sum: { amount: null },
+        _count: { _all: 0 },
+      } as never);
+      vi.mocked(prisma.aimannDebtLedger.findFirst).mockResolvedValue(null);
+
+      const { getProjectById } = await import('../services/project.service');
+      const result = await getProjectById('p-manual-profit');
+
+      expect(result.commissionPreview.grossProfit).toBe(4900);
+      expect(result.commissionPreview.netProfit).toBe(4400);
+      expect(result.commissionPreview.profitPercent).toBe(44);
+    });
+
     it('bases live commission preview expenses on forecasted expenses when they exceed materials cost', async () => {
       vi.mocked(prisma.project.findUnique).mockResolvedValue({
         id: 'p1',
@@ -641,6 +867,158 @@ describe('Project Service', () => {
       const updateCall = txProjectUpdateMock.mock.calls[0][0];
       expect(updateCall.data.moneyReceived).toBeUndefined();
       expect(updateCall.data.financeProjectMode).toBe('MIXED');
+      expect(updateCall.data.receivablesSource).toBe('MANUAL_OVERRIDE');
+      expect(updateCall.data.profitabilitySource).toBe('MANUAL_OVERRIDE');
+      expect(updateCall.data.lastManualFinanceEditAt).toBeInstanceOf(Date);
+    });
+
+    it('marks direct moneyReceived edits on imported projects as manual finance touches', async () => {
+      vi.mocked(prisma.project.findUnique).mockResolvedValue({
+        id: 'p-imported-manual',
+        customer: 'Imported Job',
+        status: ProjectStatus.OPEN,
+        paymentMethod: PaymentMethod.CASH,
+        projectTotal: { toNumber: () => 5000 },
+        customerPaid: { toNumber: () => 0 },
+        forecastedExpenses: { toNumber: () => 1000 },
+        materialsCost: { toNumber: () => 500 },
+        contractDate: new Date('2026-04-01'),
+        installDate: new Date('2026-04-10'),
+        completedDate: null,
+        estimateDate: null,
+        followUpDate: null,
+        description: 'Imported project',
+        fenceType: FenceType.WOOD,
+        moneyReceived: { toNumber: () => 4850 },
+        linearFeet: null,
+        rateTemplateId: null,
+        subcontractor: null,
+        notes: null,
+        commissionOwed: { toNumber: () => 800 },
+        commissionPaid: { toNumber: () => 300 },
+        memesCommission: { toNumber: () => 250 },
+        aimannsCommission: { toNumber: () => 150 },
+        financeProjectMode: 'IMPORTED',
+        createdById: 'user-1',
+        isDeleted: false,
+        deletedAt: null,
+        createdAt: new Date('2026-04-01'),
+        updatedAt: new Date('2026-04-05'),
+      } as never);
+      txProjectUpdateMock.mockResolvedValue({
+        id: 'p-imported-manual',
+        status: ProjectStatus.OPEN,
+      } as never);
+
+      const { updateProject } = await import('../services/project.service');
+      await updateProject('p-imported-manual', {
+        moneyReceived: 4700,
+      });
+
+      const updateCall = txProjectUpdateMock.mock.calls[0][0];
+      expect(updateCall.data.moneyReceived).toBe(4700);
+      expect(updateCall.data.financeProjectMode).toBe('MIXED');
+      expect(updateCall.data.receivablesSource).toBe('MANUAL_OVERRIDE');
+      expect(updateCall.data.lastManualFinanceEditAt).toBeInstanceOf(Date);
+    });
+
+    it('preserves reconciliation-required mode when finance fields are edited', async () => {
+      vi.mocked(prisma.project.findUnique).mockResolvedValue({
+        id: 'p-reconcile',
+        customer: 'Needs Reconciliation',
+        status: ProjectStatus.OPEN,
+        paymentMethod: PaymentMethod.CASH,
+        projectTotal: { toNumber: () => 5000 },
+        customerPaid: { toNumber: () => 0 },
+        forecastedExpenses: { toNumber: () => 1000 },
+        materialsCost: { toNumber: () => 500 },
+        contractDate: new Date('2026-04-01'),
+        installDate: new Date('2026-04-10'),
+        completedDate: null,
+        estimateDate: null,
+        followUpDate: null,
+        description: 'Imported project',
+        fenceType: FenceType.WOOD,
+        moneyReceived: { toNumber: () => 4850 },
+        linearFeet: null,
+        rateTemplateId: null,
+        subcontractor: null,
+        notes: null,
+        commissionOwed: { toNumber: () => 800 },
+        commissionPaid: { toNumber: () => 300 },
+        memesCommission: { toNumber: () => 250 },
+        aimannsCommission: { toNumber: () => 150 },
+        financeProjectMode: 'RECONCILIATION_REQUIRED',
+        createdById: 'user-1',
+        isDeleted: false,
+        deletedAt: null,
+        createdAt: new Date('2026-04-01'),
+        updatedAt: new Date('2026-04-05'),
+      } as never);
+      txProjectUpdateMock.mockResolvedValue({
+        id: 'p-reconcile',
+        status: ProjectStatus.OPEN,
+      } as never);
+
+      const { updateProject } = await import('../services/project.service');
+      await updateProject('p-reconcile', {
+        customerPaid: 5000,
+      });
+
+      const updateCall = txProjectUpdateMock.mock.calls[0][0];
+      expect(updateCall.data.financeProjectMode).toBe('RECONCILIATION_REQUIRED');
+      expect(updateCall.data.receivablesSource).toBe('MANUAL_OVERRIDE');
+      expect(updateCall.data.lastManualFinanceEditAt).toBeInstanceOf(Date);
+    });
+
+    it('marks computed projects as manual override when finance fields are edited', async () => {
+      vi.mocked(prisma.project.findUnique).mockResolvedValue({
+        id: 'p-computed-manual',
+        customer: 'Computed Job',
+        status: ProjectStatus.OPEN,
+        paymentMethod: PaymentMethod.CASH,
+        projectTotal: { toNumber: () => 5000 },
+        customerPaid: { toNumber: () => 0 },
+        forecastedExpenses: { toNumber: () => 1000 },
+        materialsCost: { toNumber: () => 500 },
+        contractDate: new Date('2026-04-01'),
+        installDate: new Date('2026-04-10'),
+        completedDate: null,
+        estimateDate: null,
+        followUpDate: null,
+        description: 'Computed project',
+        fenceType: FenceType.WOOD,
+        moneyReceived: { toNumber: () => 5000 },
+        linearFeet: null,
+        rateTemplateId: null,
+        subcontractor: null,
+        notes: null,
+        commissionOwed: { toNumber: () => 800 },
+        commissionPaid: { toNumber: () => 300 },
+        memesCommission: { toNumber: () => 250 },
+        aimannsCommission: { toNumber: () => 150 },
+        financeProjectMode: 'COMPUTED',
+        createdById: 'user-1',
+        isDeleted: false,
+        deletedAt: null,
+        createdAt: new Date('2026-04-01'),
+        updatedAt: new Date('2026-04-05'),
+      } as never);
+      txProjectUpdateMock.mockResolvedValue({
+        id: 'p-computed-manual',
+        status: ProjectStatus.OPEN,
+      } as never);
+
+      const { updateProject } = await import('../services/project.service');
+      await updateProject('p-computed-manual', {
+        commissionPaid: 400,
+      });
+
+      const updateCall = txProjectUpdateMock.mock.calls[0][0];
+      expect(updateCall.data.financeProjectMode).toBe('MANUAL_OVERRIDE');
+      expect(updateCall.data.payablesSource).toBe('MANUAL_OVERRIDE');
+      expect(updateCall.data.commissionsSource).toBe('MANUAL_OVERRIDE');
+      expect(updateCall.data.profitabilitySource).toBe('MANUAL_OVERRIDE');
       expect(updateCall.data.lastManualFinanceEditAt).toBeInstanceOf(Date);
     });
 
@@ -889,6 +1267,177 @@ describe('Project Service', () => {
       });
 
       expect(transactionStages).toEqual(['update', 'auto-transaction', 'snapshot']);
+    });
+
+    it('does not regenerate computed snapshots for imported completed projects', async () => {
+      vi.mocked(prisma.project.findUnique).mockResolvedValue({
+        id: 'p-imported-completed',
+        customer: 'Imported Completed Job',
+        status: ProjectStatus.COMPLETED,
+        paymentMethod: PaymentMethod.CASH,
+        projectTotal: { toNumber: () => 5000 },
+        customerPaid: { toNumber: () => 2500 },
+        forecastedExpenses: { toNumber: () => 1000 },
+        materialsCost: { toNumber: () => 500 },
+        contractDate: new Date('2026-04-01'),
+        installDate: new Date('2026-04-10'),
+        completedDate: new Date('2026-04-20'),
+        estimateDate: null,
+        followUpDate: null,
+        description: 'Completed project',
+        fenceType: FenceType.WOOD,
+        moneyReceived: { toNumber: () => 5000 },
+        linearFeet: null,
+        rateTemplateId: null,
+        subcontractor: null,
+        notes: null,
+        commissionOwed: { toNumber: () => 0 },
+        commissionPaid: { toNumber: () => 0 },
+        memesCommission: { toNumber: () => 0 },
+        aimannsCommission: { toNumber: () => 0 },
+        financeProjectMode: 'IMPORTED',
+        createdById: 'user-1',
+        isDeleted: false,
+        deletedAt: null,
+        createdAt: new Date('2026-04-01'),
+        updatedAt: new Date('2026-04-20'),
+      } as never);
+      vi.mocked(prisma.$transaction).mockImplementation(async (fn: Parameters<typeof prisma.$transaction>[0]) => {
+        return fn({
+          project: {
+            findUnique: vi.fn().mockResolvedValue({
+              id: 'p-imported-completed',
+              customer: 'Imported Completed Job',
+              projectTotal: { toNumber: () => 5000 },
+              paymentMethod: PaymentMethod.CASH,
+              materialsCost: { toNumber: () => 500 },
+              forecastedExpenses: { toNumber: () => 1000 },
+              financeProjectMode: 'IMPORTED',
+            }),
+            update: vi.fn().mockResolvedValue({ id: 'p-imported-completed', status: ProjectStatus.COMPLETED }),
+          },
+          subcontractorPayment: {
+            aggregate: vi.fn().mockResolvedValue({ _sum: { amountOwed: null } }),
+          },
+          aimannDebtLedger: {
+            findFirst: vi.fn().mockResolvedValue(null),
+            create: vi.fn(),
+          },
+          commissionSnapshot: {
+            create: vi.fn(),
+            upsert: txCommissionSnapshotUpsertMock,
+          },
+          transaction: {
+            aggregate: vi.fn().mockResolvedValue({
+              _sum: { amount: { toNumber: () => 1200 } },
+              _count: { _all: 1 },
+            }),
+          },
+          $queryRaw: vi.fn().mockResolvedValue([]),
+        } as never);
+      });
+      txProjectUpdateMock.mockResolvedValue({
+        id: 'p-imported-completed',
+        status: ProjectStatus.COMPLETED,
+      } as never);
+
+      const { updateProject } = await import('../services/project.service');
+      await updateProject('p-imported-completed', {
+        materialsCost: 1200,
+      });
+
+      expect(txCommissionSnapshotUpsertMock).not.toHaveBeenCalled();
+    });
+
+    it('regenerates commission snapshots once a completed imported project is moved into mixed mode by finance edits', async () => {
+      vi.mocked(prisma.project.findUnique)
+        .mockResolvedValueOnce({
+          id: 'p-imported-completed-mixed',
+          customer: 'Imported Completed Job',
+          status: ProjectStatus.COMPLETED,
+          paymentMethod: PaymentMethod.CASH,
+          projectTotal: { toNumber: () => 5000 },
+          customerPaid: { toNumber: () => 2500 },
+          forecastedExpenses: { toNumber: () => 1000 },
+          materialsCost: { toNumber: () => 500 },
+          contractDate: new Date('2026-04-01'),
+          installDate: new Date('2026-04-10'),
+          completedDate: new Date('2026-04-20'),
+          estimateDate: null,
+          followUpDate: null,
+          description: 'Completed project',
+          fenceType: FenceType.WOOD,
+          moneyReceived: { toNumber: () => 5000 },
+          linearFeet: null,
+          rateTemplateId: null,
+          subcontractor: null,
+          notes: null,
+          commissionOwed: { toNumber: () => 0 },
+          commissionPaid: { toNumber: () => 0 },
+          memesCommission: { toNumber: () => 0 },
+          aimannsCommission: { toNumber: () => 0 },
+          financeProjectMode: 'IMPORTED',
+          createdById: 'user-1',
+          isDeleted: false,
+          deletedAt: null,
+          createdAt: new Date('2026-04-01'),
+          updatedAt: new Date('2026-04-20'),
+        } as never)
+        .mockResolvedValueOnce({
+          id: 'p-imported-completed-mixed',
+          customer: 'Imported Completed Job',
+          projectTotal: { toNumber: () => 5000 },
+          paymentMethod: PaymentMethod.CASH,
+          materialsCost: { toNumber: () => 500 },
+          forecastedExpenses: { toNumber: () => 1000 },
+          financeProjectMode: 'MIXED',
+        } as never);
+
+      vi.mocked(prisma.$transaction).mockImplementation(async (fn: Parameters<typeof prisma.$transaction>[0]) => {
+        return fn({
+          project: {
+            findUnique: vi.fn().mockResolvedValue({
+              id: 'p-imported-completed-mixed',
+              customer: 'Imported Completed Job',
+              projectTotal: { toNumber: () => 5000 },
+              paymentMethod: PaymentMethod.CASH,
+              materialsCost: { toNumber: () => 500 },
+              forecastedExpenses: { toNumber: () => 1000 },
+              financeProjectMode: 'MIXED',
+            }),
+            update: vi.fn().mockResolvedValue({ id: 'p-imported-completed-mixed', status: ProjectStatus.COMPLETED }),
+          },
+          subcontractorPayment: {
+            aggregate: vi.fn().mockResolvedValue({ _sum: { amountOwed: null } }),
+          },
+          aimannDebtLedger: {
+            findFirst: vi.fn().mockResolvedValue(null),
+            create: vi.fn(),
+          },
+          commissionSnapshot: {
+            create: vi.fn(),
+            upsert: txCommissionSnapshotUpsertMock,
+          },
+          transaction: {
+            aggregate: vi.fn().mockResolvedValue({
+              _sum: { amount: { toNumber: () => 1200 } },
+              _count: { _all: 1 },
+            }),
+          },
+          $queryRaw: vi.fn().mockResolvedValue([]),
+        } as never);
+      });
+      txProjectUpdateMock.mockResolvedValue({
+        id: 'p-imported-completed-mixed',
+        status: ProjectStatus.COMPLETED,
+      } as never);
+
+      const { updateProject } = await import('../services/project.service');
+      await updateProject('p-imported-completed-mixed', {
+        customerPaid: 5000,
+      });
+
+      expect(txCommissionSnapshotUpsertMock).toHaveBeenCalled();
     });
   });
 });

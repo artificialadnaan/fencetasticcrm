@@ -20,6 +20,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as XLSX from 'xlsx';
 import { PrismaClient } from '@prisma/client';
+import {
+  buildImportedCommissionSnapshot,
+  resolveImportedSnapshotDebtBalances,
+  resolveImportedSnapshotSettledAt,
+} from '../apps/api/src/services/imported-finance-snapshot';
 
 // ── Load .env from apps/api/.env if DATABASE_URL not already set ──────────────
 if (!process.env.DATABASE_URL) {
@@ -61,6 +66,13 @@ function toNum(v: unknown): number {
   if (v == null) return 0;
   const n = Number(v);
   return isNaN(n) ? 0 : n;
+}
+
+function toNullableNum(v: unknown): number | null {
+  if (v == null) return null;
+  if (typeof v === 'string' && v.trim() === '') return null;
+  const n = Number(v);
+  return isNaN(n) ? null : n;
 }
 
 function toStr(v: unknown): string {
@@ -165,6 +177,35 @@ interface RowResult {
   errors: number;
 }
 
+type PayoutLedgerPoint = {
+  date: Date;
+  runningBalance: number;
+};
+
+function extractPayoutLedgerTimeline(rows: unknown[][], payoutSheet: XLSX.WorkSheet): PayoutLedgerPoint[] {
+  const colMap = getColumnMap(payoutSheet);
+  const dateCol = col(colMap, 'date paid', 5);
+  const fallbackDateCol = col(colMap, 'date', 1);
+  const runningBalanceCol = col(colMap, 'running balance', 7);
+
+  return rows
+    .slice(1)
+    .map((row) => {
+      const record = row as unknown[];
+      const date = toDateOrNull(record[dateCol]) ?? toDateOrNull(record[fallbackDateCol]);
+      const runningBalance = toNullableNum(record[runningBalanceCol]);
+      if (!date || runningBalance === null) {
+        return null;
+      }
+      return {
+        date,
+        runningBalance,
+      };
+    })
+    .filter((entry): entry is PayoutLedgerPoint => entry !== null)
+    .sort((left, right) => left.date.getTime() - right.date.getTime());
+}
+
 // ── Find seed user ────────────────────────────────────────────────────────────
 async function getSeedUserId(): Promise<string> {
   const user = await prisma.user.findFirst({ orderBy: { createdAt: 'asc' } });
@@ -177,7 +218,9 @@ async function importProjects(
   rows: unknown[][],
   sheet: XLSX.WorkSheet,
   status: 'OPEN' | 'IN_PROGRESS' | 'COMPLETED',
-  seedUserId: string
+  seedUserId: string,
+  importedSource: string,
+  payoutLedgerTimeline: PayoutLedgerPoint[],
 ): Promise<RowResult> {
   let imported = 0;
   let skipped = 0;
@@ -253,22 +296,21 @@ async function importProjects(
       }
 
       const paymentMethod = normalizePaymentMethod(row[C.PMT]);
-      const moneyReceived = toNum(row[C.MONEY_RECEIVED]) > 0
-        ? toNum(row[C.MONEY_RECEIVED])
-        : calcMoneyReceived(projectTotal, paymentMethod);
+      const explicitMoneyReceived = toNullableNum(row[C.MONEY_RECEIVED]);
+      const moneyReceived = explicitMoneyReceived ?? calcMoneyReceived(projectTotal, paymentMethod);
       const customerPaid = toNum(row[C.CUSTOMER_PAID]);
       const forecastedExpenses = toNum(row[C.FORECASTED_EXPENSES]);
       const materialsCost = toNum(row[C.MATERIALS]);
-      const commissionOwed = toNum(row[C.COMMISSION_OWED]);
-      const commissionPaid = toNum(row[C.COMMISSION_PAID]);
-      const importedOutstandingReceivables = toNum(row[C.OUTSTANDING_RECEIVABLES]);
-      const importedOutstandingPayables = toNum(row[C.OUTSTANDING_PAYABLES]);
-      const importedGrossProfit = toNum(row[C.GROSS_PROFIT]);
-      const importedGrossProfitPercent = toNum(row[C.GROSS_PROFIT_PERCENT]);
-      const memesCommission = toNum(row[C.MEMES_COMMISSION]);
-      const aimannsCommission = toNum(row[C.AIMANNS_COMMISSION]);
-      const importedNetProfit = toNum(row[C.NET_PROFIT]);
-      const importedNetProfitPercent = toNum(row[C.NET_PROFIT_PERCENT]);
+      const commissionOwed = toNullableNum(row[C.COMMISSION_OWED]);
+      const commissionPaid = toNullableNum(row[C.COMMISSION_PAID]);
+      const importedOutstandingReceivables = toNullableNum(row[C.OUTSTANDING_RECEIVABLES]);
+      const importedOutstandingPayables = toNullableNum(row[C.OUTSTANDING_PAYABLES]);
+      const importedGrossProfit = toNullableNum(row[C.GROSS_PROFIT]);
+      const importedGrossProfitPercent = toNullableNum(row[C.GROSS_PROFIT_PERCENT]);
+      const memesCommission = toNullableNum(row[C.MEMES_COMMISSION]);
+      const aimannsCommission = toNullableNum(row[C.AIMANNS_COMMISSION]);
+      const importedNetProfit = toNullableNum(row[C.NET_PROFIT]);
+      const importedNetProfitPercent = toNullableNum(row[C.NET_PROFIT_PERCENT]);
       const installDate = toDateOrNull(row[C.INSTALL_DATE]) ?? contractDate;
       const description = toStrOrNull(row[C.DESCRIPTION]) ?? 'Imported from spreadsheet';
       const subcontractor = toStrOrNull(row[C.SUB]);
@@ -283,6 +325,10 @@ async function importProjects(
       else if (status === 'OPEN') finalStatus = 'OPEN';
 
       const completedDate = finalStatus === 'COMPLETED' ? (installDate ?? contractDate) : null;
+      const settledAt =
+        finalStatus === 'COMPLETED'
+          ? resolveImportedSnapshotSettledAt({ completedDate, installDate, contractDate })
+          : null;
 
       const subPay1 = toNum(row[C.SUB_PAYMENT_1]);
       const subPay2 = toNum(row[C.SUB_PAYMENT_2]);
@@ -312,14 +358,14 @@ async function importProjects(
             payablesSource: 'IMPORTED_ACTUAL',
             commissionsSource: 'IMPORTED_ACTUAL',
             profitabilitySource: 'IMPORTED_ACTUAL',
-            importedOutstandingReceivables: importedOutstandingReceivables || null,
-            importedOutstandingPayables: importedOutstandingPayables || null,
-            importedGrossProfit: importedGrossProfit || null,
-            importedGrossProfitPercent: importedGrossProfitPercent || null,
-            importedNetProfit: importedNetProfit || null,
-            importedNetProfitPercent: importedNetProfitPercent || null,
+            importedOutstandingReceivables,
+            importedOutstandingPayables,
+            importedGrossProfit,
+            importedGrossProfitPercent,
+            importedNetProfit,
+            importedNetProfitPercent,
             importedAt: new Date(),
-            importedSource: sheet['!ref'] ? status : 'SPREADSHEET_IMPORT',
+            importedSource,
             contractDate,
             installDate,
             completedDate,
@@ -349,6 +395,37 @@ async function importProjects(
               amountPaid: subPay2,
             },
           });
+        }
+
+        if (finalStatus === 'COMPLETED') {
+          const debtBalances = resolveImportedSnapshotDebtBalances({
+            settledAt,
+            aimannDeduction: aimannsCommission ?? 0,
+            ledger: payoutLedgerTimeline,
+          });
+          const snapshot = buildImportedCommissionSnapshot({
+            moneyReceived,
+            commissionOwed,
+            memesCommission,
+            aimannsCommission,
+            importedGrossProfit,
+            importedNetProfit,
+          }, debtBalances);
+
+          if (snapshot) {
+            await tx.commissionSnapshot.upsert({
+              where: { projectId: project.id },
+              create: {
+                projectId: project.id,
+                ...snapshot,
+                settledAt,
+              },
+              update: {
+                ...snapshot,
+                settledAt,
+              },
+            });
+          }
         }
       });
 
@@ -578,18 +655,26 @@ async function main() {
   const completedRows = XLSX.utils.sheet_to_json<unknown[]>(completedSheet, { header: 1, defval: null });
   const payoutRows = XLSX.utils.sheet_to_json<unknown[]>(payoutSheet, { header: 1, defval: null });
   const expensesRows = XLSX.utils.sheet_to_json<unknown[]>(expensesSheet, { header: 1, defval: null });
+  const payoutLedgerTimeline = extractPayoutLedgerTimeline(payoutRows, payoutSheet);
 
   const seedUserId = await getSeedUserId();
   console.log(`Using seed user ID: ${seedUserId}\n`);
 
   // ── Open projects ──
   console.log(`=== Importing Open projects (${openRows.length - 1} data rows) ===`);
-  const openResult = await importProjects(openRows, openSheet, 'OPEN', seedUserId);
+  const openResult = await importProjects(openRows, openSheet, 'OPEN', seedUserId, 'Open', payoutLedgerTimeline);
   console.log(`Open: imported=${openResult.imported}, skipped=${openResult.skipped}, errors=${openResult.errors}\n`);
 
   // ── Completed projects ──
   console.log(`=== Importing Completed projects (${completedRows.length - 1} data rows) ===`);
-  const completedResult = await importProjects(completedRows, completedSheet, 'COMPLETED', seedUserId);
+  const completedResult = await importProjects(
+    completedRows,
+    completedSheet,
+    'COMPLETED',
+    seedUserId,
+    'Completed Projects',
+    payoutLedgerTimeline,
+  );
   console.log(`Completed: imported=${completedResult.imported}, skipped=${completedResult.skipped}, errors=${completedResult.errors}\n`);
 
   // ── Payout ledger ──

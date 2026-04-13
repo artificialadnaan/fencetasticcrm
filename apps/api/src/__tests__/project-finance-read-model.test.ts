@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { FinanceFieldSource, FinanceSubdomainSource } from '@fencetastic/shared';
 import {
   deriveFinanceProjectMode,
   resolveFinanceField,
@@ -8,10 +9,10 @@ describe('project finance read model', () => {
   it('marks a project for reconciliation when any subdomain is unresolved', () => {
     expect(
       deriveFinanceProjectMode({
-        receivablesSource: 'RECONCILIATION_REQUIRED',
-        payablesSource: 'IMPORTED_ACTUAL',
-        commissionsSource: 'IMPORTED_ACTUAL',
-        profitabilitySource: 'IMPORTED_ACTUAL',
+        receivablesSource: FinanceSubdomainSource.RECONCILIATION_REQUIRED,
+        payablesSource: FinanceSubdomainSource.IMPORTED_ACTUAL,
+        commissionsSource: FinanceSubdomainSource.IMPORTED_ACTUAL,
+        profitabilitySource: FinanceSubdomainSource.IMPORTED_ACTUAL,
         lastManualFinanceEditAt: null,
       }),
     ).toBe('RECONCILIATION_REQUIRED');
@@ -23,8 +24,30 @@ describe('project finance read model', () => {
         importedValue: 17159.52,
         computedValue: 12000,
         manualOverrideValue: null,
-        fieldSource: 'IMPORTED_DERIVED',
+        fieldSource: FinanceFieldSource.IMPORTED_DERIVED,
       }),
     ).toEqual({ value: 17159.52, source: 'IMPORTED_DERIVED' });
+  });
+
+  it('surfaces unset imported values instead of silently falling back to computed values', () => {
+    expect(
+      resolveFinanceField({
+        importedValue: null,
+        computedValue: 12000,
+        manualOverrideValue: null,
+        fieldSource: FinanceFieldSource.IMPORTED_DERIVED,
+      }),
+    ).toEqual({ value: null, source: 'UNSET' });
+  });
+
+  it('surfaces unset computed values instead of misreporting them as computed', () => {
+    expect(
+      resolveFinanceField({
+        importedValue: null,
+        computedValue: null,
+        manualOverrideValue: null,
+        fieldSource: FinanceFieldSource.CRM_COMPUTED,
+      }),
+    ).toEqual({ value: null, source: 'UNSET' });
   });
 });

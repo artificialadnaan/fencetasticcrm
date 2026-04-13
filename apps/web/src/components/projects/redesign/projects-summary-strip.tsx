@@ -71,7 +71,7 @@ export function ProjectsSummaryStrip({
   const activePipeline = projects.filter((project) =>
     [ProjectStatus.ESTIMATE, ProjectStatus.OPEN, ProjectStatus.IN_PROGRESS].includes(project.status)
   ).length;
-  const pageReceivables = projects.reduce((sum, project) => sum + project.receivable, 0);
+  const pageReceivables = projects.reduce((sum, project) => sum + (project.receivable ?? 0), 0);
 
   const cards: SummaryCard[] = [
     {

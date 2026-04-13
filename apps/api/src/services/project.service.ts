@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import {
   calculateCommission,
+  FinanceFieldSource,
   PaymentMethod,
   ProjectStatus,
   FenceType,
@@ -16,11 +17,20 @@ import {
 import { AppError } from '../middleware/error-handler';
 import { createAutoTransaction } from './transaction.service';
 import { ensureEstimateFollowUpSequenceTx } from './follow-up.service';
+import { resolveFinanceField } from './project-finance-read-model';
 
 // Helper: convert Prisma Decimal to number
 function d(val: Prisma.Decimal | null | undefined): number {
   if (!val) return 0;
   // Handle Prisma Decimal objects (which have toNumber()) and plain numbers
+  if (typeof (val as unknown as { toNumber?: () => number }).toNumber === 'function') {
+    return (val as unknown as { toNumber: () => number }).toNumber();
+  }
+  return Number(val);
+}
+
+function dn(val: Prisma.Decimal | null | undefined): number | null {
+  if (val == null) return null;
   if (typeof (val as unknown as { toNumber?: () => number }).toNumber === 'function') {
     return (val as unknown as { toNumber: () => number }).toNumber();
   }
@@ -58,6 +68,30 @@ function deriveLifecycleDates(
   };
 }
 
+function isProtectedImportedMode(mode: string | null | undefined): boolean {
+  return (
+    mode === 'IMPORTED' ||
+    mode === 'MIXED' ||
+    mode === 'MANUAL_OVERRIDE' ||
+    mode === 'RECONCILIATION_REQUIRED'
+  );
+}
+
+function shouldRegenerateCompletedSnapshot(mode: string | null | undefined): boolean {
+  return mode !== 'IMPORTED' && mode !== 'RECONCILIATION_REQUIRED';
+}
+
+function financeSourceToFieldSource(
+  subdomainSource: string | null | undefined,
+  importedKind: FinanceFieldSource,
+): FinanceFieldSource {
+  if (subdomainSource == null) return FinanceFieldSource.CRM_COMPUTED;
+  if (subdomainSource === 'IMPORTED_ACTUAL') return importedKind;
+  if (subdomainSource === 'MANUAL_OVERRIDE') return FinanceFieldSource.MANUAL_OVERRIDE;
+  if (subdomainSource === 'CRM_COMPUTED') return FinanceFieldSource.CRM_COMPUTED;
+  return FinanceFieldSource.UNSET;
+}
+
 // Helper: build commission preview for a project
 async function buildCommissionPreview(
   projectId: string,
@@ -93,6 +127,168 @@ async function buildCommissionPreview(
       : 0;
 
   return { ...breakdown, profitPercent };
+}
+
+function resolveProjectFinanceSnapshot(
+  project: {
+    projectTotal: Prisma.Decimal;
+    moneyReceived: Prisma.Decimal;
+    customerPaid: Prisma.Decimal;
+    forecastedExpenses: Prisma.Decimal;
+    commissionOwed: Prisma.Decimal | null;
+    commissionPaid: Prisma.Decimal | null;
+    memesCommission: Prisma.Decimal | null;
+    aimannsCommission: Prisma.Decimal | null;
+    importedOutstandingReceivables: Prisma.Decimal | null;
+    importedOutstandingPayables: Prisma.Decimal | null;
+    importedGrossProfit: Prisma.Decimal | null;
+    importedGrossProfitPercent: Prisma.Decimal | null;
+    importedNetProfit: Prisma.Decimal | null;
+    importedNetProfitPercent: Prisma.Decimal | null;
+    receivablesSource: string | null;
+    payablesSource: string | null;
+    commissionsSource: string | null;
+    profitabilitySource: string | null;
+  },
+  computedPreview: CommissionPreview,
+) {
+  const projectTotal = d(project.projectTotal);
+  const moneyReceived = d(project.moneyReceived);
+  const customerPaid = d(project.customerPaid);
+  const commissionOwed = d(project.commissionOwed);
+  const commissionPaid = d(project.commissionPaid);
+  const memesCommission = d(project.memesCommission);
+  const aimannsCommission = d(project.aimannsCommission);
+
+  const computedOutstandingReceivables = Number((projectTotal - customerPaid).toFixed(2));
+  const computedOutstandingPayables = Number((commissionOwed - commissionPaid).toFixed(2));
+
+  const resolvedOutstandingReceivables = resolveFinanceField({
+    importedValue: dn(project.importedOutstandingReceivables),
+    computedValue: computedOutstandingReceivables,
+    manualOverrideValue: computedOutstandingReceivables,
+    fieldSource: financeSourceToFieldSource(project.receivablesSource, FinanceFieldSource.IMPORTED_ACTUAL),
+  });
+
+  const resolvedOutstandingPayables = resolveFinanceField({
+    importedValue: dn(project.importedOutstandingPayables),
+    computedValue: computedOutstandingPayables,
+    manualOverrideValue: computedOutstandingPayables,
+    fieldSource: financeSourceToFieldSource(project.payablesSource, FinanceFieldSource.IMPORTED_ACTUAL),
+  });
+
+  const resolvedGrossProfit = resolveFinanceField({
+    importedValue: dn(project.importedGrossProfit),
+    computedValue: computedPreview.grossProfit,
+    manualOverrideValue: computedPreview.grossProfit,
+    fieldSource: financeSourceToFieldSource(project.profitabilitySource, FinanceFieldSource.IMPORTED_DERIVED),
+  });
+
+  const resolvedNetProfit = resolveFinanceField({
+    importedValue: dn(project.importedNetProfit),
+    computedValue: computedPreview.netProfit,
+    manualOverrideValue: computedPreview.netProfit,
+    fieldSource: financeSourceToFieldSource(project.profitabilitySource, FinanceFieldSource.IMPORTED_DERIVED),
+  });
+
+  const resolvedMemeCommission = resolveFinanceField({
+    importedValue: dn(project.memesCommission),
+    computedValue: computedPreview.memeCommission,
+    manualOverrideValue: memesCommission,
+    fieldSource: financeSourceToFieldSource(project.commissionsSource, FinanceFieldSource.IMPORTED_ACTUAL),
+  });
+
+  const resolvedAdnaanCommission = resolveFinanceField({
+    importedValue: dn(project.commissionOwed),
+    computedValue: computedPreview.adnaanCommission,
+    manualOverrideValue: commissionOwed,
+    fieldSource: financeSourceToFieldSource(project.commissionsSource, FinanceFieldSource.IMPORTED_ACTUAL),
+  });
+
+  const resolvedAimannCommission = resolveFinanceField({
+    importedValue: dn(project.aimannsCommission),
+    computedValue: computedPreview.aimannDeduction,
+    manualOverrideValue: aimannsCommission,
+    fieldSource: financeSourceToFieldSource(project.commissionsSource, FinanceFieldSource.IMPORTED_ACTUAL),
+  });
+
+  const grossProfit =
+    resolvedGrossProfit.source === FinanceFieldSource.CRM_COMPUTED
+      ? (resolvedGrossProfit.value ?? computedPreview.grossProfit)
+      : resolvedGrossProfit.value;
+  const netProfit =
+    resolvedNetProfit.source === FinanceFieldSource.CRM_COMPUTED
+      ? (resolvedNetProfit.value ?? computedPreview.netProfit)
+      : resolvedNetProfit.value;
+  const outstandingReceivables =
+    resolvedOutstandingReceivables.source === FinanceFieldSource.CRM_COMPUTED
+      ? (resolvedOutstandingReceivables.value ?? computedOutstandingReceivables)
+      : resolvedOutstandingReceivables.value;
+  const outstandingPayables =
+    resolvedOutstandingPayables.source === FinanceFieldSource.CRM_COMPUTED
+      ? (resolvedOutstandingPayables.value ?? computedOutstandingPayables)
+      : resolvedOutstandingPayables.value;
+  const totalExpenses =
+    resolvedGrossProfit.source === FinanceFieldSource.IMPORTED_DERIVED &&
+    resolvedGrossProfit.value !== null
+      ? Number((moneyReceived - resolvedGrossProfit.value).toFixed(2))
+      : computedPreview.totalExpenses;
+
+  const computedGrossProfitPercent =
+    grossProfit !== null && projectTotal > 0 ? Number(((grossProfit / projectTotal) * 100).toFixed(2)) : null;
+  const computedNetProfitPercent =
+    netProfit !== null && projectTotal > 0 ? Number(((netProfit / projectTotal) * 100).toFixed(2)) : null;
+
+  const resolvedGrossProfitPercent = resolveFinanceField({
+    importedValue: dn(project.importedGrossProfitPercent),
+    computedValue: computedGrossProfitPercent,
+    manualOverrideValue: computedGrossProfitPercent,
+    fieldSource: financeSourceToFieldSource(project.profitabilitySource, FinanceFieldSource.IMPORTED_DERIVED),
+  });
+
+  const resolvedNetProfitPercent = resolveFinanceField({
+    importedValue: dn(project.importedNetProfitPercent),
+    computedValue: computedNetProfitPercent,
+    manualOverrideValue: computedNetProfitPercent,
+    fieldSource: financeSourceToFieldSource(project.profitabilitySource, FinanceFieldSource.IMPORTED_DERIVED),
+  });
+
+  const profitPercent =
+    resolvedGrossProfitPercent.source === FinanceFieldSource.CRM_COMPUTED
+      ? (resolvedGrossProfitPercent.value ?? computedGrossProfitPercent)
+      : resolvedGrossProfitPercent.value;
+  const netProfitPercent =
+    resolvedNetProfitPercent.source === FinanceFieldSource.CRM_COMPUTED
+      ? (resolvedNetProfitPercent.value ?? computedNetProfitPercent)
+      : resolvedNetProfitPercent.value;
+
+  return {
+    outstandingReceivables,
+    outstandingPayables,
+    grossProfit,
+    netProfit,
+    profitPercent,
+    netProfitPercent,
+    commissionPreview: {
+      moneyReceived,
+      totalExpenses,
+      adnaanCommission:
+        resolvedAdnaanCommission.source === FinanceFieldSource.CRM_COMPUTED
+          ? (resolvedAdnaanCommission.value ?? computedPreview.adnaanCommission)
+          : resolvedAdnaanCommission.value,
+      memeCommission:
+        resolvedMemeCommission.source === FinanceFieldSource.CRM_COMPUTED
+          ? (resolvedMemeCommission.value ?? computedPreview.memeCommission)
+          : resolvedMemeCommission.value,
+      grossProfit,
+      aimannDeduction:
+        resolvedAimannCommission.source === FinanceFieldSource.CRM_COMPUTED
+          ? (resolvedAimannCommission.value ?? computedPreview.aimannDeduction)
+          : resolvedAimannCommission.value,
+      netProfit,
+      profitPercent: netProfitPercent,
+    },
+  };
 }
 
 async function getProjectExpenseBasis(
@@ -258,11 +454,13 @@ export async function listProjects(query: ProjectListQuery = {}) {
       expenseOverride: expenseBasisByProjectId.get(p.id) ?? d(p.forecastedExpenses),
       aimannDebtBalance: currentDebtBalance,
     });
-
-    const profitPercent =
-      projectTotal > 0
-        ? Number(((breakdown.netProfit / projectTotal) * 100).toFixed(1))
-        : 0;
+    const resolvedFinance = resolveProjectFinanceSnapshot(p, {
+      ...breakdown,
+      profitPercent:
+        projectTotal > 0
+          ? Number(((breakdown.netProfit / projectTotal) * 100).toFixed(1))
+          : 0,
+    });
 
     return {
       id: p.id,
@@ -270,12 +468,13 @@ export async function listProjects(query: ProjectListQuery = {}) {
       address: p.address,
       fenceType: p.fenceType as FenceType,
       status: p.status as ProjectStatus,
+      financeProjectMode: p.financeProjectMode as ProjectListItem['financeProjectMode'],
       projectTotal,
       moneyReceived,
       customerPaid,
       installDate: p.installDate?.toISOString().split('T')[0] ?? null,
-      receivable: Number((projectTotal - customerPaid).toFixed(2)),
-      profitPercent,
+      receivable: resolvedFinance.outstandingReceivables,
+      profitPercent: resolvedFinance.netProfitPercent,
     };
   });
 
@@ -312,10 +511,14 @@ export async function getProjectById(projectId: string) {
   const forecastedExpenses = d(project.forecastedExpenses);
   const expenseBasis = await getProjectExpenseBasis(projectId, forecastedExpenses);
 
-  // For completed projects, use snapshot. For others, compute live.
+  const canUseComputedSnapshot =
+    project.status === 'COMPLETED' &&
+    project.commissionSnapshot &&
+    !isProtectedImportedMode(project.financeProjectMode);
+
   let commissionPreview: CommissionPreview;
-  if (project.status === 'COMPLETED' && project.commissionSnapshot) {
-    const snap = project.commissionSnapshot;
+  if (canUseComputedSnapshot) {
+    const snap = project.commissionSnapshot!;
     commissionPreview = {
       moneyReceived: d(snap.moneyReceived),
       totalExpenses: d(snap.totalExpenses),
@@ -338,6 +541,8 @@ export async function getProjectById(projectId: string) {
       expenseBasis
     );
   }
+
+  const resolvedFinance = resolveProjectFinanceSnapshot(project, commissionPreview);
 
   // Serialize the project
   return {
@@ -366,6 +571,23 @@ export async function getProjectById(projectId: string) {
     commissionPaid: d(project.commissionPaid),
     memesCommission: d(project.memesCommission),
     aimannsCommission: d(project.aimannsCommission),
+    financeProjectMode: project.financeProjectMode,
+    receivablesSource: project.receivablesSource,
+    payablesSource: project.payablesSource,
+    commissionsSource: project.commissionsSource,
+    profitabilitySource: project.profitabilitySource,
+    importedOutstandingReceivables: dn(project.importedOutstandingReceivables),
+    importedOutstandingPayables: dn(project.importedOutstandingPayables),
+    importedGrossProfit: dn(project.importedGrossProfit),
+    importedGrossProfitPercent: dn(project.importedGrossProfitPercent),
+    importedNetProfit: dn(project.importedNetProfit),
+    importedNetProfitPercent: dn(project.importedNetProfitPercent),
+    importedAt: project.importedAt?.toISOString() ?? null,
+    importedSource: project.importedSource,
+    lastRecalculatedAt: project.lastRecalculatedAt?.toISOString() ?? null,
+    lastManualFinanceEditAt: project.lastManualFinanceEditAt?.toISOString() ?? null,
+    reconciliationRequiredAt: project.reconciliationRequiredAt?.toISOString() ?? null,
+    reconciliationNotes: project.reconciliationNotes,
     createdById: project.createdById,
     isDeleted: project.isDeleted,
     deletedAt: project.deletedAt?.toISOString() ?? null,
@@ -405,7 +627,7 @@ export async function getProjectById(projectId: string) {
           settledAt: project.commissionSnapshot.settledAt.toISOString(),
         }
       : null,
-    commissionPreview,
+    commissionPreview: resolvedFinance.commissionPreview,
   };
 }
 
@@ -539,7 +761,7 @@ export async function createProject(dto: CreateProjectDTO, createdById: string) 
         await ensureEstimateFollowUpSequenceTx(tx, project.id, createdById);
       }
 
-      if (project.status === ProjectStatus.COMPLETED) {
+      if (project.status === ProjectStatus.COMPLETED && !isProtectedImportedMode(project.financeProjectMode)) {
         await generateCommissionSnapshot(project.id, tx);
       }
 
@@ -608,37 +830,47 @@ export async function updateProject(projectId: string, dto: UpdateProjectDTO) {
 
   // Build update data — only set fields that were provided
   const updateData: Prisma.ProjectUpdateInput = {};
-  const protectsImportedFinancials =
-    current.financeProjectMode === 'IMPORTED' ||
-    current.financeProjectMode === 'MIXED' ||
-    current.financeProjectMode === 'MANUAL_OVERRIDE';
+  const protectsImportedFinancials = isProtectedImportedMode(current.financeProjectMode);
   let importedFinancialsTouched = false;
+
+  const financeFieldChanged = {
+    projectTotal: dto.projectTotal !== undefined && dto.projectTotal !== d(current.projectTotal),
+    paymentMethod: dto.paymentMethod !== undefined && dto.paymentMethod !== current.paymentMethod,
+    moneyReceived: dto.moneyReceived !== undefined && dto.moneyReceived !== d(current.moneyReceived),
+    customerPaid: dto.customerPaid !== undefined && dto.customerPaid !== d(current.customerPaid),
+    forecastedExpenses: dto.forecastedExpenses !== undefined && dto.forecastedExpenses !== d(current.forecastedExpenses),
+    materialsCost: dto.materialsCost !== undefined && dto.materialsCost !== d(current.materialsCost),
+    commissionOwed: dto.commissionOwed !== undefined && dto.commissionOwed !== d(current.commissionOwed),
+    commissionPaid: dto.commissionPaid !== undefined && dto.commissionPaid !== d(current.commissionPaid),
+    memesCommission: dto.memesCommission !== undefined && dto.memesCommission !== d(current.memesCommission),
+    aimannsCommission: dto.aimannsCommission !== undefined && dto.aimannsCommission !== d(current.aimannsCommission),
+  };
 
   if (dto.customer !== undefined) updateData.customer = dto.customer;
   if (dto.address !== undefined) updateData.address = dto.address;
   if (dto.description !== undefined) updateData.description = dto.description;
   if (dto.fenceType !== undefined) updateData.fenceType = dto.fenceType;
   if (dto.status !== undefined) updateData.status = dto.status;
-  if (dto.projectTotal !== undefined) {
-    updateData.projectTotal = dto.projectTotal;
-    importedFinancialsTouched = true;
+  if (financeFieldChanged.projectTotal) {
+    const nextProjectTotal = dto.projectTotal ?? d(current.projectTotal);
+    updateData.projectTotal = nextProjectTotal;
     if (!protectsImportedFinancials) {
       const pm = dto.paymentMethod ?? current.paymentMethod;
-      updateData.moneyReceived = calcMoneyReceived(dto.projectTotal, pm);
+      updateData.moneyReceived = calcMoneyReceived(nextProjectTotal, pm);
     }
   }
-  if (dto.paymentMethod !== undefined) {
-    updateData.paymentMethod = dto.paymentMethod;
-    importedFinancialsTouched = true;
+  if (financeFieldChanged.paymentMethod) {
+    const nextPaymentMethod = dto.paymentMethod ?? current.paymentMethod;
+    updateData.paymentMethod = nextPaymentMethod;
     if (!protectsImportedFinancials) {
       const pt = dto.projectTotal ?? d(current.projectTotal);
-      updateData.moneyReceived = calcMoneyReceived(pt, dto.paymentMethod);
+      updateData.moneyReceived = calcMoneyReceived(pt, nextPaymentMethod);
     }
   }
-  if (dto.moneyReceived !== undefined) updateData.moneyReceived = dto.moneyReceived;
-  if (dto.forecastedExpenses !== undefined) updateData.forecastedExpenses = dto.forecastedExpenses;
-  if (dto.materialsCost !== undefined) updateData.materialsCost = dto.materialsCost;
-  if (dto.customerPaid !== undefined) updateData.customerPaid = dto.customerPaid;
+  if (financeFieldChanged.moneyReceived) updateData.moneyReceived = dto.moneyReceived;
+  if (financeFieldChanged.forecastedExpenses) updateData.forecastedExpenses = dto.forecastedExpenses;
+  if (financeFieldChanged.materialsCost) updateData.materialsCost = dto.materialsCost;
+  if (financeFieldChanged.customerPaid) updateData.customerPaid = dto.customerPaid;
   if (dto.contractDate !== undefined) updateData.contractDate = new Date(dto.contractDate);
   if (dto.installDate !== undefined) updateData.installDate = new Date(dto.installDate);
   if (dto.completedDate !== undefined) updateData.completedDate = dto.completedDate ? new Date(dto.completedDate) : null;
@@ -652,14 +884,90 @@ export async function updateProject(projectId: string, dto: UpdateProjectDTO) {
   }
   if (dto.subcontractor !== undefined) updateData.subcontractor = dto.subcontractor;
   if (dto.notes !== undefined) updateData.notes = dto.notes;
-  if (dto.commissionOwed !== undefined) updateData.commissionOwed = dto.commissionOwed;
-  if (dto.commissionPaid !== undefined) updateData.commissionPaid = dto.commissionPaid;
-  if (dto.memesCommission !== undefined) updateData.memesCommission = dto.memesCommission;
-  if (dto.aimannsCommission !== undefined) updateData.aimannsCommission = dto.aimannsCommission;
+  if (financeFieldChanged.commissionOwed) updateData.commissionOwed = dto.commissionOwed;
+  if (financeFieldChanged.commissionPaid) updateData.commissionPaid = dto.commissionPaid;
+  if (financeFieldChanged.memesCommission) updateData.memesCommission = dto.memesCommission;
+  if (financeFieldChanged.aimannsCommission) updateData.aimannsCommission = dto.aimannsCommission;
 
-  if (protectsImportedFinancials && importedFinancialsTouched) {
-    updateData.financeProjectMode = 'MIXED';
+  importedFinancialsTouched = Object.values(financeFieldChanged).some(Boolean);
+
+  if (importedFinancialsTouched) {
     updateData.lastManualFinanceEditAt = new Date();
+    if (protectsImportedFinancials) {
+      updateData.financeProjectMode =
+        current.financeProjectMode === 'RECONCILIATION_REQUIRED'
+          ? 'RECONCILIATION_REQUIRED'
+          : 'MIXED';
+      if (
+        financeFieldChanged.projectTotal ||
+        financeFieldChanged.paymentMethod ||
+        financeFieldChanged.moneyReceived ||
+        financeFieldChanged.customerPaid
+      ) {
+        updateData.receivablesSource = 'MANUAL_OVERRIDE';
+      }
+      if (
+        financeFieldChanged.commissionOwed ||
+        financeFieldChanged.commissionPaid
+      ) {
+        updateData.payablesSource = 'MANUAL_OVERRIDE';
+      }
+      if (
+        financeFieldChanged.commissionOwed ||
+        financeFieldChanged.commissionPaid ||
+        financeFieldChanged.memesCommission ||
+        financeFieldChanged.aimannsCommission
+      ) {
+        updateData.commissionsSource = 'MANUAL_OVERRIDE';
+      }
+      if (
+        financeFieldChanged.projectTotal ||
+        financeFieldChanged.paymentMethod ||
+        financeFieldChanged.moneyReceived ||
+        financeFieldChanged.forecastedExpenses ||
+        financeFieldChanged.materialsCost ||
+        financeFieldChanged.commissionOwed ||
+        financeFieldChanged.commissionPaid ||
+        financeFieldChanged.memesCommission ||
+        financeFieldChanged.aimannsCommission
+      ) {
+        updateData.profitabilitySource = 'MANUAL_OVERRIDE';
+      }
+    } else if (current.financeProjectMode === 'COMPUTED') {
+      updateData.financeProjectMode = 'MANUAL_OVERRIDE';
+      if (
+        financeFieldChanged.projectTotal ||
+        financeFieldChanged.paymentMethod ||
+        financeFieldChanged.moneyReceived ||
+        financeFieldChanged.customerPaid
+      ) {
+        updateData.receivablesSource = 'MANUAL_OVERRIDE';
+      }
+      if (financeFieldChanged.commissionOwed || financeFieldChanged.commissionPaid) {
+        updateData.payablesSource = 'MANUAL_OVERRIDE';
+      }
+      if (
+        financeFieldChanged.commissionOwed ||
+        financeFieldChanged.commissionPaid ||
+        financeFieldChanged.memesCommission ||
+        financeFieldChanged.aimannsCommission
+      ) {
+        updateData.commissionsSource = 'MANUAL_OVERRIDE';
+      }
+      if (
+        financeFieldChanged.projectTotal ||
+        financeFieldChanged.paymentMethod ||
+        financeFieldChanged.moneyReceived ||
+        financeFieldChanged.forecastedExpenses ||
+        financeFieldChanged.materialsCost ||
+        financeFieldChanged.commissionOwed ||
+        financeFieldChanged.commissionPaid ||
+        financeFieldChanged.memesCommission ||
+        financeFieldChanged.aimannsCommission
+      ) {
+        updateData.profitabilitySource = 'MANUAL_OVERRIDE';
+      }
+    }
   }
 
   // Check if transitioning to COMPLETED
@@ -688,7 +996,10 @@ export async function updateProject(projectId: string, dto: UpdateProjectDTO) {
           data: updateData,
         });
 
-        await generateCommissionSnapshot(projectId, tx);
+        const nextFinanceMode = String(updateData.financeProjectMode ?? current.financeProjectMode);
+        if (shouldRegenerateCompletedSnapshot(nextFinanceMode)) {
+          await generateCommissionSnapshot(projectId, tx);
+        }
 
         return { id: updated.id };
       },
@@ -697,11 +1008,17 @@ export async function updateProject(projectId: string, dto: UpdateProjectDTO) {
   }
 
   // Check if financial fields changed on an already-completed project → regenerate snapshot
-  const financialFields = ['projectTotal', 'paymentMethod', 'forecastedExpenses', 'materialsCost', 'customerPaid'];
   const isAlreadyCompleted = current.status === ProjectStatus.COMPLETED && !isCompletingNow;
-  const financialFieldChanged = financialFields.some((f) => (dto as Record<string, unknown>)[f] !== undefined);
+  const completedSnapshotFieldsChanged = (
+    financeFieldChanged.projectTotal ||
+    financeFieldChanged.paymentMethod ||
+    financeFieldChanged.forecastedExpenses ||
+    financeFieldChanged.materialsCost ||
+    financeFieldChanged.customerPaid ||
+    financeFieldChanged.moneyReceived
+  );
 
-  if (isAlreadyCompleted && financialFieldChanged) {
+  if (isAlreadyCompleted && completedSnapshotFieldsChanged) {
     const updated = await prisma.$transaction(
       async (tx) => {
         const updatedProject = await tx.project.update({
@@ -727,12 +1044,15 @@ export async function updateProject(projectId: string, dto: UpdateProjectDTO) {
       }
     }
 
-    await prisma.$transaction(
-      async (tx) => {
-        await generateCommissionSnapshot(projectId, tx);
-      },
-      { isolationLevel: 'Serializable' }
-    );
+    const nextFinanceMode = String(updateData.financeProjectMode ?? current.financeProjectMode);
+    if (shouldRegenerateCompletedSnapshot(nextFinanceMode)) {
+      await prisma.$transaction(
+        async (tx) => {
+          await generateCommissionSnapshot(projectId, tx);
+        },
+        { isolationLevel: 'Serializable' }
+      );
+    }
 
     return { id: updated.id };
   }
@@ -822,13 +1142,25 @@ export async function listProjectsGrid(query: ProjectListQuery = {}) {
     const commissionPaid = d(p.commissionPaid);
     const memesCommission = d(p.memesCommission);
     const aimannsCommission = d(p.aimannsCommission);
-
-    const outstandingReceivables = Number((projectTotal - customerPaid).toFixed(2));
-    const outstandingPayables = Number((commissionOwed - commissionPaid).toFixed(2));
-    const profitDollar = Number((moneyReceived - forecastedExpenses - commissionOwed).toFixed(2));
-    const profitPercent = projectTotal > 0 ? Number(((profitDollar / projectTotal) * 100).toFixed(2)) : 0;
-    const netProfitDollar = Number((profitDollar - memesCommission - aimannsCommission).toFixed(2));
-    const netProfitPercent = projectTotal > 0 ? Number(((netProfitDollar / projectTotal) * 100).toFixed(2)) : 0;
+    const computedPreview: CommissionPreview = {
+      moneyReceived,
+      totalExpenses: forecastedExpenses,
+      adnaanCommission: commissionOwed,
+      memeCommission: memesCommission,
+      grossProfit: Number((moneyReceived - forecastedExpenses - commissionOwed).toFixed(2)),
+      aimannDeduction: aimannsCommission,
+      netProfit: Number((moneyReceived - forecastedExpenses - commissionOwed - memesCommission - aimannsCommission).toFixed(2)),
+      profitPercent: projectTotal > 0
+        ? Number((((moneyReceived - forecastedExpenses - commissionOwed - memesCommission - aimannsCommission) / projectTotal) * 100).toFixed(2))
+        : 0,
+    };
+    const resolvedFinance = resolveProjectFinanceSnapshot(p, computedPreview);
+    const outstandingReceivables = resolvedFinance.outstandingReceivables;
+    const outstandingPayables = resolvedFinance.outstandingPayables;
+    const profitDollar = resolvedFinance.grossProfit;
+    const profitPercent = resolvedFinance.profitPercent;
+    const netProfitDollar = resolvedFinance.netProfit;
+    const netProfitPercent = resolvedFinance.netProfitPercent;
 
     const subPayments = p.subcontractorPayments;
 

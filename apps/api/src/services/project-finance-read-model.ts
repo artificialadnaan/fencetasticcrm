@@ -30,6 +30,25 @@ export function resolveFinanceField(input: ResolveFinanceFieldInput) {
     };
   }
 
+  if (
+    input.fieldSource === FinanceFieldSource.MANUAL_OVERRIDE ||
+    input.fieldSource === FinanceFieldSource.IMPORTED_ACTUAL ||
+    input.fieldSource === FinanceFieldSource.IMPORTED_DERIVED ||
+    input.fieldSource === FinanceFieldSource.UNSET
+  ) {
+    return {
+      value: null,
+      source: FinanceFieldSource.UNSET,
+    };
+  }
+
+  if (input.computedValue === null) {
+    return {
+      value: null,
+      source: FinanceFieldSource.UNSET,
+    };
+  }
+
   return {
     value: input.computedValue,
     source: FinanceFieldSource.CRM_COMPUTED,

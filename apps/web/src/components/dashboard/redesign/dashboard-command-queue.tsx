@@ -1,0 +1,103 @@
+import { AlertTriangle, CalendarClock, HandCoins } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import type { DashboardCommandItem, DashboardData } from '@fencetastic/shared';
+
+type QueueLaneProps = {
+  title: string;
+  subtitle: string;
+  items: DashboardCommandItem[];
+  isLoading: boolean;
+  Icon: typeof AlertTriangle;
+};
+
+function QueueLane({ title, subtitle, items, isLoading, Icon }: QueueLaneProps) {
+  return (
+    <section className="shell-panel rounded-[32px] p-6">
+      <div className="flex items-start justify-between gap-4 border-b border-black/5 pb-5">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+            {title}
+          </p>
+          <h2 className="mt-3 text-xl font-semibold tracking-[-0.04em] text-slate-950">
+            {subtitle}
+          </h2>
+        </div>
+        <div className="rounded-2xl border border-black/5 bg-white/80 p-3 text-slate-700 shadow-sm">
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="mt-5 space-y-3">
+          {[0, 1, 2].map((item) => (
+            <div key={item} className="h-20 animate-pulse rounded-[24px] bg-slate-200/70" />
+          ))}
+        </div>
+      ) : items.length === 0 ? (
+        <div className="mt-5 rounded-[24px] border border-dashed border-slate-300 bg-white/50 px-5 py-8 text-sm text-slate-600">
+          No items in this lane.
+        </div>
+      ) : (
+        <div className="mt-5 space-y-3">
+          {items.map((item) => (
+            <Link
+              key={item.id}
+              to={`/projects/${item.projectId}`}
+              className="block rounded-[24px] border border-black/5 bg-white/80 px-4 py-4 transition-transform duration-200 hover:-translate-y-0.5 hover:bg-white"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-base font-semibold text-slate-950">{item.customer}</p>
+                  <p className="mt-1 truncate text-sm text-slate-600">{item.address}</p>
+                </div>
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                  {item.urgency}
+                </span>
+              </div>
+              <p className="mt-4 text-sm font-medium text-slate-900">{item.title}</p>
+              <p className="mt-1 text-sm text-slate-600">{item.reason}</p>
+              {item.financeProjectMode ? (
+                <p className="mt-3 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+                  {item.financeProjectMode.replace(/_/g, ' ')}
+                </p>
+              ) : null}
+            </Link>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+interface DashboardCommandQueueProps {
+  queue: DashboardData['commandQueue'] | null;
+  isLoading: boolean;
+}
+
+export function DashboardCommandQueue({ queue, isLoading }: DashboardCommandQueueProps) {
+  return (
+    <div className="grid gap-6 xl:grid-cols-3">
+      <QueueLane
+        title="Action Needed"
+        subtitle="Tasks that need movement today"
+        items={queue?.actionNeeded ?? []}
+        isLoading={isLoading}
+        Icon={AlertTriangle}
+      />
+      <QueueLane
+        title="Money At Risk"
+        subtitle="Cash that still needs collection"
+        items={queue?.moneyAtRisk ?? []}
+        isLoading={isLoading}
+        Icon={HandCoins}
+      />
+      <QueueLane
+        title="Schedule Blockers"
+        subtitle="Active jobs missing execution readiness"
+        items={queue?.scheduleBlockers ?? []}
+        isLoading={isLoading}
+        Icon={CalendarClock}
+      />
+    </div>
+  );
+}

@@ -450,8 +450,8 @@ export default function ProjectDetailPage() {
           label="Profit"
           value={formatCurrency(cp.netProfit)}
           icon={<TrendingUp className="h-5 w-5" />}
-          valueClassName={cp.netProfit >= 0 ? 'text-green-600' : 'text-red-500'}
-          dark={cp.netProfit >= 0}
+          valueClassName={cp.netProfit != null && cp.netProfit >= 0 ? 'text-green-600' : 'text-red-500'}
+          dark={cp.netProfit != null && cp.netProfit >= 0}
         />
       </div>
 
@@ -1082,7 +1082,7 @@ export default function ProjectDetailPage() {
             <div className="rounded-[24px] border border-black/5 bg-slate-950 px-5 py-4 text-white">
               <div className="flex items-center justify-between">
                 <span className="font-semibold">Total Profit</span>
-                <span className={`text-xl font-bold font-mono ${cp.grossProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                <span className={`text-xl font-bold font-mono ${cp.grossProfit != null && cp.grossProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                   {formatCurrency(cp.grossProfit)}
                 </span>
               </div>
@@ -1093,16 +1093,50 @@ export default function ProjectDetailPage() {
           <section className="shell-panel rounded-[28px] p-6 md:p-8">
             <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 mb-4">Summary</p>
             <div className="space-y-3">
+              <div className="rounded-[20px] border border-black/5 bg-white/70 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Finance Trust
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Badge variant="secondary" className="rounded-full bg-slate-100 text-slate-700">
+                    {project.financeProjectMode.replace(/_/g, ' ')}
+                  </Badge>
+                  {project.importedSource ? (
+                    <Badge variant="outline" className="rounded-full border-black/10 bg-white text-slate-600">
+                      {project.importedSource}
+                    </Badge>
+                  ) : null}
+                </div>
+                <div className="mt-4 space-y-2 text-sm text-slate-600">
+                  <div className="flex items-center justify-between gap-4">
+                    <span>Receivables</span>
+                    <span className="font-medium text-slate-900">{project.receivablesSource.replace(/_/g, ' ')}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <span>Payables</span>
+                    <span className="font-medium text-slate-900">{project.payablesSource.replace(/_/g, ' ')}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <span>Commissions</span>
+                    <span className="font-medium text-slate-900">{project.commissionsSource.replace(/_/g, ' ')}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <span>Profitability</span>
+                    <span className="font-medium text-slate-900">{project.profitabilitySource.replace(/_/g, ' ')}</span>
+                  </div>
+                </div>
+              </div>
+
               <SummaryRow label="Income" value={formatCurrency(incomeTotal > 0 ? incomeTotal : cp.moneyReceived)} />
               <SummaryRow label="Expenses" value={formatCurrency(expenseTotal > 0 ? expenseTotal : cp.totalExpenses)} negative />
               <Separator />
-              <SummaryRow label="Profit" value={formatCurrency(cp.grossProfit)} highlight positive={cp.grossProfit >= 0} />
+              <SummaryRow label="Profit" value={formatCurrency(cp.grossProfit)} highlight positive={cp.grossProfit != null && cp.grossProfit >= 0} />
               <Separator />
               <SummaryRow label="Adnaan Commission (10%)" value={formatCurrency(cp.adnaanCommission)} negative />
               <SummaryRow label="Meme Commission (5%)" value={formatCurrency(cp.memeCommission)} negative />
               <SummaryRow label="Aimann Deduction (25%)" value={formatCurrency(cp.aimannDeduction)} negative />
               <Separator />
-              <SummaryRow label="Company Half" value={formatCurrency(cp.netProfit)} highlight positive={cp.netProfit >= 0} />
+              <SummaryRow label="Company Half" value={formatCurrency(cp.netProfit)} highlight positive={cp.netProfit != null && cp.netProfit >= 0} />
 
               <Separator />
 

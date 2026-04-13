@@ -97,7 +97,17 @@ export async function getCommissionsByProject(page: number, limit: number): Prom
   const [snapshots, total] = await Promise.all([
     prisma.commissionSnapshot.findMany({
       where: { project: { isDeleted: false } },
-      include: { project: { select: { customer: true, completedDate: true, projectTotal: true } } },
+      include: {
+        project: {
+          select: {
+            customer: true,
+            completedDate: true,
+            projectTotal: true,
+            financeProjectMode: true,
+            importedSource: true,
+          },
+        },
+      },
       orderBy: { settledAt: 'desc' },
       skip: (page - 1) * limit,
       take: limit,
@@ -116,6 +126,8 @@ export async function getCommissionsByProject(page: number, limit: number): Prom
     aimannDeduction: d(s.aimannDeduction),
     netProfit: d(s.netProfit),
     completedDate: s.project.completedDate?.toISOString().split('T')[0] ?? s.settledAt.toISOString().split('T')[0],
+    financeProjectMode: s.project.financeProjectMode as CommissionByProject['financeProjectMode'],
+    importedSource: s.project.importedSource,
   }));
 
   return {
