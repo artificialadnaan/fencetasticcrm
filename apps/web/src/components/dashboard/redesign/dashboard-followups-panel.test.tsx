@@ -48,5 +48,11 @@ describe('DashboardFollowupsPanel', () => {
     expect(container.textContent).toContain('123 Fence Lane');
     expect(container.textContent).toContain('Apr 9, 2026');
     expect(container.textContent).toContain('Day 7');
+    expect(container.textContent).toContain('Add follow-up');
+
+    const links = Array.from(container.querySelectorAll('a'));
+    const hrefs = links.map((link) => link.getAttribute('href'));
+    expect(hrefs).toContain('/calendar?compose=1&type=followup');
+    expect(hrefs).toContain('/projects/project-7?tab=follow-up');
   });
 });

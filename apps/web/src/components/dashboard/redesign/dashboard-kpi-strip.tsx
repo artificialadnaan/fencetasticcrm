@@ -4,6 +4,7 @@ import {
   FolderKanban,
   Wallet,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import type { DashboardData } from '@fencetastic/shared';
 import { formatCurrency } from '@/lib/formatters';
 
@@ -17,6 +18,7 @@ interface KpiItem {
   value: string;
   detail: string;
   accent: string;
+  href: string;
   Icon: typeof Wallet;
 }
 
@@ -30,9 +32,12 @@ function KpiSkeleton() {
   );
 }
 
-function KpiCard({ label, value, detail, accent, Icon }: KpiItem) {
+function KpiCard({ label, value, detail, accent, href, Icon }: KpiItem) {
   return (
-    <article className="shell-panel relative overflow-hidden rounded-[28px] p-5">
+    <Link
+      to={href}
+      className="shell-panel group relative block overflow-hidden rounded-[28px] p-5 transition-transform duration-200 hover:-translate-y-0.5"
+    >
       <div className={`absolute inset-x-5 top-0 h-1 rounded-b-full ${accent}`} />
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -44,11 +49,11 @@ function KpiCard({ label, value, detail, accent, Icon }: KpiItem) {
           </p>
           <p className="mt-4 text-sm text-slate-600">{detail}</p>
         </div>
-        <div className="rounded-2xl border border-white/70 bg-white/80 p-3 text-slate-700 shadow-sm">
+        <div className="rounded-2xl border border-white/70 bg-white/80 p-3 text-slate-700 shadow-sm transition-colors group-hover:bg-white">
           <Icon className="h-5 w-5" />
         </div>
       </div>
-    </article>
+    </Link>
   );
 }
 
@@ -70,6 +75,7 @@ export function DashboardKpiStrip({ kpis, isLoading }: DashboardKpiStripProps) {
       value: isUnavailable ? 'Unavailable' : formatCurrency(kpis.revenueMTD),
       detail: isUnavailable ? 'Dashboard metrics could not be loaded.' : 'Completed projects booked this month',
       accent: 'bg-emerald-500',
+      href: '/finances',
       Icon: ArrowUpRight,
     },
     {
@@ -77,6 +83,7 @@ export function DashboardKpiStrip({ kpis, isLoading }: DashboardKpiStripProps) {
       value: isUnavailable ? 'Unavailable' : String(kpis.openProjects),
       detail: isUnavailable ? 'Dashboard metrics could not be loaded.' : 'Open and in-progress work in the field',
       accent: 'bg-sky-500',
+      href: '/projects',
       Icon: FolderKanban,
     },
     {
@@ -88,6 +95,7 @@ export function DashboardKpiStrip({ kpis, isLoading }: DashboardKpiStripProps) {
           ? 'Customer balances still due'
           : 'No outstanding receivables',
       accent: 'bg-amber-500',
+      href: '/finances',
       Icon: Wallet,
     },
     {
@@ -99,6 +107,7 @@ export function DashboardKpiStrip({ kpis, isLoading }: DashboardKpiStripProps) {
           ? 'Remaining owner debt balance'
           : 'Debt ledger is fully cleared',
       accent: 'bg-rose-500',
+      href: '/commissions',
       Icon: CreditCard,
     },
   ];

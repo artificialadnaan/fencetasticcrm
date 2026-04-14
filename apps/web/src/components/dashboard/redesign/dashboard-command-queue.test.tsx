@@ -77,5 +77,11 @@ describe('DashboardCommandQueue', () => {
     expect(container.textContent).toContain('Jane Doe');
     expect(container.textContent).toContain('John Smith');
     expect(container.textContent).toContain('Alex Roe');
+
+    const links = Array.from(container.querySelectorAll('a'));
+    const hrefs = links.map((link) => link.getAttribute('href'));
+    expect(hrefs).toContain('/projects/p1?tab=follow-up');
+    expect(hrefs).toContain('/projects/p2');
+    expect(hrefs).toContain('/projects/p3');
   });
 });

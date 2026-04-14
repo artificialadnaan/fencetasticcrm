@@ -8,9 +8,11 @@ type QueueLaneProps = {
   items: DashboardCommandItem[];
   isLoading: boolean;
   Icon: typeof AlertTriangle;
+  getHref: (item: DashboardCommandItem) => string;
+  ctaLabel: string;
 };
 
-function QueueLane({ title, subtitle, items, isLoading, Icon }: QueueLaneProps) {
+function QueueLane({ title, subtitle, items, isLoading, Icon, getHref, ctaLabel }: QueueLaneProps) {
   return (
     <section className="shell-panel rounded-[32px] p-6">
       <div className="flex items-start justify-between gap-4 border-b border-black/5 pb-5">
@@ -42,7 +44,7 @@ function QueueLane({ title, subtitle, items, isLoading, Icon }: QueueLaneProps) 
           {items.map((item) => (
             <Link
               key={item.id}
-              to={`/projects/${item.projectId}`}
+              to={getHref(item)}
               className="block rounded-[24px] border border-black/5 bg-white/80 px-4 py-4 transition-transform duration-200 hover:-translate-y-0.5 hover:bg-white"
             >
               <div className="flex items-start justify-between gap-4">
@@ -61,6 +63,9 @@ function QueueLane({ title, subtitle, items, isLoading, Icon }: QueueLaneProps) 
                   {item.financeProjectMode.replace(/_/g, ' ')}
                 </p>
               ) : null}
+              <p className="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                {ctaLabel}
+              </p>
             </Link>
           ))}
         </div>
@@ -83,6 +88,8 @@ export function DashboardCommandQueue({ queue, isLoading }: DashboardCommandQueu
         items={queue?.actionNeeded ?? []}
         isLoading={isLoading}
         Icon={AlertTriangle}
+        getHref={(item) => `/projects/${item.projectId}?tab=follow-up`}
+        ctaLabel="Open follow-up"
       />
       <QueueLane
         title="Money At Risk"
@@ -90,6 +97,8 @@ export function DashboardCommandQueue({ queue, isLoading }: DashboardCommandQueu
         items={queue?.moneyAtRisk ?? []}
         isLoading={isLoading}
         Icon={HandCoins}
+        getHref={(item) => `/projects/${item.projectId}`}
+        ctaLabel="Open project"
       />
       <QueueLane
         title="Schedule Blockers"
@@ -97,6 +106,8 @@ export function DashboardCommandQueue({ queue, isLoading }: DashboardCommandQueu
         items={queue?.scheduleBlockers ?? []}
         isLoading={isLoading}
         Icon={CalendarClock}
+        getHref={(item) => `/projects/${item.projectId}`}
+        ctaLabel="Open project"
       />
     </div>
   );

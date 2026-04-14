@@ -1,5 +1,5 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   addMonths,
   endOfMonth,
@@ -90,6 +90,7 @@ function isDerivedProjectEvent(event: CalendarEventView) {
 
 export default function CalendarPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [searchText, setSearchText] = useState('');
   const [typeFilter, setTypeFilter] = useState<'ALL' | string>('ALL');
@@ -198,12 +199,12 @@ export default function CalendarPage() {
     setEditingEvent(null);
     setForm({
       ...DEFAULT_FORM,
-      date: dateStr ?? format(new Date(), 'yyyy-MM-dd'),
+      date: dateStr ?? format(selectedDate, 'yyyy-MM-dd'),
     });
     setProjectSearch('');
     setSaveError(null);
     setDialogOpen(true);
-  }, []);
+  }, [selectedDate]);
 
   const openEditDialog = useCallback((event: CalendarEventView) => {
     setEditingEvent(event);
@@ -236,6 +237,36 @@ export default function CalendarPage() {
     }
     openEditDialog(event);
   }, [navigate, openEditDialog]);
+
+  useEffect(() => {
+    if (searchParams.get('compose') !== '1') {
+      return;
+    }
+
+    const requestedType = searchParams.get('type') ?? DEFAULT_FORM.eventType;
+    const requestedDate = searchParams.get('date') ?? format(new Date(), 'yyyy-MM-dd');
+    const requestedDateValue = toLocalDate(requestedDate);
+
+    setSelectedDate(requestedDateValue);
+    setCurrentDate(requestedDateValue);
+
+    setEditingEvent(null);
+    setForm({
+      ...DEFAULT_FORM,
+      date: requestedDate,
+      eventType: requestedType,
+      color: getEventColor(requestedType),
+    });
+    setProjectSearch('');
+    setSaveError(null);
+    setDialogOpen(true);
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('compose');
+    nextParams.delete('type');
+    nextParams.delete('date');
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const handleSave = useCallback(async () => {
     if (!form.title.trim() || !form.date || !form.eventType) {

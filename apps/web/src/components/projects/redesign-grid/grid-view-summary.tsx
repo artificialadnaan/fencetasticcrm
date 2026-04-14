@@ -31,21 +31,21 @@ function SummarySkeleton() {
 
 function SummaryCardView({ label, value, detail, accent, icon: Icon }: SummaryCard) {
   return (
-    <article className="shell-panel relative overflow-hidden rounded-[28px] p-5">
+    <article className="relative overflow-hidden rounded-[28px] border border-slate-300 bg-white p-5 shadow-[0_18px_44px_rgba(15,23,42,0.12)]">
       <div className={`absolute inset-x-5 top-0 h-1 rounded-b-full ${accent}`} />
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-600">
             {label}
           </p>
           <p className="mt-4 text-3xl font-semibold tracking-[-0.05em] text-slate-950">
             {value}
           </p>
-          <p className="mt-4 text-sm leading-6 text-slate-600">
+          <p className="mt-4 text-sm leading-6 text-slate-700">
             {detail}
           </p>
         </div>
-        <div className="rounded-2xl border border-white/70 bg-white/80 p-3 text-slate-700 shadow-sm">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-slate-700 shadow-sm">
           <Icon className="h-5 w-5" />
         </div>
       </div>
@@ -124,16 +124,16 @@ export function GridViewSummaryStrip({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[28px] border border-black/5 bg-white/55 px-5 py-4 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[28px] border border-white/8 bg-[#161d27] px-5 py-4 shadow-sm">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
             Spreadsheet View
           </p>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
+          <p className="mt-2 text-sm leading-6 text-slate-200">
             Inline edits stay active. Select rows or jump into a project from the action column.
           </p>
         </div>
-        <div className="rounded-2xl border border-black/5 bg-white/80 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm">
+        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white shadow-sm">
           {selectedCount} selected
         </div>
       </div>

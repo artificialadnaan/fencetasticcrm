@@ -84,7 +84,7 @@ function EditableCell({ value, rowId, field, isNumber = false, refetch, display 
     return (
       <input
         ref={inputRef}
-        className="w-full min-w-[80px] rounded-xl border border-sky-300 bg-white px-2 py-1 text-xs shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
+        className="w-full min-w-[80px] rounded-xl border border-sky-300 bg-white px-2 py-1 text-xs text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
         onBlur={save}
@@ -103,7 +103,7 @@ function EditableCell({ value, rowId, field, isNumber = false, refetch, display 
   return (
     <button
       type="button"
-      className="block min-w-[60px] rounded-lg px-1.5 py-1 text-left transition-colors hover:bg-sky-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+      className="block min-w-[60px] rounded-lg px-1.5 py-1 text-left text-slate-900 transition-colors hover:bg-sky-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
       onClick={startEdit}
     >
       {display ?? (value != null ? String(value) : '—')}
@@ -445,7 +445,7 @@ function buildColumns(
             type="button"
             size="sm"
             variant="outline"
-            className="h-8 rounded-xl border-black/10 bg-white/80 px-3 text-slate-700 shadow-sm"
+            className="h-8 rounded-xl border-slate-300 bg-white px-3 text-slate-800 shadow-sm"
             onClick={() => onOpenProject(row.original.id)}
           >
             Open
@@ -505,25 +505,25 @@ export function GridViewTable({
     <section className="shell-panel rounded-[32px] p-4 md:p-6">
       <div className="flex flex-col gap-4 border-b border-black/5 pb-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
             Project Ledger
           </p>
-          <h2 className="mt-3 text-2xl font-semibold tracking-[-0.05em] text-slate-950">
+          <h2 className="mt-3 text-2xl font-semibold tracking-[-0.05em] text-white">
             Grid view
           </h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-200">
             {rowCountLabel}. Inline edits stay active and the rightmost action opens the project workspace.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="rounded-2xl border border-black/5 bg-white/75 px-3 py-2 text-sm font-medium text-slate-700">
+          <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-white">
             Page {safePagination.page} of {safePagination.totalPages}
           </div>
-          <div className="rounded-2xl border border-black/5 bg-white/75 px-3 py-2 text-sm font-medium text-slate-700">
+          <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-white">
             {safePagination.total} total
           </div>
-          <div className="rounded-2xl border border-black/5 bg-white/75 px-3 py-2 text-sm font-medium text-slate-700">
+          <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-white">
             {selectedCount} selected
           </div>
         </div>
@@ -546,10 +546,10 @@ export function GridViewTable({
           </div>
         </div>
       ) : (
-        <div className="mt-6 overflow-hidden rounded-[28px] border border-black/5 bg-white/75">
+        <div className="mt-6 overflow-hidden rounded-[28px] border border-slate-300 bg-white shadow-[0_20px_50px_rgba(15,23,42,0.16)]">
           <div className="overflow-x-auto">
-            <table className="min-w-max border-collapse text-xs">
-              <thead className="sticky top-0 z-10 bg-[rgba(255,255,255,0.96)] backdrop-blur">
+            <table className="min-w-max border-collapse text-xs text-slate-800">
+              <thead className="sticky top-0 z-10 bg-[rgba(248,250,252,0.98)] backdrop-blur">
                 {table.getHeaderGroups().map((headerGroup) => (
                   <tr key={headerGroup.id}>
                     {headerGroup.headers.map((header) => (
@@ -557,7 +557,7 @@ export function GridViewTable({
                         key={header.id}
                         style={{ width: header.getSize(), minWidth: header.getSize() }}
                         className={cn(
-                          'border-b border-r border-gray-200 px-3 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 whitespace-nowrap',
+                          'border-b border-r border-slate-200 px-3 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-600 whitespace-nowrap',
                           header.column.columnDef.meta?.className
                         )}
                       >
@@ -567,12 +567,12 @@ export function GridViewTable({
                   </tr>
                 ))}
               </thead>
-              <tbody className="divide-y divide-gray-100 bg-white/90">
+              <tbody className="divide-y divide-slate-200 bg-white">
                 {isLoading ? (
                   Array.from({ length: 5 }).map((_, rowIndex) => (
                     <tr key={`grid-skeleton-${rowIndex}`}>
                       {Array.from({ length: columnsLength }).map((__, colIndex) => (
-                        <td key={`grid-skeleton-${rowIndex}-${colIndex}`} className="border-r border-gray-100 px-3 py-3">
+                        <td key={`grid-skeleton-${rowIndex}-${colIndex}`} className="border-r border-slate-200 px-3 py-3">
                           <div className="h-4 w-full animate-pulse rounded-full bg-slate-200" />
                         </td>
                       ))}
@@ -582,14 +582,14 @@ export function GridViewTable({
                   visibleRows.map((row) => (
                     <tr
                       key={row.id}
-                      className={cn('hover:bg-slate-50/90', ROW_BG[row.original.status])}
+                      className={cn('hover:bg-slate-50/90', ROW_BG[row.original.status], 'text-slate-800')}
                     >
                       {row.getVisibleCells().map((cell) => (
                         <td
                           key={cell.id}
                           style={{ width: cell.column.getSize(), minWidth: cell.column.getSize() }}
                           className={cn(
-                            'border-r border-gray-100 px-3 py-2.5 align-middle',
+                            'border-r border-slate-200 px-3 py-2.5 align-middle',
                             cell.column.columnDef.meta?.className
                           )}
                         >
@@ -627,7 +627,7 @@ export function GridViewTable({
                         return (
                           <td
                             key={column.id}
-                            className={cn('border-r border-gray-200 px-3 py-3 text-xs font-semibold text-slate-700 whitespace-nowrap', metaClass)}
+                            className={cn('border-r border-slate-300 px-3 py-3 text-xs font-semibold text-slate-800 whitespace-nowrap', metaClass)}
                           >
                             Totals ({projects.length})
                           </td>
@@ -644,7 +644,7 @@ export function GridViewTable({
                           <td
                             key={column.id}
                             className={cn(
-                              'border-r border-gray-200 px-3 py-3 text-xs tabular-nums whitespace-nowrap',
+                              'border-r border-slate-300 px-3 py-3 text-xs tabular-nums whitespace-nowrap',
                               isProfit ? (val >= 0 ? 'text-emerald-700' : 'text-rose-600') : 'text-slate-800',
                               metaClass
                             )}
@@ -654,7 +654,7 @@ export function GridViewTable({
                         );
                       }
 
-                      return <td key={column.id} className={cn('border-r border-gray-200 px-3 py-3', metaClass)} />;
+                      return <td key={column.id} className={cn('border-r border-slate-300 px-3 py-3', metaClass)} />;
                     })}
                   </tr>
                 )}
@@ -666,7 +666,7 @@ export function GridViewTable({
 
       {pagination && pagination.totalPages > 1 && (
         <div className="mt-5 flex flex-col gap-4 border-t border-black/5 pt-5 lg:flex-row lg:items-center lg:justify-between">
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-slate-200">
             Page {safePagination.page} of {safePagination.totalPages} • {safePagination.total} project{safePagination.total === 1 ? '' : 's'}
           </p>
 
@@ -675,7 +675,7 @@ export function GridViewTable({
               type="button"
               variant="outline"
               size="icon"
-              className="h-10 w-10 rounded-2xl border-black/10 bg-white/80"
+              className="h-10 w-10 rounded-2xl border-white/10 bg-white/5 text-white"
               onClick={() => onPageChange(1)}
               disabled={safePagination.page <= 1 || showError}
               aria-label="First page"
@@ -686,21 +686,21 @@ export function GridViewTable({
               type="button"
               variant="outline"
               size="icon"
-              className="h-10 w-10 rounded-2xl border-black/10 bg-white/80"
+              className="h-10 w-10 rounded-2xl border-white/10 bg-white/5 text-white"
               onClick={() => onPageChange(safePagination.page - 1)}
               disabled={safePagination.page <= 1 || showError}
               aria-label="Previous page"
             >
               <span className="text-sm">‹</span>
             </Button>
-            <div className="rounded-2xl border border-black/5 bg-white/75 px-4 py-2 text-sm font-medium text-slate-700">
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white">
               {safePagination.page}
             </div>
             <Button
               type="button"
               variant="outline"
               size="icon"
-              className="h-10 w-10 rounded-2xl border-black/10 bg-white/80"
+              className="h-10 w-10 rounded-2xl border-white/10 bg-white/5 text-white"
               onClick={() => onPageChange(safePagination.page + 1)}
               disabled={safePagination.page >= safePagination.totalPages || showError}
               aria-label="Next page"
@@ -711,7 +711,7 @@ export function GridViewTable({
               type="button"
               variant="outline"
               size="icon"
-              className="h-10 w-10 rounded-2xl border-black/10 bg-white/80"
+              className="h-10 w-10 rounded-2xl border-white/10 bg-white/5 text-white"
               onClick={() => onPageChange(safePagination.totalPages)}
               disabled={safePagination.page >= safePagination.totalPages || showError}
               aria-label="Last page"

@@ -93,12 +93,12 @@ export default function ProjectGridPage() {
     () => (
       <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
         <div className="relative w-full sm:w-[320px]">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
           <Input
             value={query.search ?? ''}
             onChange={(event) => handleSearchChange(event.target.value)}
             placeholder="Search customer, address, or subcontractor..."
-            className="h-10 rounded-2xl border-black/10 bg-white/80 pl-10 shadow-sm placeholder:text-slate-400"
+            className="h-11 rounded-2xl border-slate-300 bg-white pl-10 text-slate-900 shadow-sm placeholder:text-slate-500"
           />
         </div>
 
@@ -107,7 +107,7 @@ export default function ProjectGridPage() {
             type="button"
             variant="ghost"
             onClick={handleClearFilters}
-            className="h-10 rounded-2xl border border-black/5 bg-white/60 px-4 text-slate-700 hover:bg-white"
+            className="h-11 rounded-2xl border border-slate-300 bg-white px-4 text-slate-700 hover:bg-slate-50"
           >
             <X className="h-4 w-4" />
             Reset
@@ -165,7 +165,7 @@ export default function ProjectGridPage() {
       />
 
       <div className="space-y-6">
-        <div className="rounded-[28px] border border-black/5 bg-white/55 p-2 shadow-sm">
+        <div className="rounded-[28px] border border-white/8 bg-[#161d27] p-2 shadow-sm">
           <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Project status filters">
             {STATUS_TABS.map((tab) => {
               const isActive = activeStatus === tab.value;
@@ -178,8 +178,8 @@ export default function ProjectGridPage() {
                   className={[
                     'rounded-2xl px-4 py-2 text-sm font-medium transition-all duration-200',
                     isActive
-                      ? 'bg-[hsl(var(--brand-blue))] text-white shadow-[0_10px_24px_rgba(78,156,207,0.25)]'
-                      : 'text-slate-600 hover:bg-white hover:text-slate-950',
+                      ? 'bg-white text-slate-950 shadow-[0_10px_24px_rgba(15,23,42,0.28)]'
+                      : 'text-slate-300 hover:bg-white/10 hover:text-white',
                   ].join(' ')}
                 >
                   {tab.label}
