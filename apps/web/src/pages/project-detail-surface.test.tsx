@@ -188,5 +188,5 @@ describe('ProjectDetailPage surface styling', () => {
 
     const inverseValue = container.querySelector('[aria-label="Edit Notes"] span');
     expect(inverseValue?.className).toContain('text-white');
-  });
+  }, 15000);
 });

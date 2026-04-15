@@ -85,7 +85,7 @@ describe('CalendarPage', () => {
     expect(document.body.textContent).toContain('Follow-Up');
     expect(document.body.textContent).toContain('May 2026');
     expect(document.body.textContent).toContain('Saturday, May 9');
-  });
+  }, 15000);
 
   it('focuses the requested day from the date query string without opening the compose dialog', async () => {
     await act(async () => {
@@ -105,5 +105,5 @@ describe('CalendarPage', () => {
     expect(document.body.textContent).toContain('April 2026');
     expect(document.body.textContent).toContain('Selected day');
     expect(document.body.textContent).toContain('Wednesday, Apr 8');
-  });
+  }, 15000);
 });

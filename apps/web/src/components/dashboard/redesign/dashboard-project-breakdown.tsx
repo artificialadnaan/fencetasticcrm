@@ -2,7 +2,6 @@ import {
   Cell,
   Pie,
   PieChart,
-  ResponsiveContainer,
   Tooltip,
 } from 'recharts';
 import { Layers3 } from 'lucide-react';
@@ -83,9 +82,8 @@ export function DashboardProjectBreakdown({
         </div>
       ) : (
         <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(260px,0.8fr)]">
-          <div className="h-[320px] rounded-[28px] border border-black/5 bg-white/65 p-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
+          <div className="flex h-[320px] items-center justify-center rounded-[28px] border border-black/5 bg-white/65 p-4">
+            <PieChart width={260} height={260}>
                 <Pie
                   data={chartData}
                   dataKey="value"
@@ -99,8 +97,7 @@ export function DashboardProjectBreakdown({
                   ))}
                 </Pie>
                 <Tooltip content={<ProjectBreakdownTooltip />} />
-              </PieChart>
-            </ResponsiveContainer>
+            </PieChart>
           </div>
 
           <div className="space-y-3">

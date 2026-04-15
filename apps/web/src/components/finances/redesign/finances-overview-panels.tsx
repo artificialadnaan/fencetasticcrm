@@ -5,11 +5,11 @@ import {
   Cell,
   Pie,
   PieChart,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
+import { ResponsiveContainer } from 'recharts';
 import { ArrowUpRight, Layers3 } from 'lucide-react';
 import type { CategoryBreakdown, MonthlyBreakdown } from '@/hooks/use-transactions';
 import { formatCurrency } from '@/lib/formatters';
@@ -186,17 +186,15 @@ export function FinancesOverviewPanels({
             </div>
           ) : (
             <div className="space-y-3">
-              <div className="h-[180px] rounded-[24px] border border-[#d9e1ef] bg-[#f9fafb] p-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={categories} dataKey="total" nameKey="category" cx="50%" cy="50%" outerRadius={72}>
+              <div className="flex h-[180px] items-center justify-center rounded-[24px] border border-[#d9e1ef] bg-[#f9fafb] p-4">
+                  <PieChart width={144} height={144}>
+                    <Pie data={categories} dataKey="total" nameKey="category" cx="50%" cy="50%" outerRadius={56}>
                       {categories.map((_, index) => (
                         <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                       ))}
                     </Pie>
                     <Tooltip content={<ChartTooltip />} />
                   </PieChart>
-                </ResponsiveContainer>
               </div>
               <div className="space-y-2">
                 {categories.slice(0, 7).map((category, index) => (
