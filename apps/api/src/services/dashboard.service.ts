@@ -123,6 +123,22 @@ type DashboardFollowUpTaskClient = {
   };
 };
 
+type DashboardManualFollowUpEventRow = {
+  id: string;
+  title: string;
+  date: Date;
+  notes: string | null;
+  eventType: string;
+  projectId: string | null;
+  project: {
+    id: string;
+    customer: string;
+    address: string;
+    status: ProjectStatus;
+    isDeleted: boolean;
+  } | null;
+};
+
 function isDashboardFollowUpTaskVisible(task: DashboardFollowUpTaskRow) {
   return (
     task.status === EstimateFollowUpTaskStatus.PENDING
@@ -204,6 +220,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     completedSnapshots,
     projectTypeRows,
     followUpProjects,
+    manualFollowUpEvents,
     recentNotes,
     upcomingInstallProjects,
     moneyRiskProjects,
@@ -304,6 +321,39 @@ export async function getDashboardData(): Promise<DashboardData> {
         orderBy: [{ dueDate: 'asc' }, { projectId: 'asc' }],
       });
     })(),
+
+    prisma.calendarEvent.findMany({
+      where: {
+        eventType: 'followup',
+        date: { lte: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999) },
+        OR: [
+          { projectId: null },
+          {
+            project: {
+              isDeleted: false,
+            },
+          },
+        ],
+      },
+      select: {
+        id: true,
+        title: true,
+        date: true,
+        notes: true,
+        eventType: true,
+        projectId: true,
+        project: {
+          select: {
+            id: true,
+            customer: true,
+            address: true,
+            status: true,
+            isDeleted: true,
+          },
+        },
+      },
+      orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
+    }),
 
     // Recent activity: last 5 notes
     prisma.projectNote.findMany({
@@ -419,7 +469,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   }));
 
   // Today's follow-ups
-  const todaysFollowUps: DashboardFollowUpTask[] = selectEarliestPendingFollowUps(followUpProjects)
+  const sequencedFollowUps: DashboardFollowUpTask[] = selectEarliestPendingFollowUps(followUpProjects)
     .map((task) => ({
       id: task.id,
       projectId: task.projectId,
@@ -428,7 +478,32 @@ export async function getDashboardData(): Promise<DashboardData> {
       status: task.project.status,
       dueDate: toDateString(task.dueDate),
       kind: task.kind,
+      title: null,
+      notes: null,
+      href: `/projects/${task.projectId}?tab=follow-up`,
     }));
+
+  const manualFollowUps: DashboardFollowUpTask[] = (manualFollowUpEvents as DashboardManualFollowUpEventRow[])
+    .filter((event) => !event.project || !event.project.isDeleted)
+    .map((event) => ({
+      id: `manual-${event.id}`,
+      projectId: event.projectId ?? `manual-${event.id}`,
+      customer: event.project?.customer ?? 'General reminder',
+      address: event.project?.address ?? 'No project linked',
+      status: event.project?.status ?? ProjectStatus.OPEN,
+      dueDate: toDateString(event.date),
+      kind: 'MANUAL',
+      title: event.title,
+      notes: event.notes,
+      href: `/calendar?date=${toDateString(event.date)}`,
+    }));
+
+  const todaysFollowUps: DashboardFollowUpTask[] = [...sequencedFollowUps, ...manualFollowUps]
+    .sort((left, right) => {
+      const dueDateDiff = left.dueDate.localeCompare(right.dueDate);
+      if (dueDateDiff !== 0) return dueDateDiff;
+      return left.customer.localeCompare(right.customer);
+    });
 
   // Recent activity
   const recentActivity: RecentActivityItem[] = recentNotes
@@ -457,10 +532,13 @@ export async function getDashboardData(): Promise<DashboardData> {
     projectId: task.projectId,
     customer: task.customer,
     address: task.address,
-    title: 'Follow-up due',
-    reason: `${task.kind.replaceAll('_', ' ')} follow-up due ${task.dueDate}`,
+    title: task.title ?? 'Follow-up due',
+    reason: task.kind === 'MANUAL'
+      ? task.notes?.trim() || `Manual task due ${task.dueDate}`
+      : `${task.kind.replaceAll('_', ' ')} follow-up due ${task.dueDate}`,
     urgency: task.dueDate < toDateString(now) ? 'HIGH' : 'MEDIUM',
     financeProjectMode: null,
+    href: task.href ?? `/projects/${task.projectId}?tab=follow-up`,
   }));
 
   const moneyAtRisk: DashboardCommandItem[] = (moneyRiskProjects ?? [])

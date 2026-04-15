@@ -23,6 +23,9 @@ const prismaMock = vi.hoisted(() => ({
     estimateFollowUpTask: {
       findMany: vi.fn(),
     },
+    calendarEvent: {
+      findMany: vi.fn(),
+    },
     projectNote: {
       findMany: vi.fn(),
     },
@@ -35,7 +38,7 @@ vi.mock('../lib/prisma', () => ({
 
 describe('dashboard.service follow-up reads', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-04-08T10:30:00.000Z'));
   });
@@ -116,6 +119,7 @@ describe('dashboard.service follow-up reads', () => {
         },
       },
     ]);
+    prismaMock.prisma.calendarEvent.findMany.mockResolvedValue([]);
     prismaMock.prisma.projectNote.findMany.mockResolvedValue([]);
 
     const { getDashboardData } = await import('../services/dashboard.service');
@@ -146,6 +150,9 @@ describe('dashboard.service follow-up reads', () => {
         status: ProjectStatus.ESTIMATE,
         dueDate: '2026-04-07',
         kind: EstimateFollowUpTaskKind.DAY_1,
+        title: null,
+        notes: null,
+        href: '/projects/project-1?tab=follow-up',
       },
       {
         id: 'task-2',
@@ -155,6 +162,9 @@ describe('dashboard.service follow-up reads', () => {
         status: ProjectStatus.OPEN,
         dueDate: '2026-04-08',
         kind: EstimateFollowUpTaskKind.DAY_3,
+        title: null,
+        notes: null,
+        href: '/projects/project-2?tab=follow-up',
       },
     ]);
     expect(
@@ -238,12 +248,88 @@ describe('dashboard.service follow-up reads', () => {
         },
       },
     ]);
+    prismaMock.prisma.calendarEvent.findMany.mockResolvedValue([]);
     prismaMock.prisma.projectNote.findMany.mockResolvedValue([]);
 
     const { getDashboardData } = await import('../services/dashboard.service');
     const result = await getDashboardData();
 
     expect(result.todaysFollowUps).toEqual([]);
+
+    vi.useRealTimers();
+  });
+
+  it('includes manual follow-up calendar events in dashboard tasks and command queue', async () => {
+    prismaMock.prisma.commissionSnapshot.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    prismaMock.prisma.project.count.mockResolvedValue(0);
+    prismaMock.prisma.project.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    prismaMock.prisma.aimannDebtLedger.findFirst.mockResolvedValue(null);
+    prismaMock.prisma.project.groupBy.mockResolvedValue([]);
+    prismaMock.prisma.estimateFollowUpTask.findMany.mockResolvedValue([]);
+    prismaMock.prisma.calendarEvent.findMany.mockResolvedValue([
+      {
+        id: 'event-1',
+        title: 'Collect signed HOA form',
+        date: new Date('2026-04-08T00:00:00.000Z'),
+        eventType: 'followup',
+        notes: 'Need this before install scheduling.',
+        projectId: 'project-77',
+        project: {
+          id: 'project-77',
+          customer: 'Sharon Harbach',
+          address: '321 River Meadows Ln',
+          status: ProjectStatus.OPEN,
+          isDeleted: false,
+        },
+      },
+    ]);
+    prismaMock.prisma.projectNote.findMany.mockResolvedValue([]);
+
+    const { getDashboardData } = await import('../services/dashboard.service');
+    const result = await getDashboardData();
+
+    expect(prismaMock.prisma.calendarEvent.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          eventType: 'followup',
+          date: expect.objectContaining({
+            lte: expect.any(Date),
+          }),
+        }),
+      }),
+    );
+    expect(result.todaysFollowUps).toEqual([
+      {
+        id: 'manual-event-1',
+        projectId: 'project-77',
+        customer: 'Sharon Harbach',
+        address: '321 River Meadows Ln',
+        status: ProjectStatus.OPEN,
+        dueDate: '2026-04-08',
+        kind: 'MANUAL',
+        title: 'Collect signed HOA form',
+        notes: 'Need this before install scheduling.',
+        href: '/calendar?date=2026-04-08',
+      },
+    ]);
+    expect(result.commandQueue.actionNeeded).toContainEqual({
+      id: 'followup-manual-event-1',
+      projectId: 'project-77',
+      customer: 'Sharon Harbach',
+      address: '321 River Meadows Ln',
+      title: 'Collect signed HOA form',
+      reason: 'Need this before install scheduling.',
+      urgency: 'MEDIUM',
+      financeProjectMode: null,
+      href: '/calendar?date=2026-04-08',
+    });
 
     vi.useRealTimers();
   });
@@ -297,6 +383,7 @@ describe('dashboard.service follow-up reads', () => {
     prismaMock.prisma.aimannDebtLedger.findFirst.mockResolvedValue(null);
     prismaMock.prisma.project.groupBy.mockResolvedValue([]);
     prismaMock.prisma.estimateFollowUpTask.findMany.mockResolvedValue([]);
+    prismaMock.prisma.calendarEvent.findMany.mockResolvedValue([]);
     prismaMock.prisma.projectNote.findMany.mockResolvedValue([]);
 
     const { getDashboardData } = await import('../services/dashboard.service');

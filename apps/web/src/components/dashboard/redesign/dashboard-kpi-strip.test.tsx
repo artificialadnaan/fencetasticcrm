@@ -45,4 +45,28 @@ describe('DashboardKpiStrip', () => {
     expect(hrefs).toContain('/projects');
     expect(hrefs).toContain('/commissions');
   });
+
+  it('uses high-contrast text tokens for KPI labels and values on the dark dashboard shell', () => {
+    act(() => {
+      root.render(
+        <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <DashboardKpiStrip
+            isLoading={false}
+            kpis={{
+              revenueMTD: 12500,
+              openProjects: 14,
+              outstandingReceivables: 3200,
+              aimannDebtBalance: 54000,
+            }}
+          />
+        </MemoryRouter>
+      );
+    });
+
+    const label = Array.from(container.querySelectorAll('p')).find((node) => node.textContent === 'Revenue MTD');
+    const value = Array.from(container.querySelectorAll('p')).find((node) => node.textContent?.includes('$12,500'));
+
+    expect(label?.className).toContain('text-slate-300');
+    expect(value?.className).toContain('text-white');
+  });
 });

@@ -86,4 +86,24 @@ describe('CalendarPage', () => {
     expect(document.body.textContent).toContain('May 2026');
     expect(document.body.textContent).toContain('Saturday, May 9');
   });
+
+  it('focuses the requested day from the date query string without opening the compose dialog', async () => {
+    await act(async () => {
+      root.render(
+        <MemoryRouter
+          initialEntries={['/calendar?date=2026-04-08']}
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        >
+          <Routes>
+            <Route path="/calendar" element={<CalendarPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+    });
+
+    expect(document.body.textContent).not.toContain('Add Calendar Event');
+    expect(document.body.textContent).toContain('April 2026');
+    expect(document.body.textContent).toContain('Selected day');
+    expect(document.body.textContent).toContain('Wednesday, Apr 8');
+  });
 });

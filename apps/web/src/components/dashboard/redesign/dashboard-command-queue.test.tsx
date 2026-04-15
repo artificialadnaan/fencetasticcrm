@@ -39,6 +39,7 @@ describe('DashboardCommandQueue', () => {
                   reason: 'Day 3 follow-up due today',
                   urgency: 'HIGH',
                   financeProjectMode: null,
+                  href: '/projects/p1?tab=follow-up',
                 },
               ],
               moneyAtRisk: [
@@ -83,5 +84,41 @@ describe('DashboardCommandQueue', () => {
     expect(hrefs).toContain('/projects/p1?tab=follow-up');
     expect(hrefs).toContain('/projects/p2');
     expect(hrefs).toContain('/projects/p3');
+  });
+
+  it('uses a queue item href when provided and exposes an add-task action for the task lane', () => {
+    act(() => {
+      root.render(
+        <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <DashboardCommandQueue
+            isLoading={false}
+            queue={{
+              actionNeeded: [
+                {
+                  id: 'a2',
+                  projectId: 'p9',
+                  customer: 'Sharon Harbach',
+                  address: '321 River Meadows Ln',
+                  title: 'Collect signed HOA form',
+                  reason: 'Need this before install scheduling.',
+                  urgency: 'MEDIUM',
+                  financeProjectMode: null,
+                  href: '/calendar?date=2026-04-08',
+                },
+              ],
+              moneyAtRisk: [],
+              scheduleBlockers: [],
+            }}
+          />
+        </MemoryRouter>,
+      );
+    });
+
+    expect(container.textContent).toContain('Add task');
+
+    const links = Array.from(container.querySelectorAll('a'));
+    const hrefs = links.map((link) => link.getAttribute('href'));
+    expect(hrefs).toContain('/calendar?date=2026-04-08');
+    expect(hrefs).toContain('/calendar?compose=1&type=followup');
   });
 });

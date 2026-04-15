@@ -10,33 +10,55 @@ type QueueLaneProps = {
   Icon: typeof AlertTriangle;
   getHref: (item: DashboardCommandItem) => string;
   ctaLabel: string;
+  actionHref?: string;
+  actionLabel?: string;
 };
 
-function QueueLane({ title, subtitle, items, isLoading, Icon, getHref, ctaLabel }: QueueLaneProps) {
+function QueueLane({
+  title,
+  subtitle,
+  items,
+  isLoading,
+  Icon,
+  getHref,
+  ctaLabel,
+  actionHref,
+  actionLabel,
+}: QueueLaneProps) {
   return (
     <section className="shell-panel rounded-[32px] p-6">
       <div className="flex items-start justify-between gap-4 border-b border-black/5 pb-5">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-300">
             {title}
           </p>
-          <h2 className="mt-3 text-xl font-semibold tracking-[-0.04em] text-slate-950">
+          <h2 className="mt-3 text-xl font-semibold tracking-[-0.04em] text-white">
             {subtitle}
           </h2>
         </div>
-        <div className="rounded-2xl border border-black/5 bg-white/80 p-3 text-slate-700 shadow-sm">
-          <Icon className="h-5 w-5" />
+        <div className="flex items-center gap-2">
+          {actionHref && actionLabel ? (
+            <Link
+              to={actionHref}
+              className="rounded-2xl border border-white/12 bg-white/8 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-white/14"
+            >
+              {actionLabel}
+            </Link>
+          ) : null}
+          <div className="rounded-2xl border border-white/10 bg-white/10 p-3 text-white shadow-sm">
+            <Icon className="h-5 w-5" />
+          </div>
         </div>
       </div>
 
       {isLoading ? (
         <div className="mt-5 space-y-3">
           {[0, 1, 2].map((item) => (
-            <div key={item} className="h-20 animate-pulse rounded-[24px] bg-slate-200/70" />
+            <div key={item} className="h-20 animate-pulse rounded-[24px] bg-white/10" />
           ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="mt-5 rounded-[24px] border border-dashed border-slate-300 bg-white/50 px-5 py-8 text-sm text-slate-600">
+        <div className="mt-5 rounded-[24px] border border-dashed border-white/12 bg-white/6 px-5 py-8 text-sm text-slate-300">
           No items in this lane.
         </div>
       ) : (
@@ -44,8 +66,8 @@ function QueueLane({ title, subtitle, items, isLoading, Icon, getHref, ctaLabel 
           {items.map((item) => (
             <Link
               key={item.id}
-              to={getHref(item)}
-              className="block rounded-[24px] border border-black/5 bg-white/80 px-4 py-4 transition-transform duration-200 hover:-translate-y-0.5 hover:bg-white"
+              to={item.href ?? getHref(item)}
+              className="block rounded-[24px] border border-white/10 bg-white px-4 py-4 text-slate-950 shadow-[0_12px_32px_rgba(15,23,42,0.18)] transition-transform duration-200 hover:-translate-y-0.5 hover:bg-white"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
@@ -82,7 +104,7 @@ interface DashboardCommandQueueProps {
 export function DashboardCommandQueue({ queue, isLoading }: DashboardCommandQueueProps) {
   return (
     <div className="grid gap-6 xl:grid-cols-3">
-      <QueueLane
+              <QueueLane
         title="Action Needed"
         subtitle="Tasks that need movement today"
         items={queue?.actionNeeded ?? []}
@@ -90,6 +112,8 @@ export function DashboardCommandQueue({ queue, isLoading }: DashboardCommandQueu
         Icon={AlertTriangle}
         getHref={(item) => `/projects/${item.projectId}?tab=follow-up`}
         ctaLabel="Open follow-up"
+        actionHref="/calendar?compose=1&type=followup"
+        actionLabel="Add task"
       />
       <QueueLane
         title="Money At Risk"

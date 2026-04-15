@@ -751,7 +751,10 @@ export interface DashboardFollowUpTask {
   address: string;
   status: ProjectStatus;
   dueDate: string;
-  kind: EstimateFollowUpTaskKind;
+  kind: EstimateFollowUpTaskKind | 'MANUAL';
+  title: string | null;
+  notes?: string | null;
+  href?: string | null;
 }
 
 export interface DashboardActivityItem {
@@ -771,6 +774,7 @@ export interface DashboardCommandItem {
   reason: string;
   urgency: 'HIGH' | 'MEDIUM' | 'LOW';
   financeProjectMode?: FinanceProjectMode | null;
+  href?: string | null;
 }
 
 export interface DashboardUpcomingInstall {

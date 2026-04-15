@@ -25,9 +25,9 @@ interface KpiItem {
 function KpiSkeleton() {
   return (
     <div className="shell-panel rounded-[28px] p-5">
-      <div className="h-3 w-24 animate-pulse rounded-full bg-slate-200" />
-      <div className="mt-4 h-9 w-32 animate-pulse rounded-full bg-slate-200" />
-      <div className="mt-4 h-3 w-28 animate-pulse rounded-full bg-slate-200" />
+      <div className="h-3 w-24 animate-pulse rounded-full bg-white/14" />
+      <div className="mt-4 h-9 w-32 animate-pulse rounded-full bg-white/12" />
+      <div className="mt-4 h-3 w-28 animate-pulse rounded-full bg-white/10" />
     </div>
   );
 }
@@ -41,15 +41,15 @@ function KpiCard({ label, value, detail, accent, href, Icon }: KpiItem) {
       <div className={`absolute inset-x-5 top-0 h-1 rounded-b-full ${accent}`} />
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-300">
             {label}
           </p>
-          <p className="mt-4 text-3xl font-semibold tracking-[-0.05em] text-slate-950">
+          <p className="mt-4 text-3xl font-semibold tracking-[-0.05em] text-white">
             {value}
           </p>
-          <p className="mt-4 text-sm text-slate-600">{detail}</p>
+          <p className="mt-4 text-sm text-slate-300">{detail}</p>
         </div>
-        <div className="rounded-2xl border border-white/70 bg-white/80 p-3 text-slate-700 shadow-sm transition-colors group-hover:bg-white">
+        <div className="rounded-2xl border border-white/12 bg-white/10 p-3 text-white shadow-sm transition-colors group-hover:bg-white/16">
           <Icon className="h-5 w-5" />
         </div>
       </div>

@@ -26,21 +26,21 @@ export function DashboardFollowupsPanel({
 }: DashboardFollowupsPanelProps) {
   return (
     <section className="shell-panel rounded-[32px] p-6">
-      <div className="flex items-start justify-between gap-4 border-b border-black/5 pb-5">
+      <div className="flex items-start justify-between gap-4 border-b border-white/10 pb-5">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-300">
             Follow-Ups
           </p>
-          <h2 className="mt-3 text-xl font-semibold tracking-[-0.04em] text-slate-950">
+          <h2 className="mt-3 text-xl font-semibold tracking-[-0.04em] text-white">
             Today&apos;s reminders
           </h2>
         </div>
         <div className="flex items-center gap-2">
           <Link
             to="/calendar?compose=1&type=followup"
-            className="rounded-2xl border border-black/10 bg-white/85 px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-white"
+            className="rounded-2xl border border-white/10 bg-white/10 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-white/16"
           >
-            Add follow-up
+            Add task
           </Link>
           <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-700">
             {isLoading ? '...' : `${followUps.length} due`}
@@ -57,7 +57,7 @@ export function DashboardFollowupsPanel({
       ) : followUps.length === 0 ? (
         <div className="mt-5 flex flex-col items-center justify-center rounded-[28px] border border-dashed border-slate-300 bg-white/50 px-6 py-12 text-center">
           <BellDot className="h-10 w-10 text-slate-400" />
-          <p className="mt-4 text-lg font-semibold text-slate-900">No follow-ups due today</p>
+          <p className="mt-4 text-lg font-semibold text-slate-900">No tasks due today</p>
           <p className="mt-2 max-w-sm text-sm leading-6 text-slate-600">
             The next scheduled callbacks and estimate follow-ups will appear here automatically.
           </p>
@@ -69,8 +69,8 @@ export function DashboardFollowupsPanel({
             return (
               <Link
                 key={followUp.id}
-                to={`/projects/${followUp.projectId}?tab=follow-up`}
-                className="block rounded-[24px] border border-black/5 bg-white/80 px-4 py-4 transition-transform duration-200 hover:-translate-y-0.5 hover:bg-white"
+                to={followUp.href ?? `/projects/${followUp.projectId}?tab=follow-up`}
+                className="block rounded-[24px] border border-white/10 bg-white px-4 py-4 text-slate-950 shadow-[0_12px_32px_rgba(15,23,42,0.18)] transition-transform duration-200 hover:-translate-y-0.5 hover:bg-white"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
@@ -84,10 +84,10 @@ export function DashboardFollowupsPanel({
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   <div>
                     <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
-                      Follow-up
+                      Task
                     </p>
                     <p className="mt-1 text-sm text-slate-800">
-                      {TASK_KIND_LABELS[followUp.kind] ?? followUp.kind}
+                      {followUp.title ?? TASK_KIND_LABELS[followUp.kind as EstimateFollowUpTaskKind] ?? followUp.kind}
                     </p>
                   </div>
                   <div>
@@ -98,7 +98,7 @@ export function DashboardFollowupsPanel({
                   </div>
                 </div>
                 <div className="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Open follow-up workspace
+                  Open task
                 </div>
               </Link>
             );

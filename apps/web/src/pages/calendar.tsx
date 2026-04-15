@@ -13,7 +13,7 @@ import { api } from '@/lib/api';
 import { useCalendarEvents } from '@/hooks/use-calendar-events';
 import { usePageShell } from '@/components/layout/page-shell';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -267,6 +267,21 @@ export default function CalendarPage() {
     nextParams.delete('date');
     setSearchParams(nextParams, { replace: true });
   }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (searchParams.get('compose') === '1') {
+      return;
+    }
+
+    const requestedDate = searchParams.get('date');
+    if (!requestedDate) {
+      return;
+    }
+
+    const requestedDateValue = toLocalDate(requestedDate);
+    setSelectedDate(requestedDateValue);
+    setCurrentDate(requestedDateValue);
+  }, [searchParams]);
 
   const handleSave = useCallback(async () => {
     if (!form.title.trim() || !form.date || !form.eventType) {
@@ -525,6 +540,9 @@ export default function CalendarPage() {
               <DialogTitle className="text-2xl tracking-[-0.04em] text-slate-950">
                 {editDialogTitle}
               </DialogTitle>
+              <DialogDescription className="text-sm text-slate-500">
+                Create or update a dated reminder, install, or meeting and link it to a project when needed.
+              </DialogDescription>
             </DialogHeader>
           </div>
 
