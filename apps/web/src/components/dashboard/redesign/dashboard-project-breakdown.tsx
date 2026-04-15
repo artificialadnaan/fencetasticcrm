@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import {
   Cell,
   Pie,
@@ -46,6 +47,19 @@ export function DashboardProjectBreakdown({
   data,
   isLoading,
 }: DashboardProjectBreakdownProps) {
+  const [chartReady, setChartReady] = useState(false);
+
+  useEffect(() => {
+    setChartReady(false);
+    const frame = window.requestAnimationFrame(() => {
+      setChartReady(true);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, [data.length]);
+
   const chartData = data.map((item) => ({
     label: FENCE_TYPE_LABELS[item.fenceType] ?? item.fenceType,
     value: item.count,
@@ -83,7 +97,8 @@ export function DashboardProjectBreakdown({
       ) : (
         <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(260px,0.8fr)]">
           <div className="flex h-[320px] items-center justify-center rounded-[28px] border border-black/5 bg-white/65 p-4">
-            <PieChart width={260} height={260}>
+            {chartReady ? (
+              <PieChart width={260} height={260}>
                 <Pie
                   data={chartData}
                   dataKey="value"
@@ -97,7 +112,10 @@ export function DashboardProjectBreakdown({
                   ))}
                 </Pie>
                 <Tooltip content={<ProjectBreakdownTooltip />} />
-            </PieChart>
+              </PieChart>
+            ) : (
+              <div className="h-[260px] w-[260px] animate-pulse rounded-full bg-slate-100/80" />
+            )}
           </div>
 
           <div className="space-y-3">
