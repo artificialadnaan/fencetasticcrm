@@ -1,10 +1,3 @@
-import { useEffect, useState } from 'react';
-import {
-  Cell,
-  Pie,
-  PieChart,
-  Tooltip,
-} from 'recharts';
 import { Layers3 } from 'lucide-react';
 import type { ProjectTypeBreakdown } from '@fencetastic/shared';
 
@@ -24,47 +17,31 @@ const FENCE_TYPE_LABELS: Record<string, string> = {
   OTHER: 'Other',
 };
 
-function ProjectBreakdownTooltip({
-  active,
-  payload,
-}: {
-  active?: boolean;
-  payload?: Array<{ name: string; value: number }>;
-}) {
-  if (!active || !payload?.length) {
-    return null;
-  }
-
-  return (
-    <div className="rounded-2xl border border-slate-200/70 bg-white/95 px-3 py-2 text-sm shadow-xl">
-      <p className="font-medium text-slate-900">{payload[0].name}</p>
-      <p className="text-slate-600">{payload[0].value} completed project{payload[0].value === 1 ? '' : 's'}</p>
-    </div>
-  );
-}
-
 export function DashboardProjectBreakdown({
   data,
   isLoading,
 }: DashboardProjectBreakdownProps) {
-  const [chartReady, setChartReady] = useState(false);
-
-  useEffect(() => {
-    setChartReady(false);
-    const frame = window.requestAnimationFrame(() => {
-      setChartReady(true);
-    });
-
-    return () => {
-      window.cancelAnimationFrame(frame);
-    };
-  }, [data.length]);
-
   const chartData = data.map((item) => ({
     label: FENCE_TYPE_LABELS[item.fenceType] ?? item.fenceType,
     value: item.count,
   }));
   const totalProjects = chartData.reduce((sum, item) => sum + item.value, 0);
+  const donutStops = chartData.reduce<{ start: number; end: number; color: string }[]>((segments, item, index) => {
+    const start = segments.at(-1)?.end ?? 0;
+    const ratio = totalProjects > 0 ? item.value / totalProjects : 0;
+    const end = start + ratio * 100;
+    segments.push({
+      start,
+      end,
+      color: CHART_COLORS[index % CHART_COLORS.length],
+    });
+    return segments;
+  }, []);
+  const donutBackground = donutStops.length
+    ? `conic-gradient(${donutStops
+      .map((segment) => `${segment.color} ${segment.start}% ${segment.end}%`)
+      .join(', ')})`
+    : '#e5e7eb';
 
   return (
     <section className="shell-panel rounded-[32px] p-6">
@@ -97,25 +74,21 @@ export function DashboardProjectBreakdown({
       ) : (
         <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(260px,0.8fr)]">
           <div className="flex h-[320px] items-center justify-center rounded-[28px] border border-black/5 bg-white/65 p-4">
-            {chartReady ? (
-              <PieChart width={260} height={260}>
-                <Pie
-                  data={chartData}
-                  dataKey="value"
-                  nameKey="label"
-                  innerRadius={70}
-                  outerRadius={112}
-                  paddingAngle={4}
-                >
-                  {chartData.map((item, index) => (
-                    <Cell key={item.label} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip content={<ProjectBreakdownTooltip />} />
-              </PieChart>
-            ) : (
-              <div className="h-[260px] w-[260px] animate-pulse rounded-full bg-slate-100/80" />
-            )}
+            <div
+              className="relative h-[260px] w-[260px] rounded-full"
+              style={{ background: donutBackground }}
+              role="img"
+              aria-label="Completed project breakdown chart"
+            >
+              <div className="absolute inset-[44px] flex items-center justify-center rounded-full bg-white shadow-inner">
+                <div className="text-center">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+                    Total
+                  </p>
+                  <p className="mt-2 text-3xl font-semibold text-slate-950">{totalProjects}</p>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="space-y-3">
