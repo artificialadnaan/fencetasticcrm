@@ -184,6 +184,40 @@ export interface ProjectFinanceTrust {
   reconciliationNotes: string | null;
 }
 
+export interface FinanceTrustSummary {
+  totalProjects: number;
+  importedProjects: number;
+  computedProjects: number;
+  manualOverrideProjects: number;
+  mixedProjects: number;
+  reconciliationRequiredProjects: number;
+  projectsWithManualFinanceEdits: number;
+  projectsWithImportedFinance: number;
+  lastImportedAt: string | null;
+}
+
+export interface FinanceTrustProjectRow {
+  id: string;
+  customer: string;
+  address: string;
+  status: ProjectStatus;
+  contractDate: string;
+  importedSource: string | null;
+  importedAt: string | null;
+  lastRecalculatedAt: string | null;
+  lastManualFinanceEditAt: string | null;
+  reconciliationRequiredAt: string | null;
+  reconciliationNotes: string | null;
+  financeTrust: ProjectFinanceTrust;
+}
+
+export interface FinanceTrustOverview {
+  summary: FinanceTrustSummary;
+  reconciliationQueue: FinanceTrustProjectRow[];
+  manualOverrideQueue: FinanceTrustProjectRow[];
+  recentImports: FinanceTrustProjectRow[];
+}
+
 export interface EstimateFollowUpSequence {
   id: string;
   projectId: string;

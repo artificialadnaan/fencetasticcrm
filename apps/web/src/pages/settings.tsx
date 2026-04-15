@@ -4,7 +4,9 @@ import { useOperatingExpenses } from '@/hooks/use-operating-expenses';
 import { RateTemplatesSection } from '@/components/settings/rate-templates-section';
 import { OperatingExpensesSection } from '@/components/settings/operating-expenses-section';
 import { ChangePasswordForm } from '@/components/settings/change-password-form';
+import { FinanceTrustSection } from '@/components/settings/finance-trust-section';
 import { usePageShell } from '@/components/layout/page-shell';
+import { useFinanceTrust } from '@/hooks/use-finance-trust';
 
 export default function SettingsPage() {
   const {
@@ -24,6 +26,11 @@ export default function SettingsPage() {
     updateExpense,
     deleteExpense,
   } = useOperatingExpenses();
+  const {
+    data: financeTrust,
+    isLoading: financeTrustLoading,
+    error: financeTrustError,
+  } = useFinanceTrust();
 
   usePageShell({
     eyebrow: 'Configuration',
@@ -53,6 +60,12 @@ export default function SettingsPage() {
         onCreate={createExpense}
         onUpdate={updateExpense}
         onDelete={deleteExpense}
+      />
+
+      <FinanceTrustSection
+        data={financeTrust}
+        isLoading={financeTrustLoading}
+        error={financeTrustError}
       />
 
       <section className="shell-panel rounded-[28px] p-6 md:p-8">
