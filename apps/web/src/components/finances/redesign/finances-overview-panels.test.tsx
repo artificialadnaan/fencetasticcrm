@@ -1,6 +1,21 @@
-import { act } from 'react';
+import { act, cloneElement, isValidElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('recharts', async () => {
+  const actual = await vi.importActual<typeof import('recharts')>('recharts');
+
+  return {
+    ...actual,
+    ResponsiveContainer: ({ children }: { children: React.ReactNode }) => {
+      if (isValidElement(children)) {
+        return cloneElement(children, { width: 320, height: 240 });
+      }
+      return <div>{children}</div>;
+    },
+  };
+});
+
 import { FinancesOverviewPanels } from './finances-overview-panels';
 
 describe('FinancesOverviewPanels', () => {

@@ -36,23 +36,32 @@ export default function App() {
   }
 
   return (
-    <Suspense fallback={<AppLoadingFallback />}>
-      <Routes>
-        <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
-        <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-          <Route path="/" element={<DashboardPage />} />
-          <Route path="/projects" element={<ProjectsPage />} />
-          <Route path="/projects/grid" element={<ProjectGridPage />} />
-          <Route path="/projects/:id" element={<ProjectDetailPage />} />
-          <Route path="/projects/:id/work-order" element={<WorkOrderPage />} />
-          <Route path="/finances" element={<FinancesPage />} />
-          <Route path="/calendar" element={<CalendarPage />} />
-          <Route path="/commissions" element={<CommissionsPage />} />
-          <Route path="/reports" element={<ReportsPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-        </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Suspense>
+    <Routes>
+      <Route
+        path="/login"
+        element={
+          user ? (
+            <Navigate to="/" replace />
+          ) : (
+            <Suspense fallback={<AppLoadingFallback />}>
+              <LoginPage />
+            </Suspense>
+          )
+        }
+      />
+      <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+        <Route path="/" element={<DashboardPage />} />
+        <Route path="/projects" element={<ProjectsPage />} />
+        <Route path="/projects/grid" element={<ProjectGridPage />} />
+        <Route path="/projects/:id" element={<ProjectDetailPage />} />
+        <Route path="/projects/:id/work-order" element={<WorkOrderPage />} />
+        <Route path="/finances" element={<FinancesPage />} />
+        <Route path="/calendar" element={<CalendarPage />} />
+        <Route path="/commissions" element={<CommissionsPage />} />
+        <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }

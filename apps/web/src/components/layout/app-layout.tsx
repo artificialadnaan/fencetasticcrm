@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { Suspense, useMemo, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -79,7 +79,21 @@ export default function AppLayout() {
               {...shellConfig}
               onOpenSidebar={() => setMobileOpen(true)}
             >
-              <Outlet />
+              <Suspense
+                fallback={(
+                  <div
+                    className="flex min-h-[240px] items-center justify-center rounded-[28px] border border-white/10 bg-[#101821]"
+                    data-testid="route-loading-fallback"
+                  >
+                    <div className="flex items-center gap-3 text-sm font-medium text-slate-200">
+                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-500 border-t-white" />
+                      <span>Loading workspace…</span>
+                    </div>
+                  </div>
+                )}
+              >
+                <Outlet />
+              </Suspense>
             </PageShell>
           </main>
         </div>
