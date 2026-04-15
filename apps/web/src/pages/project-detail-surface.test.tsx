@@ -107,6 +107,30 @@ function makeProjectDetail() {
       status: 'PENDING',
       assignedToName: 'Adnaan',
     },
+    scheduleReadiness: {
+      isReady: false,
+      blockerCount: 3,
+      blockers: [
+        {
+          code: 'MISSING_DEPOSIT',
+          label: 'Deposit',
+          reason: 'No customer payment has been recorded yet.',
+          severity: 'HIGH',
+        },
+        {
+          code: 'MISSING_MATERIALS',
+          label: 'Materials',
+          reason: 'No materials have been logged for this project.',
+          severity: 'HIGH',
+        },
+        {
+          code: 'MISSING_WORK_ORDER',
+          label: 'Work order',
+          reason: 'No work order has been created for this project.',
+          severity: 'MEDIUM',
+        },
+      ],
+    },
     commissionPreview: {
       moneyReceived: 0,
       totalExpenses: 0,
@@ -181,6 +205,9 @@ describe('ProjectDetailPage surface styling', () => {
     expect(container.textContent).toContain('Next Action');
     expect(container.textContent).toContain('Order materials');
     expect(container.textContent).toContain('Adnaan');
+    expect(container.textContent).toContain('Install Readiness');
+    expect(container.textContent).toContain('3 blockers');
+    expect(container.textContent).toContain('No materials have been logged for this project.');
 
     const darkShells = container.querySelectorAll('.bg-\\[\\#161d27\\]');
     expect(darkShells.length).toBeGreaterThanOrEqual(2);

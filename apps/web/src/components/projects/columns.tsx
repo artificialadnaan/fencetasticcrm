@@ -9,6 +9,7 @@ export const projectColumns: ColumnDef<ProjectListItem>[] = [
     header: 'Customer',
     cell: ({ row }) => {
       const mode = row.original.financeProjectMode;
+      const readiness = row.original.scheduleReadiness;
       return (
         <div className="space-y-1">
           <span className="font-medium">{row.getValue('customer')}</span>
@@ -17,6 +18,20 @@ export const projectColumns: ColumnDef<ProjectListItem>[] = [
               {mode.replace(/_/g, ' ')}
             </div>
           ) : null}
+          {!readiness.isReady ? (
+            <div className="space-y-1">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700">
+                {readiness.blockerCount} blocker{readiness.blockerCount === 1 ? '' : 's'}
+              </div>
+              <div className="text-xs text-slate-500">
+                {readiness.topBlockers.join(' • ')}
+              </div>
+            </div>
+          ) : (
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
+              Install ready
+            </div>
+          )}
         </div>
       );
     },

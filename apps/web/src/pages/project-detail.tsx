@@ -335,6 +335,13 @@ export default function ProjectDetailPage() {
   }
 
   const cp = project.commissionPreview;
+  const workflowTasks = project.workflowTasks ?? [];
+  const scheduleReadiness = project.scheduleReadiness ?? {
+    isReady: true,
+    blockerCount: 0,
+    topBlockers: [],
+    blockers: [],
+  };
   const photosFromNotes = notes.filter((n) => n.photoUrls.length > 0);
   const currentStatusIndex = PROJECT_STATUS_ORDER.indexOf(project.status);
   const lifecycleStages = PROJECT_STATUS_ORDER.map((status) => {
@@ -647,9 +654,9 @@ export default function ProjectDetailPage() {
               </div>
             )}
 
-            {project.workflowTasks.length > 0 && (
+            {workflowTasks.length > 0 && (
               <div className="mt-5 space-y-3">
-                {project.workflowTasks.slice(0, 3).map((task) => (
+                {workflowTasks.slice(0, 3).map((task) => (
                   <div key={task.id} className="flex items-start justify-between gap-3 rounded-[22px] border border-slate-200 bg-white px-4 py-4">
                     <div>
                       <p className="font-medium text-slate-950">{task.title}</p>
@@ -665,6 +672,59 @@ export default function ProjectDetailPage() {
                 ))}
               </div>
             )}
+          </section>
+
+          <section className="rounded-[28px] border border-slate-300 bg-white p-6 shadow-[0_18px_44px_rgba(15,23,42,0.12)] md:p-8">
+            <div className="flex items-center gap-2 mb-5">
+              <CalendarDays className="h-4 w-4 text-slate-500" />
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-600">Install Readiness</p>
+            </div>
+
+            <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-lg font-semibold text-slate-950">
+                    {scheduleReadiness.isReady ? 'Ready for install' : `${scheduleReadiness.blockerCount} blockers`}
+                  </p>
+                  <p className="mt-2 text-sm text-slate-600">
+                    {scheduleReadiness.isReady
+                      ? 'Deposit, materials, crew assignment, and work order are all in place.'
+                      : 'Resolve these blockers before scheduling or confirming installation.'}
+                  </p>
+                </div>
+                <span className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${
+                  scheduleReadiness.isReady
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : 'bg-amber-100 text-amber-700'
+                }`}>
+                  {scheduleReadiness.isReady ? 'Ready' : 'Blocked'}
+                </span>
+              </div>
+
+              <div className="mt-5 space-y-3">
+                {scheduleReadiness.isReady ? (
+                  <div className="rounded-[22px] border border-emerald-200 bg-white px-4 py-4 text-sm font-medium text-emerald-700">
+                    No install blockers are active on this job.
+                  </div>
+                ) : (
+                  scheduleReadiness.blockers.map((blocker) => (
+                    <div key={blocker.code} className="rounded-[22px] border border-slate-200 bg-white px-4 py-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="font-medium text-slate-950">{blocker.label}</p>
+                        <span className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${
+                          blocker.severity === 'HIGH'
+                            ? 'bg-rose-100 text-rose-700'
+                            : 'bg-amber-100 text-amber-700'
+                        }`}>
+                          {blocker.severity}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">{blocker.reason}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
           </section>
 
           {/* Schedule */}

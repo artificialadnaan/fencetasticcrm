@@ -510,4 +510,67 @@ describe('dashboard.service follow-up reads', () => {
 
     vi.useRealTimers();
   });
+
+  it('builds schedule blocker lane items from install readiness blockers', async () => {
+    prismaMock.prisma.commissionSnapshot.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    prismaMock.prisma.project.count.mockResolvedValue(0);
+    prismaMock.prisma.project.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 'project-blocked',
+          customer: 'Blocked Install',
+          address: '500 Delay Dr',
+          status: ProjectStatus.OPEN,
+          installDate: new Date('2026-04-12T00:00:00.000Z'),
+          customerPaid: 0,
+          materialsCost: 0,
+          subcontractor: null,
+          financeProjectMode: 'MIXED',
+          _count: {
+            materialLineItems: 0,
+            workOrders: 0,
+          },
+        }, {
+          id: 'project-ready',
+          customer: 'Ready Install',
+          address: '501 Go Ln',
+          status: ProjectStatus.IN_PROGRESS,
+          installDate: new Date('2026-04-20T00:00:00.000Z'),
+          customerPaid: 2500,
+          materialsCost: 1200,
+          subcontractor: 'Froilan',
+          financeProjectMode: 'COMPUTED',
+          _count: {
+            materialLineItems: 2,
+            workOrders: 1,
+          },
+        },
+      ]);
+    prismaMock.prisma.aimannDebtLedger.findFirst.mockResolvedValue(null);
+    prismaMock.prisma.project.groupBy.mockResolvedValue([]);
+    prismaMock.prisma.estimateFollowUpTask.findMany.mockResolvedValue([]);
+    prismaMock.prisma.calendarEvent.findMany.mockResolvedValue([]);
+    prismaMock.prisma.projectNote.findMany.mockResolvedValue([]);
+
+    const { getDashboardData } = await import('../services/dashboard.service');
+    const result = await getDashboardData();
+
+    expect(result.commandQueue.scheduleBlockers).toEqual([
+      {
+        id: 'schedule-project-blocked',
+        projectId: 'project-blocked',
+        customer: 'Blocked Install',
+        address: '500 Delay Dr',
+        title: '4 readiness blockers',
+        reason: 'Missing deposit, materials, crew, and work order',
+        urgency: 'HIGH',
+        financeProjectMode: 'MIXED',
+      },
+    ]);
+  });
 });

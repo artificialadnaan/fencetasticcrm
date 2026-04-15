@@ -183,6 +183,70 @@ describe('Project Service', () => {
 
       expect(result.data[0].profitPercent).toBe(40);
     });
+
+    it('adds schedule readiness summaries to project list rows', async () => {
+      vi.mocked(prisma.project.findMany).mockResolvedValue([
+        {
+          id: 'p-ready',
+          customer: 'Ready Job',
+          address: '1 Done Ln',
+          fenceType: 'WOOD',
+          status: 'OPEN',
+          projectTotal: { toNumber: () => 8000 },
+          moneyReceived: { toNumber: () => 8000 },
+          customerPaid: { toNumber: () => 2500 },
+          materialsCost: { toNumber: () => 900 },
+          forecastedExpenses: { toNumber: () => 2000 },
+          installDate: new Date('2026-04-20'),
+          isDeleted: false,
+          paymentMethod: 'CASH',
+          subcontractor: 'Froilan',
+          subcontractorPayments: [],
+          _count: {
+            materialLineItems: 2,
+            workOrders: 1,
+          },
+        },
+        {
+          id: 'p-blocked',
+          customer: 'Blocked Job',
+          address: '2 Wait St',
+          fenceType: 'WOOD',
+          status: 'OPEN',
+          projectTotal: { toNumber: () => 8000 },
+          moneyReceived: { toNumber: () => 8000 },
+          customerPaid: { toNumber: () => 0 },
+          materialsCost: { toNumber: () => 0 },
+          forecastedExpenses: { toNumber: () => 2000 },
+          installDate: new Date('2026-04-11'),
+          isDeleted: false,
+          paymentMethod: 'CASH',
+          subcontractor: null,
+          subcontractorPayments: [],
+          _count: {
+            materialLineItems: 0,
+            workOrders: 0,
+          },
+        },
+      ] as never);
+      vi.mocked(prisma.project.count).mockResolvedValue(2);
+      vi.mocked(prisma.aimannDebtLedger.findFirst).mockResolvedValue(null);
+      vi.mocked(prisma.transaction.groupBy).mockResolvedValue([]);
+
+      const { listProjects } = await import('../services/project.service');
+      const result = await listProjects({ page: 1, limit: 20 });
+
+      expect(result.data[0].scheduleReadiness).toEqual({
+        isReady: true,
+        blockerCount: 0,
+        topBlockers: [],
+      });
+      expect(result.data[1].scheduleReadiness).toEqual({
+        isReady: false,
+        blockerCount: 4,
+        topBlockers: ['Deposit', 'Materials', 'Crew'],
+      });
+    });
   });
 
   describe('createProject', () => {
@@ -521,9 +585,9 @@ describe('Project Service', () => {
         projectTotal: 1000,
         paymentMethod: 'CHECK',
         moneyReceived: 1000,
-        customerPaid: 1000,
+        customerPaid: 0,
         forecastedExpenses: 300,
-        materialsCost: 100,
+        materialsCost: 0,
         contractDate: new Date('2026-04-01T00:00:00.000Z'),
         installDate: new Date('2026-04-10T00:00:00.000Z'),
         completedDate: null,
@@ -562,6 +626,10 @@ describe('Project Service', () => {
         subcontractorPayments: [],
         projectNotes: [],
         commissionSnapshot: null,
+        _count: {
+          materialLineItems: 0,
+          workOrders: 0,
+        },
         calendarEvents: [
           {
             id: 'task-1',
@@ -615,6 +683,37 @@ describe('Project Service', () => {
         source: 'WORKFLOW_TASK',
         status: 'PENDING',
         assignedToName: 'Office Admin',
+      });
+      expect(result.scheduleReadiness).toEqual({
+        isReady: false,
+        blockerCount: 4,
+        topBlockers: ['Deposit', 'Materials', 'Crew'],
+        blockers: [
+          {
+            code: 'MISSING_DEPOSIT',
+            label: 'Deposit',
+            reason: 'No customer payment has been recorded yet.',
+            severity: 'HIGH',
+          },
+          {
+            code: 'MISSING_MATERIALS',
+            label: 'Materials',
+            reason: 'No materials have been logged for this project.',
+            severity: 'HIGH',
+          },
+          {
+            code: 'MISSING_SUBCONTRACTOR',
+            label: 'Crew',
+            reason: 'No subcontractor has been assigned yet.',
+            severity: 'HIGH',
+          },
+          {
+            code: 'MISSING_WORK_ORDER',
+            label: 'Work order',
+            reason: 'No work order has been created for this project.',
+            severity: 'MEDIUM',
+          },
+        ],
       });
     });
 

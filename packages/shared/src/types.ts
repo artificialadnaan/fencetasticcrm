@@ -623,6 +623,7 @@ export interface ProjectListItem {
   installDate: string;
   receivable: number | null;
   profitPercent: number | null;
+  scheduleReadiness: ProjectScheduleReadinessSummary;
 }
 
 export interface ProjectDetail extends Project {
@@ -632,6 +633,24 @@ export interface ProjectDetail extends Project {
   commissionPreview: CommissionPreview;
   workflowTasks: WorkflowTask[];
   nextAction: ProjectNextAction | null;
+  scheduleReadiness: ProjectScheduleReadinessDetail;
+}
+
+export interface ProjectScheduleReadinessBlocker {
+  code: 'MISSING_DEPOSIT' | 'MISSING_MATERIALS' | 'MISSING_SUBCONTRACTOR' | 'MISSING_WORK_ORDER';
+  label: 'Deposit' | 'Materials' | 'Crew' | 'Work order';
+  reason: string;
+  severity: 'HIGH' | 'MEDIUM';
+}
+
+export interface ProjectScheduleReadinessSummary {
+  isReady: boolean;
+  blockerCount: number;
+  topBlockers: Array<ProjectScheduleReadinessBlocker['label']>;
+}
+
+export interface ProjectScheduleReadinessDetail extends ProjectScheduleReadinessSummary {
+  blockers: ProjectScheduleReadinessBlocker[];
 }
 
 export interface WorkflowTask {

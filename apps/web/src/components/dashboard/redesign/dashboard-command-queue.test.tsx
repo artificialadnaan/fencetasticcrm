@@ -60,9 +60,9 @@ describe('DashboardCommandQueue', () => {
                   projectId: 'p3',
                   customer: 'Alex Roe',
                   address: '789 Pine St',
-                  title: 'Crew assignment missing',
-                  reason: 'Project is active with no subcontractor assigned',
-                  urgency: 'MEDIUM',
+                  title: '3 readiness blockers',
+                  reason: 'Missing deposit, materials, and crew',
+                  urgency: 'HIGH',
                   financeProjectMode: FinanceProjectMode.MIXED,
                 },
               ],
@@ -78,6 +78,8 @@ describe('DashboardCommandQueue', () => {
     expect(container.textContent).toContain('Jane Doe');
     expect(container.textContent).toContain('John Smith');
     expect(container.textContent).toContain('Alex Roe');
+    expect(container.textContent).toContain('3 readiness blockers');
+    expect(container.textContent).toContain('Missing deposit, materials, and crew');
 
     const links = Array.from(container.querySelectorAll('a'));
     const hrefs = links.map((link) => link.getAttribute('href'));

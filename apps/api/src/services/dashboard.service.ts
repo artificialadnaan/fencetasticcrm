@@ -9,6 +9,7 @@ import {
   ProjectStatus,
   WorkflowTaskStatus,
 } from '@fencetastic/shared';
+import { buildProjectScheduleReadiness } from './project-schedule-readiness';
 
 // Helper: Prisma Decimal → number
 function d(val: Prisma.Decimal | null | undefined): number {
@@ -423,15 +424,25 @@ export async function getDashboardData(): Promise<DashboardData> {
       where: {
         isDeleted: false,
         status: { in: [ProjectStatus.OPEN, ProjectStatus.IN_PROGRESS] },
-        subcontractor: null,
       },
       select: {
         id: true,
         customer: true,
         address: true,
+        status: true,
+        installDate: true,
+        customerPaid: true,
+        materialsCost: true,
+        subcontractor: true,
         financeProjectMode: true,
+        _count: {
+          select: {
+            materialLineItems: true,
+            workOrders: true,
+          },
+        },
       },
-      take: 5,
+      take: 25,
       orderBy: { installDate: 'asc' },
     }),
   ]);
@@ -594,16 +605,43 @@ export async function getDashboardData(): Promise<DashboardData> {
     .slice(0, 5)
     .map(({ outstanding: _outstanding, ...item }) => item);
 
-  const scheduleBlockers: DashboardCommandItem[] = (scheduleBlockerProjects ?? []).map((project) => ({
-    id: `schedule-${project.id}`,
-    projectId: project.id,
-    customer: project.customer,
-    address: project.address,
-    title: 'Crew assignment missing',
-    reason: 'Project is active with no subcontractor assigned',
-    urgency: 'MEDIUM',
-    financeProjectMode: project.financeProjectMode as DashboardCommandItem['financeProjectMode'],
-  }));
+  const scheduleBlockers: DashboardCommandItem[] = (scheduleBlockerProjects ?? [])
+    .flatMap((project): DashboardCommandItem[] => {
+      const readiness = buildProjectScheduleReadiness({
+        customerPaid: d(project.customerPaid),
+        materialsCost: d(project.materialsCost),
+        subcontractor: project.subcontractor,
+        materialLineItemCount: project._count?.materialLineItems ?? 0,
+        workOrderCount: project._count?.workOrders ?? 0,
+      });
+
+      if (readiness.isReady) return [];
+
+      const labels = readiness.blockers.map((blocker) => blocker.label.toLowerCase());
+      const reason =
+        labels.length === 1
+          ? `Missing ${labels[0]}`
+          : labels.length === 2
+            ? `Missing ${labels[0]} and ${labels[1]}`
+            : `Missing ${labels.slice(0, -1).join(', ')}, and ${labels.at(-1)}`;
+      const installDate = project.installDate ? toDateString(project.installDate) : null;
+      const urgency: DashboardCommandItem['urgency'] =
+        installDate && installDate <= toDateString(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7))
+          ? 'HIGH'
+          : 'MEDIUM';
+
+      return [{
+        id: `schedule-${project.id}`,
+        projectId: project.id,
+        customer: project.customer,
+        address: project.address,
+        title: `${readiness.blockerCount} readiness blocker${readiness.blockerCount === 1 ? '' : 's'}`,
+        reason,
+        urgency,
+        financeProjectMode: project.financeProjectMode as DashboardCommandItem['financeProjectMode'],
+      }];
+    })
+    .slice(0, 5);
 
   return {
     kpis: {

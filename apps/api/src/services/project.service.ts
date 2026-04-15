@@ -19,6 +19,10 @@ import { AppError } from '../middleware/error-handler';
 import { createAutoTransaction } from './transaction.service';
 import { ensureEstimateFollowUpSequenceTx } from './follow-up.service';
 import { resolveFinanceField } from './project-finance-read-model';
+import {
+  buildProjectScheduleReadiness,
+  toProjectScheduleReadinessSummary,
+} from './project-schedule-readiness';
 
 // Helper: convert Prisma Decimal to number
 function d(val: Prisma.Decimal | null | undefined): number {
@@ -418,6 +422,12 @@ export async function listProjects(query: ProjectListQuery = {}) {
         subcontractorPayments: {
           select: { amountOwed: true },
         },
+        _count: {
+          select: {
+            materialLineItems: true,
+            workOrders: true,
+          },
+        },
       },
       orderBy: { [orderField]: sortDir },
       skip: (page - 1) * limit,
@@ -476,6 +486,15 @@ export async function listProjects(query: ProjectListQuery = {}) {
       installDate: p.installDate?.toISOString().split('T')[0] ?? null,
       receivable: resolvedFinance.outstandingReceivables,
       profitPercent: resolvedFinance.netProfitPercent,
+      scheduleReadiness: toProjectScheduleReadinessSummary(
+        buildProjectScheduleReadiness({
+          customerPaid,
+          materialsCost,
+          subcontractor: p.subcontractor,
+          materialLineItemCount: p._count?.materialLineItems ?? 0,
+          workOrderCount: p._count?.workOrders ?? 0,
+        }),
+      ),
     };
   });
 
@@ -500,6 +519,12 @@ export async function getProjectById(projectId: string) {
         orderBy: { createdAt: 'desc' },
       },
       commissionSnapshot: true,
+      _count: {
+        select: {
+          materialLineItems: true,
+          workOrders: true,
+        },
+      },
       calendarEvents: {
         where: {
           isWorkflowTask: true,
@@ -570,6 +595,13 @@ export async function getProjectById(projectId: string) {
     completedAt: event.completedAt?.toISOString() ?? null,
   }));
   const nextWorkflowTask = workflowTasks.find((task) => task.status === WorkflowTaskStatus.PENDING) ?? null;
+  const scheduleReadiness = buildProjectScheduleReadiness({
+    customerPaid: d(project.customerPaid),
+    materialsCost,
+    subcontractor: project.subcontractor,
+    materialLineItemCount: project._count?.materialLineItems ?? 0,
+    workOrderCount: project._count?.workOrders ?? 0,
+  });
 
   // Serialize the project
   return {
@@ -666,6 +698,7 @@ export async function getProjectById(projectId: string) {
           assignedToName: nextWorkflowTask.assignedToName,
         }
       : null,
+    scheduleReadiness,
   };
 }
 

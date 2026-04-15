@@ -47,6 +47,11 @@ function makeProject(overrides: Partial<Record<string, unknown>> = {}) {
     installDate: '2026-04-01',
     receivable: 3500,
     profitPercent: 22.5,
+    scheduleReadiness: {
+      isReady: false,
+      blockerCount: 3,
+      topBlockers: ['Deposit', 'Materials', 'Crew'],
+    },
     ...overrides,
   };
 }
@@ -98,6 +103,8 @@ describe('ProjectsPage', () => {
     expect(selectedTab?.getAttribute('aria-pressed')).toBe('true');
     expect(openTab?.getAttribute('aria-pressed')).toBe('false');
     expect(projectRow?.getAttribute('tabindex')).toBe('0');
+    expect(container.textContent).toContain('3 blockers');
+    expect(container.textContent).toContain('Deposit');
 
     act(() => {
       projectRow?.dispatchEvent(
