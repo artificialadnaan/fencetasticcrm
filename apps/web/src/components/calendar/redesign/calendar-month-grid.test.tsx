@@ -42,14 +42,14 @@ describe('CalendarMonthGrid', () => {
     act(() => {
       root.render(
         <CalendarMonthGrid
-          currentDate={new Date('2026-04-01')}
+          currentDate={new Date(2026, 3, 1)}
           events={[
             makeEvent({ id: '1', start: '2026-04-13', title: 'Estimate A' }),
             makeEvent({ id: '2', start: '2026-04-13', title: 'Install B', type: 'install', color: '#10B981' }),
             makeEvent({ id: '3', start: '2026-04-13', title: 'Follow-Up C' }),
           ]}
           isLoading={false}
-          selectedDate={new Date('2026-04-13')}
+          selectedDate={new Date(2026, 3, 13)}
           onPrevMonth={vi.fn()}
           onNextMonth={vi.fn()}
           onToday={vi.fn()}
@@ -70,7 +70,7 @@ describe('CalendarMonthGrid', () => {
     act(() => {
       root.render(
         <CalendarMonthGrid
-          currentDate={new Date('2026-04-01')}
+          currentDate={new Date(2026, 3, 1)}
           events={[
             makeEvent({
               id: '1',
@@ -82,7 +82,7 @@ describe('CalendarMonthGrid', () => {
             }),
           ]}
           isLoading={false}
-          selectedDate={new Date('2026-04-10')}
+          selectedDate={new Date(2026, 3, 10)}
           onPrevMonth={vi.fn()}
           onNextMonth={vi.fn()}
           onToday={vi.fn()}

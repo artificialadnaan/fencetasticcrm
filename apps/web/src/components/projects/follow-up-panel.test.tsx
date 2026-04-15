@@ -656,6 +656,22 @@ describe('Task 5 integrations', () => {
     });
     await flushEffects();
 
+    const detailsToggle = Array.from(document.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('Show financial & schedule details')
+    );
+    expect(detailsToggle).not.toBeUndefined();
+
+    await act(async () => {
+      detailsToggle?.dispatchEvent(
+        new MouseEvent('click', {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+        })
+      );
+    });
+    await flushEffects();
+
     expect(document.querySelector('#estimateDate')).not.toBeNull();
     expect(document.querySelector('#followUpDate')).toBeNull();
     expect(document.body.textContent).not.toContain('Follow-Up Date');
