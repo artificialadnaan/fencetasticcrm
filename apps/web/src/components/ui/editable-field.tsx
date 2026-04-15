@@ -14,6 +14,8 @@ interface EditableFieldProps {
   formatDisplay?: (value: string | number | null) => string;
   label: string;
   className?: string;
+  valueClassName?: string;
+  inputClassName?: string;
 }
 
 export function EditableField({
@@ -24,6 +26,8 @@ export function EditableField({
   formatDisplay,
   label,
   className,
+  valueClassName,
+  inputClassName,
 }: EditableFieldProps) {
   const [editing, setEditing] = useState(false);
   const [inputValue, setInputValue] = useState('');
@@ -110,7 +114,7 @@ export function EditableField({
       onBlur: commit,
       onKeyDown: handleKeyDown,
       className:
-        'text-sm font-medium bg-background border border-input rounded px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-ring w-full max-w-[180px]',
+        `w-full max-w-[180px] rounded border border-input bg-background px-2 py-0.5 text-sm font-medium focus:outline-none focus:ring-1 focus:ring-ring ${inputClassName ?? 'text-slate-950'}`,
     };
 
     if (type === 'select' && options) {
@@ -155,7 +159,7 @@ export function EditableField({
       }}
       className={`group inline-flex items-center gap-1 cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1 transition-colors ${saving ? 'opacity-50' : ''} ${className ?? ''}`}
     >
-      <span className="font-medium">{displayValue()}</span>
+      <span className={`font-medium ${valueClassName ?? 'text-slate-950'}`}>{displayValue()}</span>
       <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
     </span>
   );

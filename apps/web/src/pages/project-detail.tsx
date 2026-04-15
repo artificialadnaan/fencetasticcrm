@@ -362,11 +362,11 @@ export default function ProjectDetailPage() {
       {/* ================================================================ */}
       {/* HEADER                                                           */}
       {/* ================================================================ */}
-      <section className="shell-panel rounded-[28px] p-6 md:p-8">
+      <section className="rounded-[28px] border border-white/8 bg-[#161d27] p-6 shadow-[0_24px_60px_rgba(15,23,42,0.28)] md:p-8">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <Link
             to="/projects"
-            className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-950 transition-colors"
+            className="flex items-center gap-1.5 text-sm text-slate-300 hover:text-white transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Projects
@@ -377,14 +377,14 @@ export default function ProjectDetailPage() {
           {/* Left: customer info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl sm:text-3xl font-semibold tracking-[-0.05em] text-slate-950 truncate">
+              <h1 className="text-2xl sm:text-3xl font-semibold tracking-[-0.05em] text-white truncate">
                 {project.customer}
               </h1>
               <StatusBadge status={project.status} />
             </div>
-            <p className="text-slate-500 mt-1 truncate">{project.address}</p>
+            <p className="mt-1 truncate text-slate-300">{project.address}</p>
             {project.subcontractor && (
-              <p className="text-sm text-slate-400 mt-0.5">
+              <p className="mt-0.5 text-sm text-slate-400">
                 Sub: {project.subcontractor}
               </p>
             )}
@@ -396,13 +396,14 @@ export default function ProjectDetailPage() {
               variant="outline"
               size="sm"
               onClick={() => navigate(`/projects/${project.id}/work-order`)}
+              className="border-white/12 bg-white/5 text-white hover:bg-white hover:text-slate-950"
             >
               <FileEdit className="h-4 w-4 mr-1" />
               Work Order
             </Button>
 
             <Select value={project.status} onValueChange={handleStatusChange}>
-              <SelectTrigger className="w-[160px] h-9">
+              <SelectTrigger className="h-9 w-[170px] border-white/12 bg-white/5 text-white">
                 <SelectValue placeholder="Change status" />
               </SelectTrigger>
               <SelectContent>
@@ -417,7 +418,7 @@ export default function ProjectDetailPage() {
             <Button
               variant="outline"
               size="sm"
-              className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+              className="border-red-400/40 bg-red-500/10 text-red-200 hover:bg-red-500 hover:text-white"
               onClick={() => setShowDeleteDialog(true)}
             >
               <Trash2 className="h-4 w-4 mr-1" />
@@ -458,7 +459,7 @@ export default function ProjectDetailPage() {
       {/* ================================================================ */}
       {/* TAB BAR                                                          */}
       {/* ================================================================ */}
-      <div className="rounded-[28px] border border-black/5 bg-white/55 p-2 shadow-sm">
+      <div className="rounded-[28px] border border-white/8 bg-[#161d27] p-2 shadow-[0_18px_44px_rgba(15,23,42,0.22)]">
         <div role="tablist" className="flex flex-wrap items-center gap-2">
           {TABS.map((tab) => {
             const count = tabCounts[tab.id];
@@ -472,8 +473,8 @@ export default function ProjectDetailPage() {
                 onClick={() => handleTabChange(tab.id)}
                 className={`rounded-2xl px-4 py-2 text-sm font-medium transition-all duration-200 ${
                   isActive
-                    ? 'bg-[hsl(var(--brand-blue))] text-white shadow-[0_10px_24px_rgba(78,156,207,0.25)]'
-                    : 'text-slate-600 hover:bg-white hover:text-slate-950'
+                    ? 'bg-white text-slate-950 shadow-[0_10px_24px_rgba(15,23,42,0.24)]'
+                    : 'text-slate-300 hover:bg-white/10 hover:text-white'
                 }`}
               >
                 {tab.label}
@@ -499,10 +500,10 @@ export default function ProjectDetailPage() {
       {activeTab === 'overview' && (
         <div className="grid gap-4 md:grid-cols-2">
           {/* Job Details */}
-          <section className="shell-panel rounded-[28px] p-6 md:p-8">
+          <section className="rounded-[28px] border border-slate-300 bg-white p-6 shadow-[0_18px_44px_rgba(15,23,42,0.12)] md:p-8">
             <div className="flex items-center gap-2 mb-5">
-              <Info className="h-4 w-4 text-slate-400" />
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Job Details</p>
+              <Info className="h-4 w-4 text-slate-500" />
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-600">Job Details</p>
             </div>
             <div className="space-y-3">
               <FieldRow label="Contract Date">
@@ -609,10 +610,10 @@ export default function ProjectDetailPage() {
           </section>
 
           {/* Schedule */}
-          <section className="shell-panel rounded-[28px] p-6 md:p-8">
+          <section className="rounded-[28px] border border-slate-300 bg-white p-6 shadow-[0_18px_44px_rgba(15,23,42,0.12)] md:p-8">
             <div className="flex items-center gap-2 mb-5">
-              <CalendarDays className="h-4 w-4 text-slate-400" />
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Schedule</p>
+              <CalendarDays className="h-4 w-4 text-slate-500" />
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-600">Schedule</p>
             </div>
             <div className="space-y-3">
               <FieldRow label="Install Date">
@@ -646,17 +647,17 @@ export default function ProjectDetailPage() {
           </section>
 
           {/* Lifecycle */}
-          <section className="shell-panel rounded-[28px] p-6 md:p-8 md:col-span-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 mb-5">Lifecycle</p>
+          <section className="rounded-[28px] border border-slate-300 bg-white p-6 shadow-[0_18px_44px_rgba(15,23,42,0.12)] md:col-span-2 md:p-8">
+            <p className="mb-5 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-600">Lifecycle</p>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {lifecycleStages.map(({ status, meta, trackedDate, stateLabel }) => (
-                <div key={status} className="rounded-[24px] border border-black/5 bg-white/70 px-5 py-4">
+                <div key={status} className="rounded-[24px] border border-slate-200 bg-slate-50 px-5 py-4">
                   <div className="flex items-center justify-between gap-3">
                     <div className="font-medium text-slate-950">{meta.label}</div>
                     <StatusBadge status={status} className="text-[11px]" />
                   </div>
-                  <p className="mt-2 text-sm text-slate-500">{meta.description}</p>
-                  <p className="mt-3 text-xs uppercase tracking-wide text-slate-400">
+                  <p className="mt-2 text-sm text-slate-600">{meta.description}</p>
+                  <p className="mt-3 text-xs uppercase tracking-wide text-slate-500">
                     {meta.lifecycleDateLabel ?? 'Tracking'}
                   </p>
                   <p className="text-sm font-medium text-slate-950">
@@ -1145,15 +1146,24 @@ export default function ProjectDetailPage() {
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Overrides</p>
                 <FieldRow label="Commission Owed">
                   <EditableField label="Commission Owed" value={project.commissionOwed ?? null} type="currency"
-                    formatDisplay={(v) => (v != null ? formatCurrency(v as number) : '\u2014')} onSave={(v) => handleFieldSave('commissionOwed', v)} />
+                    formatDisplay={(v) => (v != null ? formatCurrency(v as number) : '\u2014')}
+                    valueClassName="text-slate-950"
+                    inputClassName="text-slate-950"
+                    onSave={(v) => handleFieldSave('commissionOwed', v)} />
                 </FieldRow>
                 <FieldRow label="Meme's Comm">
                   <EditableField label="Meme's Commission" value={project.memesCommission ?? null} type="currency"
-                    formatDisplay={(v) => (v != null ? formatCurrency(v as number) : '\u2014')} onSave={(v) => handleFieldSave('memesCommission', v)} />
+                    formatDisplay={(v) => (v != null ? formatCurrency(v as number) : '\u2014')}
+                    valueClassName="text-slate-950"
+                    inputClassName="text-slate-950"
+                    onSave={(v) => handleFieldSave('memesCommission', v)} />
                 </FieldRow>
                 <FieldRow label="Aimann's Comm">
                   <EditableField label="Aimann's Commission" value={project.aimannsCommission ?? null} type="currency"
-                    formatDisplay={(v) => (v != null ? formatCurrency(v as number) : '\u2014')} onSave={(v) => handleFieldSave('aimannsCommission', v)} />
+                    formatDisplay={(v) => (v != null ? formatCurrency(v as number) : '\u2014')}
+                    valueClassName="text-slate-950"
+                    inputClassName="text-slate-950"
+                    onSave={(v) => handleFieldSave('aimannsCommission', v)} />
                 </FieldRow>
               </div>
 
@@ -1163,7 +1173,10 @@ export default function ProjectDetailPage() {
               <div>
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Notes</p>
                 <EditableField label="Notes" value={project.notes} type="text"
-                  formatDisplay={(v) => (v ? String(v) : 'Add notes...')} onSave={(v) => handleFieldSave('notes', v)} />
+                  formatDisplay={(v) => (v ? String(v) : 'Add notes...')}
+                  valueClassName="text-white"
+                  inputClassName="border-white/12 bg-slate-900 text-white"
+                  onSave={(v) => handleFieldSave('notes', v)} />
               </div>
             </div>
           </section>
@@ -1327,26 +1340,26 @@ function KpiTile({
 }) {
   if (dark) {
     return (
-      <div className="rounded-[24px] border border-black/5 bg-slate-950 px-5 py-4 text-white relative overflow-hidden">
+      <div className="relative overflow-hidden rounded-[24px] border border-emerald-400/20 bg-slate-950 px-5 py-4 text-white shadow-[0_18px_44px_rgba(15,23,42,0.2)]">
         <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
           {label}
         </p>
         <p className={`text-xl sm:text-2xl font-bold mt-1 font-mono ${valueClassName ?? 'text-white'}`}>
           {value}
         </p>
-        <div className="absolute top-4 right-4 text-white/10">{icon}</div>
+        <div className="absolute top-4 right-4 rounded-2xl bg-white/10 p-3 text-emerald-300">{icon}</div>
       </div>
     );
   }
   return (
-    <div className="rounded-[24px] border border-black/5 bg-white/70 px-5 py-4 relative overflow-hidden">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+    <div className="relative overflow-hidden rounded-[24px] border border-slate-300 bg-white px-5 py-4 shadow-[0_14px_34px_rgba(15,23,42,0.1)]">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-600">
         {label}
       </p>
       <p className={`text-xl sm:text-2xl font-bold mt-1 font-mono ${valueClassName ?? 'text-slate-950'}`}>
         {value}
       </p>
-      <div className="absolute top-4 right-4 text-slate-200">{icon}</div>
+      <div className="absolute top-4 right-4 rounded-2xl bg-slate-100 p-3 text-slate-500">{icon}</div>
     </div>
   );
 }
@@ -1359,8 +1372,8 @@ function FieldRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex justify-between items-center text-sm">
-      <span className="text-slate-500">{label}</span>
+    <div className="flex items-center justify-between gap-6 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm">
+      <span className="font-medium text-slate-600">{label}</span>
       {children}
     </div>
   );
