@@ -317,6 +317,8 @@ describe('dashboard.service follow-up reads', () => {
         title: 'Collect signed HOA form',
         notes: 'Need this before install scheduling.',
         href: '/calendar?date=2026-04-08',
+        assignedToName: null,
+        source: 'ESTIMATE_FOLLOW_UP',
       },
     ]);
     expect(result.commandQueue.actionNeeded).toContainEqual({
@@ -329,6 +331,108 @@ describe('dashboard.service follow-up reads', () => {
       urgency: 'MEDIUM',
       financeProjectMode: null,
       href: '/calendar?date=2026-04-08',
+      dueDate: '2026-04-08',
+      assignedToName: null,
+    });
+
+    vi.useRealTimers();
+  });
+
+  it('uses pending workflow tasks as owned dashboard actions and excludes completed ones', async () => {
+    prismaMock.prisma.commissionSnapshot.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    prismaMock.prisma.project.count.mockResolvedValue(0);
+    prismaMock.prisma.project.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    prismaMock.prisma.aimannDebtLedger.findFirst.mockResolvedValue(null);
+    prismaMock.prisma.project.groupBy.mockResolvedValue([]);
+    prismaMock.prisma.estimateFollowUpTask.findMany.mockResolvedValue([]);
+    prismaMock.prisma.calendarEvent.findMany.mockResolvedValue([
+      {
+        id: 'event-1',
+        title: 'Collect HOA approval',
+        date: new Date('2026-04-08T00:00:00.000Z'),
+        eventType: 'followup',
+        notes: 'Needed before install lock-in.',
+        projectId: 'project-77',
+        isWorkflowTask: true,
+        taskStatus: 'PENDING',
+        completedAt: null,
+        assignedToUserId: 'user-2',
+        assignedToUser: {
+          id: 'user-2',
+          name: 'Office Admin',
+        },
+        project: {
+          id: 'project-77',
+          customer: 'Sharon Harbach',
+          address: '321 River Meadows Ln',
+          status: ProjectStatus.OPEN,
+          isDeleted: false,
+        },
+      },
+      {
+        id: 'event-2',
+        title: 'Already done',
+        date: new Date('2026-04-08T00:00:00.000Z'),
+        eventType: 'followup',
+        notes: 'Should not show in action needed.',
+        projectId: 'project-77',
+        isWorkflowTask: true,
+        taskStatus: 'COMPLETED',
+        completedAt: new Date('2026-04-08T15:00:00.000Z'),
+        assignedToUserId: 'user-2',
+        assignedToUser: {
+          id: 'user-2',
+          name: 'Office Admin',
+        },
+        project: {
+          id: 'project-77',
+          customer: 'Sharon Harbach',
+          address: '321 River Meadows Ln',
+          status: ProjectStatus.OPEN,
+          isDeleted: false,
+        },
+      },
+    ]);
+    prismaMock.prisma.projectNote.findMany.mockResolvedValue([]);
+
+    const { getDashboardData } = await import('../services/dashboard.service');
+    const result = await getDashboardData();
+
+    expect(result.todaysFollowUps).toEqual([
+      {
+        id: 'manual-event-1',
+        projectId: 'project-77',
+        customer: 'Sharon Harbach',
+        address: '321 River Meadows Ln',
+        status: ProjectStatus.OPEN,
+        dueDate: '2026-04-08',
+        kind: 'MANUAL',
+        title: 'Collect HOA approval',
+        notes: 'Needed before install lock-in.',
+        href: '/calendar?date=2026-04-08',
+        assignedToName: 'Office Admin',
+        source: 'WORKFLOW_TASK',
+      },
+    ]);
+    expect(result.commandQueue.actionNeeded).toContainEqual({
+      id: 'followup-manual-event-1',
+      projectId: 'project-77',
+      customer: 'Sharon Harbach',
+      address: '321 River Meadows Ln',
+      title: 'Collect HOA approval',
+      reason: 'Needed before install lock-in.',
+      urgency: 'MEDIUM',
+      financeProjectMode: null,
+      href: '/calendar?date=2026-04-08',
+      assignedToName: 'Office Admin',
+      dueDate: '2026-04-08',
     });
 
     vi.useRealTimers();

@@ -8,6 +8,7 @@ import {
   FenceType,
   TransactionType,
   CC_FEE_RATE,
+  WorkflowTaskStatus,
   type CreateProjectDTO,
   type UpdateProjectDTO,
   type ProjectListQuery,
@@ -499,6 +500,20 @@ export async function getProjectById(projectId: string) {
         orderBy: { createdAt: 'desc' },
       },
       commissionSnapshot: true,
+      calendarEvents: {
+        where: {
+          isWorkflowTask: true,
+        },
+        include: {
+          assignedToUser: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
+      },
     },
   });
 
@@ -543,6 +558,18 @@ export async function getProjectById(projectId: string) {
   }
 
   const resolvedFinance = resolveProjectFinanceSnapshot(project, commissionPreview);
+  const workflowTasks = (project.calendarEvents ?? []).map((event) => ({
+    id: event.id,
+    title: event.title,
+    dueDate: event.date.toISOString().split('T')[0],
+    type: event.eventType,
+    status: event.taskStatus as WorkflowTaskStatus,
+    notes: event.notes,
+    assignedToUserId: event.assignedToUserId,
+    assignedToName: event.assignedToUser?.name ?? null,
+    completedAt: event.completedAt?.toISOString() ?? null,
+  }));
+  const nextWorkflowTask = workflowTasks.find((task) => task.status === WorkflowTaskStatus.PENDING) ?? null;
 
   // Serialize the project
   return {
@@ -628,6 +655,17 @@ export async function getProjectById(projectId: string) {
         }
       : null,
     commissionPreview: resolvedFinance.commissionPreview,
+    workflowTasks,
+    nextAction: nextWorkflowTask
+      ? {
+          id: nextWorkflowTask.id,
+          title: nextWorkflowTask.title,
+          dueDate: nextWorkflowTask.dueDate,
+          source: 'WORKFLOW_TASK',
+          status: nextWorkflowTask.status,
+          assignedToName: nextWorkflowTask.assignedToName,
+        }
+      : null,
   };
 }
 

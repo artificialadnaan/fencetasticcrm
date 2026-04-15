@@ -67,6 +67,11 @@ export enum EstimateFollowUpTaskStatus {
   SKIPPED = 'SKIPPED',
 }
 
+export enum WorkflowTaskStatus {
+  PENDING = 'PENDING',
+  COMPLETED = 'COMPLETED',
+}
+
 export enum EstimateFollowUpLostReasonCode {
   PRICE = 'PRICE',
   NO_RESPONSE = 'NO_RESPONSE',
@@ -625,6 +630,29 @@ export interface ProjectDetail extends Project {
   projectNotes: (ProjectNote & { author: { id: string; name: string } })[];
   commissionSnapshot: CommissionSnapshot | null;
   commissionPreview: CommissionPreview;
+  workflowTasks: WorkflowTask[];
+  nextAction: ProjectNextAction | null;
+}
+
+export interface WorkflowTask {
+  id: string;
+  title: string;
+  dueDate: string;
+  type: string;
+  status: WorkflowTaskStatus;
+  notes: string | null;
+  assignedToUserId: string | null;
+  assignedToName: string | null;
+  completedAt: string | null;
+}
+
+export interface ProjectNextAction {
+  id: string;
+  title: string;
+  dueDate: string;
+  source: 'WORKFLOW_TASK' | 'ESTIMATE_FOLLOW_UP';
+  status: WorkflowTaskStatus | EstimateFollowUpTaskStatus;
+  assignedToName: string | null;
 }
 
 export interface PaginatedResponse<T> {
@@ -789,6 +817,8 @@ export interface DashboardFollowUpTask {
   title: string | null;
   notes?: string | null;
   href?: string | null;
+  assignedToName?: string | null;
+  source?: 'WORKFLOW_TASK' | 'ESTIMATE_FOLLOW_UP';
 }
 
 export interface DashboardActivityItem {
@@ -809,6 +839,8 @@ export interface DashboardCommandItem {
   urgency: 'HIGH' | 'MEDIUM' | 'LOW';
   financeProjectMode?: FinanceProjectMode | null;
   href?: string | null;
+  assignedToName?: string | null;
+  dueDate?: string | null;
 }
 
 export interface DashboardUpcomingInstall {

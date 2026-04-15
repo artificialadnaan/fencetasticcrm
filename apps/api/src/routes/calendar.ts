@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { validateQuery, validate } from '../middleware/validate';
+import { WorkflowTaskStatus } from '@fencetastic/shared';
 import { requireAuth } from '../middleware/auth';
 import { getCalendarEvents } from '../services/calendar.service';
 import { prisma } from '../lib/prisma';
@@ -20,6 +21,10 @@ const createEventSchema = z.object({
   color: z.string().optional(),
   projectId: z.string().uuid().nullable().optional(),
   notes: z.string().nullable().optional(),
+  isWorkflowTask: z.boolean().optional(),
+  taskStatus: z.nativeEnum(WorkflowTaskStatus).optional(),
+  assignedToUserId: z.string().uuid().nullable().optional(),
+  completedAt: z.string().datetime().nullable().optional(),
 });
 
 const updateEventSchema = z.object({
@@ -30,6 +35,10 @@ const updateEventSchema = z.object({
   color: z.string().optional(),
   projectId: z.string().uuid().nullable().optional(),
   notes: z.string().nullable().optional(),
+  isWorkflowTask: z.boolean().optional(),
+  taskStatus: z.nativeEnum(WorkflowTaskStatus).optional(),
+  assignedToUserId: z.string().uuid().nullable().optional(),
+  completedAt: z.string().datetime().nullable().optional(),
 });
 
 // GET /api/calendar/events?start=YYYY-MM-DD&end=YYYY-MM-DD
@@ -77,6 +86,15 @@ calendarRouter.post(
           color: body.color ?? '#3B82F6',
           projectId: body.projectId ?? null,
           notes: body.notes ?? null,
+          isWorkflowTask: body.isWorkflowTask ?? false,
+          taskStatus: body.taskStatus ?? WorkflowTaskStatus.PENDING,
+          assignedToUserId: body.assignedToUserId ?? null,
+          completedAt:
+            body.completedAt != null
+              ? new Date(body.completedAt)
+              : body.taskStatus === WorkflowTaskStatus.COMPLETED
+                ? new Date()
+                : null,
         },
       });
       res.status(201).json({ data: event });
@@ -111,6 +129,19 @@ calendarRouter.patch(
           ...(body.color !== undefined && { color: body.color }),
           ...(body.projectId !== undefined && { projectId: body.projectId ?? null }),
           ...(body.notes !== undefined && { notes: body.notes ?? null }),
+          ...(body.isWorkflowTask !== undefined && { isWorkflowTask: body.isWorkflowTask }),
+          ...(body.taskStatus !== undefined && { taskStatus: body.taskStatus }),
+          ...(body.assignedToUserId !== undefined && { assignedToUserId: body.assignedToUserId ?? null }),
+          ...(body.completedAt !== undefined
+            ? { completedAt: body.completedAt ? new Date(body.completedAt) : null }
+            : body.taskStatus !== undefined
+              ? {
+                  completedAt:
+                    body.taskStatus === WorkflowTaskStatus.COMPLETED
+                      ? existing.completedAt ?? new Date()
+                      : null,
+                }
+              : {}),
         },
       });
       res.json({ data: updated });

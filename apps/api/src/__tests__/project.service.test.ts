@@ -510,6 +510,114 @@ describe('Project Service', () => {
       expect(result.importedSource).toBe('Open');
     });
 
+    it('returns workflow tasks and next action on project detail responses', async () => {
+      vi.mocked(prisma.project.findUnique).mockResolvedValue({
+        id: 'project-1',
+        customer: 'Workflow Job',
+        address: '123 Fence Ln',
+        description: 'Workflow project',
+        fenceType: 'WOOD',
+        status: 'OPEN',
+        projectTotal: 1000,
+        paymentMethod: 'CHECK',
+        moneyReceived: 1000,
+        customerPaid: 1000,
+        forecastedExpenses: 300,
+        materialsCost: 100,
+        contractDate: new Date('2026-04-01T00:00:00.000Z'),
+        installDate: new Date('2026-04-10T00:00:00.000Z'),
+        completedDate: null,
+        estimateDate: null,
+        followUpDate: null,
+        linearFeet: null,
+        rateTemplateId: null,
+        subcontractor: null,
+        notes: null,
+        commissionOwed: null,
+        commissionPaid: null,
+        memesCommission: null,
+        aimannsCommission: null,
+        financeProjectMode: 'COMPUTED',
+        receivablesSource: 'CRM_COMPUTED',
+        payablesSource: 'CRM_COMPUTED',
+        commissionsSource: 'CRM_COMPUTED',
+        profitabilitySource: 'CRM_COMPUTED',
+        importedOutstandingReceivables: null,
+        importedOutstandingPayables: null,
+        importedGrossProfit: null,
+        importedGrossProfitPercent: null,
+        importedNetProfit: null,
+        importedNetProfitPercent: null,
+        importedAt: null,
+        importedSource: null,
+        lastRecalculatedAt: null,
+        lastManualFinanceEditAt: null,
+        reconciliationRequiredAt: null,
+        reconciliationNotes: null,
+        createdById: 'user-1',
+        isDeleted: false,
+        deletedAt: null,
+        createdAt: new Date('2026-04-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-04-08T00:00:00.000Z'),
+        subcontractorPayments: [],
+        projectNotes: [],
+        commissionSnapshot: null,
+        calendarEvents: [
+          {
+            id: 'task-1',
+            title: 'Order materials',
+            date: new Date('2026-04-05T00:00:00.000Z'),
+            endDate: null,
+            eventType: 'followup',
+            color: '#F59E0B',
+            projectId: 'project-1',
+            notes: 'Before install date',
+            isWorkflowTask: true,
+            taskStatus: 'PENDING',
+            completedAt: null,
+            assignedToUserId: 'user-2',
+            assignedToUser: {
+              id: 'user-2',
+              name: 'Office Admin',
+            },
+          },
+        ],
+      } as never);
+      vi.mocked(prisma.subcontractorPayment.aggregate).mockResolvedValue({
+        _sum: { amountOwed: null },
+      } as never);
+      vi.mocked(prisma.transaction.aggregate).mockResolvedValue({
+        _sum: { amount: null },
+        _count: { _all: 0 },
+      } as never);
+      vi.mocked(prisma.aimannDebtLedger.findFirst).mockResolvedValue(null);
+
+      const { getProjectById } = await import('../services/project.service');
+      const result = await getProjectById('project-1');
+
+      expect(result.workflowTasks).toEqual([
+        {
+          id: 'task-1',
+          title: 'Order materials',
+          dueDate: '2026-04-05',
+          type: 'followup',
+          status: 'PENDING',
+          notes: 'Before install date',
+          assignedToUserId: 'user-2',
+          assignedToName: 'Office Admin',
+          completedAt: null,
+        },
+      ]);
+      expect(result.nextAction).toEqual({
+        id: 'task-1',
+        title: 'Order materials',
+        dueDate: '2026-04-05',
+        source: 'WORKFLOW_TASK',
+        status: 'PENDING',
+        assignedToName: 'Office Admin',
+      });
+    });
+
     it('prefers imported historical gross and net values in the detail finance preview', async () => {
       vi.mocked(prisma.project.findUnique).mockResolvedValue({
         id: 'p-imported-detail',

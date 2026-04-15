@@ -10,6 +10,11 @@ export interface CalendarEvent {
   projectId: string;
   color: string;
   notes?: string | null;
+  isWorkflowTask?: boolean;
+  taskStatus?: 'PENDING' | 'COMPLETED' | null;
+  assignedToUserId?: string | null;
+  assignedToName?: string | null;
+  completedAt?: string | null;
 }
 
 interface UseCalendarEventsReturn {

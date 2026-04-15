@@ -86,6 +86,27 @@ function makeProjectDetail() {
     subcontractorPayments: [],
     projectNotes: [],
     commissionSnapshot: null,
+    workflowTasks: [
+      {
+        id: 'task-1',
+        title: 'Order materials',
+        dueDate: '2026-04-09',
+        type: 'followup',
+        status: 'PENDING',
+        notes: 'Before install',
+        assignedToUserId: 'user-1',
+        assignedToName: 'Adnaan',
+        completedAt: null,
+      },
+    ],
+    nextAction: {
+      id: 'task-1',
+      title: 'Order materials',
+      dueDate: '2026-04-09',
+      source: 'WORKFLOW_TASK',
+      status: 'PENDING',
+      assignedToName: 'Adnaan',
+    },
     commissionPreview: {
       moneyReceived: 0,
       totalExpenses: 0,
@@ -157,6 +178,9 @@ describe('ProjectDetailPage surface styling', () => {
 
     expect(container.textContent).toContain('Sharon Harbach');
     expect(container.textContent).toContain('Back to Projects');
+    expect(container.textContent).toContain('Next Action');
+    expect(container.textContent).toContain('Order materials');
+    expect(container.textContent).toContain('Adnaan');
 
     const darkShells = container.querySelectorAll('.bg-\\[\\#161d27\\]');
     expect(darkShells.length).toBeGreaterThanOrEqual(2);

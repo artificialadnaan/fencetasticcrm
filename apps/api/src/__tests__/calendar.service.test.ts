@@ -144,4 +144,51 @@ describe('calendar.service follow-up reads', () => {
     expect(result).toHaveLength(1);
     expect(result.find((event) => event.id === 'followup-project-legacy')).toBeUndefined();
   });
+
+  it('returns workflow task calendar events with owner and completion metadata', async () => {
+    prismaMock.prisma.project.findMany.mockResolvedValue([]);
+    prismaMock.prisma.estimateFollowUpTask.findMany.mockResolvedValue([]);
+    prismaMock.prisma.calendarEvent.findMany.mockResolvedValue([
+      {
+        id: 'workflow-1',
+        title: 'Order cedar pickets',
+        date: new Date('2026-04-16T00:00:00.000Z'),
+        endDate: null,
+        eventType: 'followup',
+        color: '#F59E0B',
+        projectId: 'project-9',
+        notes: 'Needed before install',
+        isWorkflowTask: true,
+        taskStatus: 'PENDING',
+        completedAt: null,
+        assignedToUserId: 'user-2',
+        assignedToUser: {
+          id: 'user-2',
+          name: 'Office Admin',
+        },
+        project: {
+          customer: 'Will & Marta',
+        },
+      },
+    ]);
+
+    const { getCalendarEvents } = await import('../services/calendar.service');
+    const result = await getCalendarEvents('2026-04-01', '2026-04-30');
+
+    expect(result).toContainEqual({
+      id: 'workflow-1',
+      title: 'Order cedar pickets',
+      start: '2026-04-16',
+      end: '2026-04-16',
+      type: 'followup',
+      projectId: 'project-9',
+      color: '#F59E0B',
+      notes: 'Needed before install',
+      isWorkflowTask: true,
+      taskStatus: 'PENDING',
+      assignedToUserId: 'user-2',
+      assignedToName: 'Office Admin',
+      completedAt: null,
+    });
+  });
 });

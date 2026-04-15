@@ -81,7 +81,7 @@ export function DashboardFollowupsPanel({
                     {statusMeta?.shortLabel ?? followUp.status}
                   </span>
                 </div>
-                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <div className="mt-4 grid gap-4 sm:grid-cols-3">
                   <div>
                     <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
                       Task
@@ -96,9 +96,16 @@ export function DashboardFollowupsPanel({
                     </p>
                     <p className="mt-1 text-sm text-slate-800">{formatDate(followUp.dueDate)}</p>
                   </div>
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+                      Owner
+                    </p>
+                    <p className="mt-1 text-sm text-slate-800">{followUp.assignedToName ?? 'Unassigned'}</p>
+                  </div>
                 </div>
-                <div className="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Open task
+                <div className="mt-4 flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  <span>Open task</span>
+                  <span>{followUp.source === 'WORKFLOW_TASK' ? 'Manual workflow' : 'Estimate sequence'}</span>
                 </div>
               </Link>
             );

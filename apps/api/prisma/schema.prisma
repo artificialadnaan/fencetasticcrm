@@ -17,6 +17,7 @@ model User {
   projects              Project[]
   projectNotes          ProjectNote[]
   completedFollowUpTasks EstimateFollowUpTask[]
+  assignedWorkflowTasks CalendarEvent[] @relation("AssignedWorkflowTasks")
 
   @@map("users")
 }
@@ -287,11 +288,18 @@ model CalendarEvent {
   color     String    @default("#3B82F6")
   projectId String?   @map("project_id") @db.Uuid
   notes     String?   @db.Text
+  isWorkflowTask Boolean @default(false) @map("is_workflow_task")
+  taskStatus WorkflowTaskStatus @default(PENDING) @map("task_status")
+  assignedToUserId String? @map("assigned_to_user_id") @db.Uuid
+  completedAt DateTime? @map("completed_at") @db.Timestamptz
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
   project Project? @relation(fields: [projectId], references: [id])
+  assignedToUser User? @relation("AssignedWorkflowTasks", fields: [assignedToUserId], references: [id])
 
+  @@index([isWorkflowTask, taskStatus, date])
+  @@index([projectId, isWorkflowTask, taskStatus, date])
   @@map("calendar_events")
 }
 
@@ -359,6 +367,11 @@ enum ExpenseFrequency {
   MONTHLY
   QUARTERLY
   ANNUAL
+}
+
+enum WorkflowTaskStatus {
+  PENDING
+  COMPLETED
 }
 
 enum EstimateFollowUpSequenceStatus {

@@ -1,4 +1,5 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { WorkflowTaskStatus } from '@fencetastic/shared';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   addMonths,
@@ -26,6 +27,12 @@ interface ProjectOption {
   id: string;
   customer: string;
   address: string;
+}
+
+interface UserOption {
+  id: string;
+  name: string;
+  email: string;
 }
 
 const EVENT_TYPES = [
@@ -70,6 +77,10 @@ const DEFAULT_FORM = {
   color: '#3B82F6',
   projectId: '',
   notes: '',
+  isWorkflowTask: false,
+  assignedToUserId: '',
+  taskStatus: WorkflowTaskStatus.PENDING,
+  completedAt: null as string | null,
 };
 
 function toLocalDate(dateStr: string) {
@@ -101,6 +112,7 @@ export default function CalendarPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [projects, setProjects] = useState<ProjectOption[]>([]);
+  const [users, setUsers] = useState<UserOption[]>([]);
   const [projectSearch, setProjectSearch] = useState('');
   const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
 
@@ -133,9 +145,15 @@ export default function CalendarPage() {
       setProjects(collected);
     };
 
-    loadProjects()
+    const loadUsers = async () => {
+      const res = await api.get('/auth/users');
+      const raw = res.data?.data ?? [];
+      setUsers(Array.isArray(raw) ? raw : []);
+    };
+
+    Promise.all([loadProjects(), loadUsers()])
       .catch((err) => {
-        console.error('Failed to load projects for calendar lookup', err);
+        console.error('Failed to load calendar metadata', err);
       });
   }, []);
 
@@ -195,11 +213,15 @@ export default function CalendarPage() {
     [filteredEvents, selectedDate],
   );
 
-  const openCreateDialog = useCallback((dateStr?: string) => {
+  const openCreateDialog = useCallback((dateStr?: string, options?: { type?: string; isWorkflowTask?: boolean }) => {
+    const eventType = options?.type ?? DEFAULT_FORM.eventType;
     setEditingEvent(null);
     setForm({
       ...DEFAULT_FORM,
       date: dateStr ?? format(selectedDate, 'yyyy-MM-dd'),
+      eventType,
+      color: getEventColor(eventType),
+      isWorkflowTask: options?.isWorkflowTask ?? false,
     });
     setProjectSearch('');
     setSaveError(null);
@@ -216,6 +238,10 @@ export default function CalendarPage() {
       color: event.color,
       projectId: event.projectId,
       notes: event.notes ?? '',
+      isWorkflowTask: Boolean(event.isWorkflowTask),
+      assignedToUserId: event.assignedToUserId ?? '',
+      taskStatus: (event.taskStatus as WorkflowTaskStatus | null) ?? WorkflowTaskStatus.PENDING,
+      completedAt: event.completedAt ?? null,
     });
     setProjectSearch(event.projectCustomer ? `${event.projectCustomer}${event.projectAddress ? ` - ${event.projectAddress}` : ''}` : '');
     setSaveError(null);
@@ -245,6 +271,7 @@ export default function CalendarPage() {
 
     const requestedType = searchParams.get('type') ?? DEFAULT_FORM.eventType;
     const requestedDate = searchParams.get('date') ?? format(new Date(), 'yyyy-MM-dd');
+    const requestedIsWorkflowTask = requestedType === 'followup';
     const requestedDateValue = toLocalDate(requestedDate);
 
     setSelectedDate(requestedDateValue);
@@ -256,6 +283,7 @@ export default function CalendarPage() {
       date: requestedDate,
       eventType: requestedType,
       color: getEventColor(requestedType),
+      isWorkflowTask: requestedIsWorkflowTask,
     });
     setProjectSearch('');
     setSaveError(null);
@@ -306,6 +334,13 @@ export default function CalendarPage() {
         color: form.color,
         projectId: form.projectId || null,
         notes: form.notes || null,
+        isWorkflowTask: form.isWorkflowTask,
+        assignedToUserId: form.isWorkflowTask ? form.assignedToUserId || null : null,
+        taskStatus: form.isWorkflowTask ? form.taskStatus : WorkflowTaskStatus.PENDING,
+        completedAt:
+          form.isWorkflowTask && form.taskStatus === WorkflowTaskStatus.COMPLETED
+            ? form.completedAt ?? new Date().toISOString()
+            : null,
       };
 
       if (editingEvent) {
@@ -519,7 +554,7 @@ export default function CalendarPage() {
           monthEvents={filteredEvents}
           isLoading={isLoading}
           onOpenEvent={handleEventClick}
-          onCreateEvent={() => openCreateDialog(format(selectedDate, 'yyyy-MM-dd'))}
+          onCreateEvent={() => openCreateDialog(format(selectedDate, 'yyyy-MM-dd'), { type: 'followup', isWorkflowTask: true })}
         />
       </div>
 
@@ -541,7 +576,7 @@ export default function CalendarPage() {
                 {editDialogTitle}
               </DialogTitle>
               <DialogDescription className="text-sm text-slate-500">
-                Create or update a dated reminder, install, or meeting and link it to a project when needed.
+                Create or update a dated reminder, install, or workflow task and link it to a project when needed.
               </DialogDescription>
             </DialogHeader>
           </div>
@@ -675,6 +710,89 @@ export default function CalendarPage() {
                 )}
               </div>
 
+              <div className="rounded-[24px] border border-black/5 bg-slate-50 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-950">Workflow task</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-600">
+                      Turn this event into an owned task that shows up on the dashboard and next-action surfaces.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant={form.isWorkflowTask ? 'default' : 'outline'}
+                    onClick={() =>
+                      setForm((value) => {
+                        const nextIsWorkflowTask = !value.isWorkflowTask;
+                        return {
+                          ...value,
+                          isWorkflowTask: nextIsWorkflowTask,
+                          eventType: nextIsWorkflowTask ? 'followup' : value.eventType,
+                          color: nextIsWorkflowTask ? getEventColor('followup') : value.color,
+                          taskStatus: nextIsWorkflowTask ? value.taskStatus : WorkflowTaskStatus.PENDING,
+                          assignedToUserId: nextIsWorkflowTask ? value.assignedToUserId : '',
+                          completedAt: nextIsWorkflowTask ? value.completedAt : null,
+                        };
+                      })
+                    }
+                    className="rounded-2xl"
+                  >
+                    {form.isWorkflowTask ? 'Task enabled' : 'Convert to task'}
+                  </Button>
+                </div>
+
+                {form.isWorkflowTask && (
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label>Owner</Label>
+                      <Select
+                        value={form.assignedToUserId || 'unassigned'}
+                        onValueChange={(value) =>
+                          setForm((current) => ({ ...current, assignedToUserId: value === 'unassigned' ? '' : value }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Assign owner" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="unassigned">Unassigned</SelectItem>
+                          {users.map((user) => (
+                            <SelectItem key={user.id} value={user.id}>
+                              {user.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label>Status</Label>
+                      <Select
+                        value={form.taskStatus}
+                        onValueChange={(value) =>
+                          setForm((current) => ({
+                            ...current,
+                            taskStatus: value as WorkflowTaskStatus,
+                            completedAt:
+                              value === WorkflowTaskStatus.COMPLETED
+                                ? current.completedAt ?? new Date().toISOString()
+                                : null,
+                          }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Task status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={WorkflowTaskStatus.PENDING}>Pending</SelectItem>
+                          <SelectItem value={WorkflowTaskStatus.COMPLETED}>Completed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="space-y-1.5">
                 <Label htmlFor="event-notes">Notes</Label>
                 <Textarea
@@ -705,6 +823,7 @@ export default function CalendarPage() {
                 <ul className="mt-3 space-y-3 text-sm leading-6 text-slate-600">
                   <li>Project-linked events still route to the project detail page when clicked in the month grid or side rail.</li>
                   <li>Standalone custom events can be edited and deleted directly from this dialog.</li>
+                  <li>Workflow tasks flow into the dashboard action lanes and project next-action surfaces.</li>
                   <li>Search and filter operate on visible events using the current client-side project lookup.</li>
                 </ul>
               </div>
@@ -773,7 +892,7 @@ export default function CalendarPage() {
                     disabled={saving}
                     className="rounded-2xl bg-[hsl(var(--brand-blue))] px-4 text-white hover:bg-[hsl(var(--brand-blue-hover))]"
                   >
-                    {saving ? 'Saving...' : editingEvent ? 'Save Changes' : 'Save Event'}
+                    {saving ? 'Saving...' : editingEvent ? 'Save Changes' : form.isWorkflowTask ? 'Save Task' : 'Save Event'}
                   </Button>
                 </>
               )}

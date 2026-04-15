@@ -40,6 +40,8 @@ describe('DashboardFollowupsPanel', () => {
                 title: null,
                 notes: null,
                 href: '/projects/project-7?tab=follow-up',
+                assignedToName: 'Office Admin',
+                source: 'WORKFLOW_TASK',
               },
             ]}
           />
@@ -51,6 +53,7 @@ describe('DashboardFollowupsPanel', () => {
     expect(container.textContent).toContain('123 Fence Lane');
     expect(container.textContent).toContain('Apr 9, 2026');
     expect(container.textContent).toContain('Day 7');
+    expect(container.textContent).toContain('Office Admin');
     expect(container.textContent).toContain('Add task');
 
     const links = Array.from(container.querySelectorAll('a'));
@@ -77,6 +80,8 @@ describe('DashboardFollowupsPanel', () => {
                 title: 'Collect signed HOA form',
                 notes: 'Need this before install scheduling.',
                 href: '/calendar?date=2026-04-08',
+                assignedToName: 'Adnaan',
+                source: 'WORKFLOW_TASK',
               },
             ]}
           />

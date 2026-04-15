@@ -2,6 +2,7 @@ import {
   EstimateFollowUpSequenceStatus,
   EstimateFollowUpTaskKind,
   EstimateFollowUpTaskStatus,
+  WorkflowTaskStatus,
 } from '@fencetastic/shared';
 import { prisma } from '../lib/prisma';
 
@@ -14,6 +15,11 @@ export interface CalendarEvent {
   projectId: string;
   color: string;
   notes?: string | null;
+  isWorkflowTask?: boolean;
+  taskStatus?: WorkflowTaskStatus | null;
+  assignedToUserId?: string | null;
+  assignedToName?: string | null;
+  completedAt?: string | null;
 }
 
 const EVENT_COLORS = {
@@ -160,7 +166,15 @@ export async function getCalendarEvents(
       where: {
         date: { gte: startDate, lt: endDate },
       },
-      include: { project: { select: { customer: true } } },
+      include: {
+        project: { select: { customer: true } },
+        assignedToUser: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
     }),
   ]);
 
@@ -244,6 +258,11 @@ export async function getCalendarEvents(
       projectId: ce.projectId ?? '',
       color: ce.color,
       notes: ce.notes,
+      isWorkflowTask: ce.isWorkflowTask,
+      taskStatus: (ce.taskStatus as WorkflowTaskStatus | null) ?? null,
+      assignedToUserId: ce.assignedToUserId,
+      assignedToName: ce.assignedToUser?.name ?? null,
+      completedAt: ce.completedAt ? ce.completedAt.toISOString() : null,
     });
   }
 

@@ -7,6 +7,7 @@ import {
   EstimateFollowUpTaskKind,
   EstimateFollowUpTaskStatus,
   ProjectStatus,
+  WorkflowTaskStatus,
 } from '@fencetastic/shared';
 
 // Helper: Prisma Decimal → number
@@ -130,6 +131,14 @@ type DashboardManualFollowUpEventRow = {
   notes: string | null;
   eventType: string;
   projectId: string | null;
+  isWorkflowTask: boolean;
+  taskStatus: WorkflowTaskStatus;
+  completedAt: Date | null;
+  assignedToUserId: string | null;
+  assignedToUser: {
+    id: string;
+    name: string;
+  } | null;
   project: {
     id: string;
     customer: string;
@@ -342,6 +351,16 @@ export async function getDashboardData(): Promise<DashboardData> {
         notes: true,
         eventType: true,
         projectId: true,
+        isWorkflowTask: true,
+        taskStatus: true,
+        completedAt: true,
+        assignedToUserId: true,
+        assignedToUser: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         project: {
           select: {
             id: true,
@@ -484,6 +503,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     }));
 
   const manualFollowUps: DashboardFollowUpTask[] = (manualFollowUpEvents as DashboardManualFollowUpEventRow[])
+    .filter((event) => !event.isWorkflowTask || event.taskStatus === WorkflowTaskStatus.PENDING)
     .filter((event) => !event.project || !event.project.isDeleted)
     .map((event) => ({
       id: `manual-${event.id}`,
@@ -496,6 +516,8 @@ export async function getDashboardData(): Promise<DashboardData> {
       title: event.title,
       notes: event.notes,
       href: `/calendar?date=${toDateString(event.date)}`,
+      assignedToName: event.assignedToUser?.name ?? null,
+      source: event.isWorkflowTask ? 'WORKFLOW_TASK' : 'ESTIMATE_FOLLOW_UP',
     }));
 
   const todaysFollowUps: DashboardFollowUpTask[] = [...sequencedFollowUps, ...manualFollowUps]
@@ -539,6 +561,8 @@ export async function getDashboardData(): Promise<DashboardData> {
     urgency: task.dueDate < toDateString(now) ? 'HIGH' : 'MEDIUM',
     financeProjectMode: null,
     href: task.href ?? `/projects/${task.projectId}?tab=follow-up`,
+    assignedToName: task.assignedToName ?? null,
+    dueDate: task.dueDate,
   }));
 
   const moneyAtRisk: DashboardCommandItem[] = (moneyRiskProjects ?? [])

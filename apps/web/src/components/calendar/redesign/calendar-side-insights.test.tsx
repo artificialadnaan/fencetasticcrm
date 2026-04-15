@@ -75,4 +75,30 @@ describe('CalendarSideInsights', () => {
     expect(container.textContent).toContain('Install for Baker');
     expect(Array.from(container.querySelectorAll('button')).some((button) => button.textContent?.includes('Add event'))).toBe(true);
   });
+
+
+  it('does not count standalone workflow tasks as custom events in the month mix', () => {
+    act(() => {
+      root.render(
+        <CalendarSideInsights
+          currentDate={new Date('2026-04-10T00:00:00.000Z')}
+          selectedDate={new Date('2026-04-13T00:00:00.000Z')}
+          selectedDayEvents={[]}
+          monthEvents={[
+            makeEvent({ id: 'workflow-standalone', projectId: '', isWorkflowTask: true, assignedToName: 'Office Admin' }),
+          ]}
+          isLoading={false}
+          onOpenEvent={vi.fn()}
+          onCreateEvent={vi.fn()}
+        />
+      );
+    });
+
+    const customCard = Array.from(container.querySelectorAll('div')).find((node) =>
+      node.textContent?.includes('Custom') && node.textContent?.includes('0')
+    );
+    expect(customCard).toBeTruthy();
+    expect(container.textContent).toContain('Follow-up');
+    expect(container.textContent).toContain('1');
+  });
 });

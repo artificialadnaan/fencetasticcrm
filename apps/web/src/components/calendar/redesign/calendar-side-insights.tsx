@@ -33,7 +33,7 @@ export function CalendarSideInsights({
   const installCount = eventsInMonth.filter((event) => event.type === 'install').length;
   const followUpCount = eventsInMonth.filter((event) => event.type === 'followup').length;
   const estimateCount = eventsInMonth.filter((event) => event.type === 'estimate').length;
-  const customCount = eventsInMonth.filter((event) => !event.projectId).length;
+  const customCount = eventsInMonth.filter((event) => !event.projectId && !event.isWorkflowTask).length;
   const total = Math.max(eventsInMonth.length, 1);
 
   return (
@@ -84,6 +84,12 @@ export function CalendarSideInsights({
                         ? `${event.projectCustomer}${event.projectAddress ? ` • ${event.projectAddress}` : ''}`
                         : 'Standalone calendar event'}
                     </p>
+                    {(event.isWorkflowTask || event.assignedToName) && (
+                      <p className="mt-2 text-xs font-medium uppercase tracking-[0.18em] text-[#d7deea]">
+                        {event.isWorkflowTask ? 'Workflow task' : 'Custom event'}
+                        {event.assignedToName ? ` • ${event.assignedToName}` : ' • Unassigned'}
+                      </p>
+                    )}
                   </div>
                   <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#d7deea]">
                     {event.type}

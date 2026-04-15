@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { WorkflowTaskStatus } from '@fencetastic/shared';
 import { toast } from 'sonner';
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useProject } from '@/hooks/use-project';
@@ -607,6 +608,63 @@ export default function ProjectDetailPage() {
                 />
               </FieldRow>
             </div>
+          </section>
+
+          <section className="rounded-[28px] border border-slate-300 bg-white p-6 shadow-[0_18px_44px_rgba(15,23,42,0.12)] md:p-8">
+            <div className="flex items-center gap-2 mb-5">
+              <CalendarDays className="h-4 w-4 text-slate-500" />
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-600">Next Action</p>
+            </div>
+
+            {project.nextAction ? (
+              <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-lg font-semibold text-slate-950">{project.nextAction.title}</p>
+                    <p className="mt-2 text-sm text-slate-600">
+                      Due {formatDate(project.nextAction.dueDate)}
+                      {project.nextAction.assignedToName ? ` • ${project.nextAction.assignedToName}` : ' • Unassigned'}
+                    </p>
+                  </div>
+                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-700">
+                    {project.nextAction.status === WorkflowTaskStatus.COMPLETED ? 'Completed' : 'Pending'}
+                  </span>
+                </div>
+                <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  <span>{project.nextAction.source === 'WORKFLOW_TASK' ? 'Workflow task' : 'Estimate sequence'}</span>
+                  <span>•</span>
+                  <Link to={`/calendar?date=${project.nextAction.dueDate}`} className="text-[hsl(var(--brand-blue))] hover:underline">
+                    Open in calendar
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-[24px] border border-dashed border-slate-300 bg-slate-50 px-5 py-6">
+                <p className="text-sm font-medium text-slate-900">No next action is set.</p>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  Add a workflow task from the calendar to drive this project onto the dashboard and schedule.
+                </p>
+              </div>
+            )}
+
+            {project.workflowTasks.length > 0 && (
+              <div className="mt-5 space-y-3">
+                {project.workflowTasks.slice(0, 3).map((task) => (
+                  <div key={task.id} className="flex items-start justify-between gap-3 rounded-[22px] border border-slate-200 bg-white px-4 py-4">
+                    <div>
+                      <p className="font-medium text-slate-950">{task.title}</p>
+                      <p className="mt-1 text-sm text-slate-600">
+                        {formatDate(task.dueDate)}
+                        {task.assignedToName ? ` • ${task.assignedToName}` : ' • Unassigned'}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-700">
+                      {task.status === WorkflowTaskStatus.COMPLETED ? 'Completed' : 'Pending'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
 
           {/* Schedule */}
