@@ -1,8 +1,8 @@
+import { useEffect, useRef, useState } from 'react';
 import {
   Bar,
   BarChart,
   CartesianGrid,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
@@ -47,6 +47,45 @@ export function DashboardRevenuePanel({ data, isLoading }: DashboardRevenuePanel
   const latestExpenses = latestMonth?.expenses ?? 0;
   const latestProfit = latestRevenue - latestExpenses;
   const hasData = data.length > 0;
+  const chartContainerRef = useRef<HTMLDivElement | null>(null);
+  const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    if (!hasData) {
+      return undefined;
+    }
+
+    const container = chartContainerRef.current;
+    if (!container) {
+      return undefined;
+    }
+
+    const updateChartSize = () => {
+      const nextWidth = container.clientWidth;
+      const nextHeight = container.clientHeight;
+      setChartSize((current) => {
+        if (current.width === nextWidth && current.height === nextHeight) {
+          return current;
+        }
+        return { width: nextWidth, height: nextHeight };
+      });
+    };
+
+    updateChartSize();
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(updateChartSize);
+      observer.observe(container);
+      return () => {
+        observer.disconnect();
+      };
+    }
+
+    window.addEventListener('resize', updateChartSize);
+    return () => {
+      window.removeEventListener('resize', updateChartSize);
+    };
+  }, [hasData]);
 
   return (
     <section className="shell-panel rounded-[32px] p-6">
@@ -119,27 +158,38 @@ export function DashboardRevenuePanel({ data, isLoading }: DashboardRevenuePanel
           </div>
 
           <div className="h-[320px] rounded-[28px] border border-black/5 bg-white/65 p-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid vertical={false} stroke="rgba(100, 116, 139, 0.18)" />
-                <XAxis
-                  dataKey="month"
-                  tick={{ fontSize: 12, fill: '#64748b' }}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  tickFormatter={(value) => `$${Math.round(value / 1000)}k`}
-                  tick={{ fontSize: 12, fill: '#64748b' }}
-                  tickLine={false}
-                  axisLine={false}
-                  width={56}
-                />
-                <Tooltip content={<RevenueTooltip />} />
-                <Bar dataKey="revenue" name="Revenue" fill="#169c68" radius={[10, 10, 0, 0]} maxBarSize={42} />
-                <Bar dataKey="expenses" name="Expenses" fill="#e56b6f" radius={[10, 10, 0, 0]} maxBarSize={42} />
-              </BarChart>
-            </ResponsiveContainer>
+            <div ref={chartContainerRef} className="h-full w-full">
+              {chartSize.width > 0 && chartSize.height > 0 ? (
+                <BarChart
+                  width={chartSize.width}
+                  height={chartSize.height}
+                  data={data}
+                  margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid vertical={false} stroke="rgba(100, 116, 139, 0.18)" />
+                  <XAxis
+                    dataKey="month"
+                    tick={{ fontSize: 12, fill: '#64748b' }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    tickFormatter={(value) => `$${Math.round(value / 1000)}k`}
+                    tick={{ fontSize: 12, fill: '#64748b' }}
+                    tickLine={false}
+                    axisLine={false}
+                    width={56}
+                  />
+                  <Tooltip content={<RevenueTooltip />} />
+                  <Bar dataKey="revenue" name="Revenue" fill="#169c68" radius={[10, 10, 0, 0]} maxBarSize={42} />
+                  <Bar dataKey="expenses" name="Expenses" fill="#e56b6f" radius={[10, 10, 0, 0]} maxBarSize={42} />
+                </BarChart>
+              ) : (
+                <div className="flex h-full animate-pulse items-center justify-center rounded-[24px] bg-slate-100/60 text-sm text-slate-500">
+                  Loading revenue chart…
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
