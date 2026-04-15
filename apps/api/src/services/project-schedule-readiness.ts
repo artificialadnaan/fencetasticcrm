@@ -5,6 +5,8 @@ import type {
 } from '@fencetastic/shared';
 
 type ScheduleReadinessInput = {
+  status?: string | null;
+  installDate?: string | null;
   customerPaid: number;
   materialsCost: number;
   subcontractor: string | null;
@@ -16,6 +18,15 @@ export function buildProjectScheduleReadiness(
   input: ScheduleReadinessInput,
 ): ProjectScheduleReadinessDetail {
   const blockers: ProjectScheduleReadinessBlocker[] = [];
+
+  if ((input.status === 'OPEN' || input.status === 'IN_PROGRESS') && !input.installDate) {
+    blockers.push({
+      code: 'MISSING_INSTALL_DATE',
+      label: 'Install date',
+      reason: 'No install date has been scheduled yet.',
+      severity: 'HIGH',
+    });
+  }
 
   if (input.customerPaid <= 0) {
     blockers.push({
@@ -70,4 +81,3 @@ export function toProjectScheduleReadinessSummary(
     topBlockers: detail.topBlockers,
   };
 }
-

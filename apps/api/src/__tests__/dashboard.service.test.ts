@@ -289,6 +289,26 @@ describe('dashboard.service follow-up reads', () => {
           isDeleted: false,
         },
       },
+      {
+        id: 'event-2',
+        title: 'Already completed',
+        date: new Date('2026-04-08T00:00:00.000Z'),
+        eventType: 'followup',
+        notes: 'Should stay off the dashboard.',
+        projectId: 'project-78',
+        isWorkflowTask: false,
+        taskStatus: 'COMPLETED',
+        completedAt: new Date('2026-04-08T12:00:00.000Z'),
+        assignedToUserId: null,
+        assignedToUser: null,
+        project: {
+          id: 'project-78',
+          customer: 'Completed Reminder',
+          address: '999 Archive Rd',
+          status: ProjectStatus.OPEN,
+          isDeleted: false,
+        },
+      },
     ]);
     prismaMock.prisma.projectNote.findMany.mockResolvedValue([]);
 
@@ -318,7 +338,7 @@ describe('dashboard.service follow-up reads', () => {
         notes: 'Need this before install scheduling.',
         href: '/calendar?date=2026-04-08',
         assignedToName: null,
-        source: 'ESTIMATE_FOLLOW_UP',
+        source: 'MANUAL_TASK',
       },
     ]);
     expect(result.commandQueue.actionNeeded).toContainEqual({
@@ -334,6 +354,7 @@ describe('dashboard.service follow-up reads', () => {
       dueDate: '2026-04-08',
       assignedToName: null,
     });
+    expect(result.todaysFollowUps.find((task) => task.id === 'manual-event-2')).toBeUndefined();
 
     vi.useRealTimers();
   });
@@ -572,5 +593,152 @@ describe('dashboard.service follow-up reads', () => {
         financeProjectMode: 'MIXED',
       },
     ]);
+    expect(
+      prismaMock.prisma.project.findMany.mock.calls.some(([args]) =>
+        Array.isArray(args?.where?.status?.in)
+        && args.where.status.in.includes(ProjectStatus.OPEN)
+        && args.where.status.in.includes(ProjectStatus.IN_PROGRESS)
+        && !('take' in args)
+      )
+    ).toBe(true);
+  });
+
+  it('builds a workflow overview from pending workflow tasks with overdue, due-today, upcoming, and unassigned counts', async () => {
+    prismaMock.prisma.commissionSnapshot.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    prismaMock.prisma.project.count.mockResolvedValue(0);
+    prismaMock.prisma.project.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    prismaMock.prisma.aimannDebtLedger.findFirst.mockResolvedValue(null);
+    prismaMock.prisma.project.groupBy.mockResolvedValue([]);
+    prismaMock.prisma.estimateFollowUpTask.findMany.mockResolvedValue([]);
+    prismaMock.prisma.calendarEvent.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 'wf-overdue',
+          title: 'Collect deposit',
+          date: new Date('2026-04-07T00:00:00.000Z'),
+          eventType: 'followup',
+          notes: 'Need before ordering materials.',
+          projectId: 'project-1',
+          isWorkflowTask: true,
+          taskStatus: 'PENDING',
+          completedAt: null,
+          assignedToUserId: 'user-2',
+          assignedToUser: {
+            id: 'user-2',
+            name: 'Office Admin',
+          },
+          project: {
+            id: 'project-1',
+            customer: 'Sharon Harbach',
+            address: '321 River Meadows Ln',
+            status: ProjectStatus.OPEN,
+            isDeleted: false,
+          },
+        },
+        {
+          id: 'wf-today',
+          title: 'Confirm crew',
+          date: new Date('2026-04-08T00:00:00.000Z'),
+          eventType: 'followup',
+          notes: 'Need subcontractor confirmation.',
+          projectId: 'project-2',
+          isWorkflowTask: true,
+          taskStatus: 'PENDING',
+          completedAt: null,
+          assignedToUserId: null,
+          assignedToUser: null,
+          project: {
+            id: 'project-2',
+            customer: 'Joshu Dunn. Honda Dealership',
+            address: '601 S Central Expressway',
+            status: ProjectStatus.IN_PROGRESS,
+            isDeleted: false,
+          },
+        },
+        {
+          id: 'wf-upcoming',
+          title: 'Send install reminder',
+          date: new Date('2026-04-10T00:00:00.000Z'),
+          eventType: 'followup',
+          notes: 'Customer reminder call.',
+          projectId: 'project-3',
+          isWorkflowTask: true,
+          taskStatus: 'PENDING',
+          completedAt: null,
+          assignedToUserId: 'user-3',
+          assignedToUser: {
+            id: 'user-3',
+            name: 'Adnaan',
+          },
+          project: {
+            id: 'project-3',
+            customer: 'Will & Marta (phase 1)',
+            address: '1141 Macgregor Ln',
+            status: ProjectStatus.OPEN,
+            isDeleted: false,
+          },
+        },
+      ]);
+    prismaMock.prisma.projectNote.findMany.mockResolvedValue([]);
+
+    const { getDashboardData } = await import('../services/dashboard.service');
+    const result = await getDashboardData();
+
+    expect(result.workflowOverview).toEqual({
+      overdueCount: 1,
+      dueTodayCount: 1,
+      upcomingCount: 1,
+      unassignedCount: 1,
+      ownerBreakdown: [
+        { ownerName: 'Office Admin', count: 1 },
+        { ownerName: 'Adnaan', count: 1 },
+        { ownerName: 'Unassigned', count: 1 },
+      ],
+      topTasks: [
+        {
+          id: 'wf-overdue',
+          projectId: 'project-1',
+          customer: 'Sharon Harbach',
+          address: '321 River Meadows Ln',
+          title: 'Collect deposit',
+          dueDate: '2026-04-07',
+          assignedToName: 'Office Admin',
+          href: '/calendar?date=2026-04-07',
+          urgency: 'HIGH',
+        },
+        {
+          id: 'wf-today',
+          projectId: 'project-2',
+          customer: 'Joshu Dunn. Honda Dealership',
+          address: '601 S Central Expressway',
+          title: 'Confirm crew',
+          dueDate: '2026-04-08',
+          assignedToName: null,
+          href: '/calendar?date=2026-04-08',
+          urgency: 'MEDIUM',
+        },
+        {
+          id: 'wf-upcoming',
+          projectId: 'project-3',
+          customer: 'Will & Marta (phase 1)',
+          address: '1141 Macgregor Ln',
+          title: 'Send install reminder',
+          dueDate: '2026-04-10',
+          assignedToName: 'Adnaan',
+          href: '/calendar?date=2026-04-10',
+          urgency: 'LOW',
+        },
+      ],
+    });
+
+    vi.useRealTimers();
   });
 });

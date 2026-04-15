@@ -61,6 +61,27 @@ export const projectColumns: ColumnDef<ProjectListItem>[] = [
     cell: ({ row }) => <StatusBadge status={row.getValue('status')} />,
   },
   {
+    accessorKey: 'nextAction',
+    header: 'Next Action',
+    meta: { className: 'hidden xl:table-cell' },
+    cell: ({ row }) => {
+      const nextAction = row.original.nextAction;
+      if (!nextAction) {
+        return <span className="text-sm text-slate-400">No task set</span>;
+      }
+
+      return (
+        <div className="space-y-1">
+          <div className="text-sm font-medium text-slate-900">{nextAction.title}</div>
+          <div className="text-xs text-slate-500">
+            Due {formatDate(nextAction.dueDate)}
+            {nextAction.assignedToName ? ` • ${nextAction.assignedToName}` : ' • Unassigned'}
+          </div>
+        </div>
+      );
+    },
+  },
+  {
     accessorKey: 'projectTotal',
     header: 'Project Total',
     cell: ({ row }) => (

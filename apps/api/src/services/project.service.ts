@@ -422,6 +422,22 @@ export async function listProjects(query: ProjectListQuery = {}) {
         subcontractorPayments: {
           select: { amountOwed: true },
         },
+        calendarEvents: {
+          where: {
+            isWorkflowTask: true,
+            taskStatus: WorkflowTaskStatus.PENDING,
+          },
+          include: {
+            assignedToUser: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+          orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
+          take: 1,
+        },
         _count: {
           select: {
             materialLineItems: true,
@@ -472,6 +488,7 @@ export async function listProjects(query: ProjectListQuery = {}) {
           ? Number(((breakdown.netProfit / projectTotal) * 100).toFixed(1))
           : 0,
     });
+    const nextWorkflowTask = p.calendarEvents?.[0] ?? null;
 
     return {
       id: p.id,
@@ -486,8 +503,20 @@ export async function listProjects(query: ProjectListQuery = {}) {
       installDate: p.installDate?.toISOString().split('T')[0] ?? null,
       receivable: resolvedFinance.outstandingReceivables,
       profitPercent: resolvedFinance.netProfitPercent,
+      nextAction: nextWorkflowTask
+        ? {
+            id: nextWorkflowTask.id,
+            title: nextWorkflowTask.title,
+            dueDate: nextWorkflowTask.date.toISOString().split('T')[0],
+            source: 'WORKFLOW_TASK',
+            status: nextWorkflowTask.taskStatus as WorkflowTaskStatus,
+            assignedToName: nextWorkflowTask.assignedToUser?.name ?? null,
+          }
+        : null,
       scheduleReadiness: toProjectScheduleReadinessSummary(
         buildProjectScheduleReadiness({
+          status: p.status,
+          installDate: p.installDate?.toISOString().split('T')[0] ?? null,
           customerPaid,
           materialsCost,
           subcontractor: p.subcontractor,
@@ -596,6 +625,8 @@ export async function getProjectById(projectId: string) {
   }));
   const nextWorkflowTask = workflowTasks.find((task) => task.status === WorkflowTaskStatus.PENDING) ?? null;
   const scheduleReadiness = buildProjectScheduleReadiness({
+    status: project.status,
+    installDate: project.installDate?.toISOString().split('T')[0] ?? null,
     customerPaid: d(project.customerPaid),
     materialsCost,
     subcontractor: project.subcontractor,

@@ -11,6 +11,7 @@ import { DashboardCommandQueue } from '@/components/dashboard/redesign/dashboard
 import { DashboardRevenuePanel } from '@/components/dashboard/redesign/dashboard-revenue-panel';
 import { DashboardProjectBreakdown } from '@/components/dashboard/redesign/dashboard-project-breakdown';
 import { DashboardFollowupsPanel } from '@/components/dashboard/redesign/dashboard-followups-panel';
+import { DashboardWorkflowPanel } from '@/components/dashboard/redesign/dashboard-workflow-panel';
 import { DashboardActivityPanel } from '@/components/dashboard/redesign/dashboard-activity-panel';
 import { DashboardInstallsPanel } from '@/components/dashboard/redesign/dashboard-installs-panel';
 
@@ -108,6 +109,10 @@ export default function DashboardPage() {
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)_minmax(0,0.95fr)]">
           <DashboardFollowupsPanel
             followUps={data?.todaysFollowUps ?? []}
+            isLoading={isLoading}
+          />
+          <DashboardWorkflowPanel
+            overview={data?.workflowOverview ?? null}
             isLoading={isLoading}
           />
           <DashboardActivityPanel

@@ -105,7 +105,13 @@ export function DashboardFollowupsPanel({
                 </div>
                 <div className="mt-4 flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                   <span>Open task</span>
-                  <span>{followUp.source === 'WORKFLOW_TASK' ? 'Manual workflow' : 'Estimate sequence'}</span>
+                  <span>
+                    {followUp.source === 'WORKFLOW_TASK'
+                      ? 'Manual workflow'
+                      : followUp.source === 'MANUAL_TASK'
+                        ? 'Manual task'
+                        : 'Estimate sequence'}
+                  </span>
                 </div>
               </Link>
             );

@@ -50,6 +50,14 @@ vi.mock('@/components/dashboard/redesign/dashboard-followups-panel', () => ({
   DashboardFollowupsPanel: () => <div data-testid="followups-panel" />,
 }));
 
+vi.mock('@/components/dashboard/redesign/dashboard-workflow-panel', () => ({
+  DashboardWorkflowPanel: ({
+    overview,
+  }: {
+    overview: { overdueCount: number } | null;
+  }) => <div data-testid="workflow-panel">{overview?.overdueCount}</div>,
+}));
+
 vi.mock('@/components/dashboard/redesign/dashboard-activity-panel', () => ({
   DashboardActivityPanel: () => <div data-testid="activity-panel" />,
 }));
@@ -109,6 +117,9 @@ describe('DashboardPage', () => {
         monthlyRevenueExpenses: [],
         projectTypeBreakdown: [],
         todaysFollowUps: [],
+        workflowOverview: {
+          overdueCount: 2,
+        },
         recentActivity: [],
         upcomingInstalls: [],
       },
@@ -139,5 +150,6 @@ describe('DashboardPage', () => {
     });
 
     expect(container.querySelector('[data-testid="cash-risk-strip"]')?.textContent).toBe('9700');
+    expect(container.querySelector('[data-testid="workflow-panel"]')?.textContent).toBe('2');
   });
 });

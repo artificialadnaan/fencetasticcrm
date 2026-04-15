@@ -623,6 +623,7 @@ export interface ProjectListItem {
   installDate: string;
   receivable: number | null;
   profitPercent: number | null;
+  nextAction: ProjectNextAction | null;
   scheduleReadiness: ProjectScheduleReadinessSummary;
 }
 
@@ -637,8 +638,8 @@ export interface ProjectDetail extends Project {
 }
 
 export interface ProjectScheduleReadinessBlocker {
-  code: 'MISSING_DEPOSIT' | 'MISSING_MATERIALS' | 'MISSING_SUBCONTRACTOR' | 'MISSING_WORK_ORDER';
-  label: 'Deposit' | 'Materials' | 'Crew' | 'Work order';
+  code: 'MISSING_INSTALL_DATE' | 'MISSING_DEPOSIT' | 'MISSING_MATERIALS' | 'MISSING_SUBCONTRACTOR' | 'MISSING_WORK_ORDER';
+  label: 'Install date' | 'Deposit' | 'Materials' | 'Crew' | 'Work order';
   reason: string;
   severity: 'HIGH' | 'MEDIUM';
 }
@@ -837,7 +838,7 @@ export interface DashboardFollowUpTask {
   notes?: string | null;
   href?: string | null;
   assignedToName?: string | null;
-  source?: 'WORKFLOW_TASK' | 'ESTIMATE_FOLLOW_UP';
+  source?: 'WORKFLOW_TASK' | 'ESTIMATE_FOLLOW_UP' | 'MANUAL_TASK';
 }
 
 export interface DashboardActivityItem {
@@ -871,6 +872,32 @@ export interface DashboardUpcomingInstall {
   installDate: string;
 }
 
+export interface DashboardWorkflowOverviewTask {
+  id: string;
+  projectId: string;
+  customer: string;
+  address: string;
+  title: string;
+  dueDate: string;
+  assignedToName: string | null;
+  href: string;
+  urgency: 'HIGH' | 'MEDIUM' | 'LOW';
+}
+
+export interface DashboardWorkflowOwnerSummary {
+  ownerName: string;
+  count: number;
+}
+
+export interface DashboardWorkflowOverview {
+  overdueCount: number;
+  dueTodayCount: number;
+  upcomingCount: number;
+  unassignedCount: number;
+  ownerBreakdown: DashboardWorkflowOwnerSummary[];
+  topTasks: DashboardWorkflowOverviewTask[];
+}
+
 export interface DashboardData {
   kpis: {
     revenueMTD: number;
@@ -886,6 +913,7 @@ export interface DashboardData {
   monthlyRevenueExpenses: MonthlyRevenueExpense[];
   projectTypeBreakdown: ProjectTypeBreakdown[];
   todaysFollowUps: DashboardFollowUpTask[];
+  workflowOverview: DashboardWorkflowOverview;
   recentActivity: DashboardActivityItem[];
   upcomingInstalls: DashboardUpcomingInstall[];
 }

@@ -202,6 +202,20 @@ describe('Project Service', () => {
           paymentMethod: 'CASH',
           subcontractor: 'Froilan',
           subcontractorPayments: [],
+          calendarEvents: [
+            {
+              id: 'task-ready-1',
+              title: 'Confirm install window',
+              date: new Date('2026-04-15T00:00:00.000Z'),
+              isWorkflowTask: true,
+              taskStatus: 'PENDING',
+              assignedToUserId: 'user-2',
+              assignedToUser: {
+                id: 'user-2',
+                name: 'Office Admin',
+              },
+            },
+          ],
           _count: {
             materialLineItems: 2,
             workOrders: 1,
@@ -218,11 +232,12 @@ describe('Project Service', () => {
           customerPaid: { toNumber: () => 0 },
           materialsCost: { toNumber: () => 0 },
           forecastedExpenses: { toNumber: () => 2000 },
-          installDate: new Date('2026-04-11'),
+          installDate: null,
           isDeleted: false,
           paymentMethod: 'CASH',
           subcontractor: null,
           subcontractorPayments: [],
+          calendarEvents: [],
           _count: {
             materialLineItems: 0,
             workOrders: 0,
@@ -241,11 +256,20 @@ describe('Project Service', () => {
         blockerCount: 0,
         topBlockers: [],
       });
+      expect(result.data[0].nextAction).toEqual({
+        id: 'task-ready-1',
+        title: 'Confirm install window',
+        dueDate: '2026-04-15',
+        source: 'WORKFLOW_TASK',
+        status: 'PENDING',
+        assignedToName: 'Office Admin',
+      });
       expect(result.data[1].scheduleReadiness).toEqual({
         isReady: false,
-        blockerCount: 4,
-        topBlockers: ['Deposit', 'Materials', 'Crew'],
+        blockerCount: 5,
+        topBlockers: ['Install date', 'Deposit', 'Materials'],
       });
+      expect(result.data[1].nextAction).toBeNull();
     });
   });
 

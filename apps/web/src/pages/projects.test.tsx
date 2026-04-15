@@ -52,6 +52,14 @@ function makeProject(overrides: Partial<Record<string, unknown>> = {}) {
       blockerCount: 3,
       topBlockers: ['Deposit', 'Materials', 'Crew'],
     },
+    nextAction: {
+      id: 'task-1',
+      title: 'Collect deposit',
+      dueDate: '2026-04-09',
+      source: 'WORKFLOW_TASK',
+      status: 'PENDING',
+      assignedToName: 'Office Admin',
+    },
     ...overrides,
   };
 }
@@ -105,6 +113,8 @@ describe('ProjectsPage', () => {
     expect(projectRow?.getAttribute('tabindex')).toBe('0');
     expect(container.textContent).toContain('3 blockers');
     expect(container.textContent).toContain('Deposit');
+    expect(container.textContent).toContain('Collect deposit');
+    expect(container.textContent).toContain('Due Apr 9, 2026');
 
     act(() => {
       projectRow?.dispatchEvent(

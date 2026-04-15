@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma';
 import {
   type DashboardFollowUpTask,
   type DashboardCommandItem,
+  type DashboardWorkflowOverview,
   EstimateFollowUpSequenceStatus,
   EstimateFollowUpTaskKind,
   EstimateFollowUpTaskStatus,
@@ -149,6 +150,25 @@ type DashboardManualFollowUpEventRow = {
   } | null;
 };
 
+type DashboardWorkflowTaskRow = {
+  id: string;
+  title: string;
+  date: Date;
+  projectId: string | null;
+  assignedToUserId: string | null;
+  assignedToUser: {
+    id: string;
+    name: string;
+  } | null;
+  project: {
+    id: string;
+    customer: string;
+    address: string;
+    status: ProjectStatus;
+    isDeleted: boolean;
+  } | null;
+};
+
 function isDashboardFollowUpTaskVisible(task: DashboardFollowUpTaskRow) {
   return (
     task.status === EstimateFollowUpTaskStatus.PENDING
@@ -210,6 +230,7 @@ export interface DashboardData {
   monthlyRevenueExpenses: MonthlyRevenueExpense[];
   projectTypeBreakdown: ProjectTypeBreakdown[];
   todaysFollowUps: DashboardFollowUpTask[];
+  workflowOverview: DashboardWorkflowOverview;
   recentActivity: RecentActivityItem[];
   upcomingInstalls: UpcomingInstall[];
 }
@@ -231,6 +252,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     projectTypeRows,
     followUpProjects,
     manualFollowUpEvents,
+    workflowTasks,
     recentNotes,
     upcomingInstallProjects,
     moneyRiskProjects,
@@ -375,6 +397,44 @@ export async function getDashboardData(): Promise<DashboardData> {
       orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
     }),
 
+    prisma.calendarEvent.findMany({
+      where: {
+        isWorkflowTask: true,
+        taskStatus: WorkflowTaskStatus.PENDING,
+        OR: [
+          { projectId: null },
+          {
+            project: {
+              isDeleted: false,
+            },
+          },
+        ],
+      },
+      select: {
+        id: true,
+        title: true,
+        date: true,
+        projectId: true,
+        assignedToUserId: true,
+        assignedToUser: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        project: {
+          select: {
+            id: true,
+            customer: true,
+            address: true,
+            status: true,
+            isDeleted: true,
+          },
+        },
+      },
+      orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
+    }),
+
     // Recent activity: last 5 notes
     prisma.projectNote.findMany({
       take: 5,
@@ -442,7 +502,6 @@ export async function getDashboardData(): Promise<DashboardData> {
           },
         },
       },
-      take: 25,
       orderBy: { installDate: 'asc' },
     }),
   ]);
@@ -514,7 +573,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     }));
 
   const manualFollowUps: DashboardFollowUpTask[] = (manualFollowUpEvents as DashboardManualFollowUpEventRow[])
-    .filter((event) => !event.isWorkflowTask || event.taskStatus === WorkflowTaskStatus.PENDING)
+    .filter((event) => event.taskStatus !== WorkflowTaskStatus.COMPLETED)
     .filter((event) => !event.project || !event.project.isDeleted)
     .map((event) => ({
       id: `manual-${event.id}`,
@@ -528,7 +587,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       notes: event.notes,
       href: `/calendar?date=${toDateString(event.date)}`,
       assignedToName: event.assignedToUser?.name ?? null,
-      source: event.isWorkflowTask ? 'WORKFLOW_TASK' : 'ESTIMATE_FOLLOW_UP',
+      source: event.isWorkflowTask ? 'WORKFLOW_TASK' : 'MANUAL_TASK',
     }));
 
   const todaysFollowUps: DashboardFollowUpTask[] = [...sequencedFollowUps, ...manualFollowUps]
@@ -537,6 +596,50 @@ export async function getDashboardData(): Promise<DashboardData> {
       if (dueDateDiff !== 0) return dueDateDiff;
       return left.customer.localeCompare(right.customer);
     });
+
+  const today = toDateString(now);
+  const upcomingWindowEnd = new Date(now);
+  upcomingWindowEnd.setDate(upcomingWindowEnd.getDate() + 7);
+  const upcomingWindowEndStr = toDateString(upcomingWindowEnd);
+  const pendingWorkflowTasks = (workflowTasks as DashboardWorkflowTaskRow[])
+    .filter((task) => !task.project || !task.project.isDeleted)
+    .map((task) => {
+      const dueDate = toDateString(task.date);
+      return {
+        id: task.id,
+        projectId: task.projectId ?? `manual-${task.id}`,
+        customer: task.project?.customer ?? 'General reminder',
+        address: task.project?.address ?? 'No project linked',
+        title: task.title,
+        dueDate,
+        assignedToName: task.assignedToUser?.name ?? null,
+        href: `/calendar?date=${dueDate}`,
+        urgency: dueDate < today ? 'HIGH' : dueDate === today ? 'MEDIUM' : 'LOW' as 'HIGH' | 'MEDIUM' | 'LOW',
+      };
+    })
+    .sort((left, right) => left.dueDate.localeCompare(right.dueDate) || left.title.localeCompare(right.title));
+
+  const ownerCounts = new Map<string, number>();
+  for (const task of pendingWorkflowTasks) {
+    const ownerName = task.assignedToName ?? 'Unassigned';
+    ownerCounts.set(ownerName, (ownerCounts.get(ownerName) ?? 0) + 1);
+  }
+
+  const workflowOverview: DashboardWorkflowOverview = {
+    overdueCount: pendingWorkflowTasks.filter((task) => task.dueDate < today).length,
+    dueTodayCount: pendingWorkflowTasks.filter((task) => task.dueDate === today).length,
+    upcomingCount: pendingWorkflowTasks.filter((task) => task.dueDate > today && task.dueDate <= upcomingWindowEndStr).length,
+    unassignedCount: pendingWorkflowTasks.filter((task) => !task.assignedToName).length,
+    ownerBreakdown: [...ownerCounts.entries()]
+      .map(([ownerName, count]) => ({ ownerName, count }))
+      .sort((left, right) => {
+        if (left.ownerName === 'Unassigned') return 1;
+        if (right.ownerName === 'Unassigned') return -1;
+        if (right.count !== left.count) return right.count - left.count;
+        return right.ownerName.localeCompare(left.ownerName);
+      }),
+    topTasks: pendingWorkflowTasks.slice(0, 5),
+  };
 
   // Recent activity
   const recentActivity: RecentActivityItem[] = recentNotes
@@ -608,6 +711,8 @@ export async function getDashboardData(): Promise<DashboardData> {
   const scheduleBlockers: DashboardCommandItem[] = (scheduleBlockerProjects ?? [])
     .flatMap((project): DashboardCommandItem[] => {
       const readiness = buildProjectScheduleReadiness({
+        status: project.status,
+        installDate: project.installDate ? toDateString(project.installDate) : null,
         customerPaid: d(project.customerPaid),
         materialsCost: d(project.materialsCost),
         subcontractor: project.subcontractor,
@@ -658,6 +763,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     monthlyRevenueExpenses,
     projectTypeBreakdown,
     todaysFollowUps,
+    workflowOverview,
     recentActivity,
     upcomingInstalls,
   };
