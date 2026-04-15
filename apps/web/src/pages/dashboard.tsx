@@ -3,8 +3,10 @@ import { Download, Plus } from 'lucide-react';
 import { CreateProjectDialog } from '@/components/projects/create-project-dialog';
 import { Button } from '@/components/ui/button';
 import { useDashboard } from '@/hooks/use-dashboard';
+import { useFinanceRisk } from '@/hooks/use-finance-risk';
 import { usePageShell } from '@/components/layout/page-shell';
 import { DashboardKpiStrip } from '@/components/dashboard/redesign/dashboard-kpi-strip';
+import { DashboardCashRiskStrip } from '@/components/dashboard/redesign/dashboard-cash-risk-strip';
 import { DashboardCommandQueue } from '@/components/dashboard/redesign/dashboard-command-queue';
 import { DashboardRevenuePanel } from '@/components/dashboard/redesign/dashboard-revenue-panel';
 import { DashboardProjectBreakdown } from '@/components/dashboard/redesign/dashboard-project-breakdown';
@@ -14,6 +16,7 @@ import { DashboardInstallsPanel } from '@/components/dashboard/redesign/dashboar
 
 export default function DashboardPage() {
   const { data, isLoading, error, refetch } = useDashboard();
+  const { data: riskData, isLoading: riskLoading, error: riskError } = useFinanceRisk();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   function handlePrint() {
@@ -86,6 +89,8 @@ export default function DashboardPage() {
         )}
 
         <DashboardKpiStrip kpis={data?.kpis ?? null} isLoading={isLoading} />
+
+        <DashboardCashRiskStrip risk={riskData} isLoading={riskLoading} error={riskError} />
 
         <DashboardCommandQueue queue={data?.commandQueue ?? null} isLoading={isLoading} />
 

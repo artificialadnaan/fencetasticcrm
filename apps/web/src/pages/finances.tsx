@@ -16,12 +16,14 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
+import { useFinanceRisk } from '@/hooks/use-finance-risk';
 import {
   useCategoryBreakdown,
   useMonthlyBreakdown,
   useTransactionSummary,
   useTransactions,
 } from '@/hooks/use-transactions';
+import { FinancesCashRiskPanel } from '@/components/finances/redesign/finances-cash-risk-panel';
 import { FinancesSummaryStrip } from '@/components/finances/redesign/finances-summary-strip';
 import { FinancesOverviewPanels } from '@/components/finances/redesign/finances-overview-panels';
 import { FinancesTransactionTable } from '@/components/finances/redesign/finances-transaction-table';
@@ -63,6 +65,7 @@ export default function FinancesPage() {
   const { summary, isLoading: summaryLoading } = useTransactionSummary(period);
   const { data: monthly, isLoading: monthlyLoading } = useMonthlyBreakdown();
   const { data: categories, isLoading: categoryLoading } = useCategoryBreakdown();
+  const { data: riskData, isLoading: riskLoading, error: riskError } = useFinanceRisk();
 
   const categoryOptions = useMemo(
     () => categories.map((entry) => entry.category),
@@ -333,6 +336,8 @@ export default function FinancesPage() {
             {hasActiveFilters ? 'Filtered ledger' : 'All transactions'}
           </div>
         </div>
+
+        <FinancesCashRiskPanel risk={riskData} isLoading={riskLoading} error={riskError} />
 
         <FinancesSummaryStrip summary={summary} isLoading={summaryLoading} period={period} />
 

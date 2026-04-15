@@ -890,6 +890,48 @@ export interface DashboardData {
   upcomingInstalls: DashboardUpcomingInstall[];
 }
 
+export interface FinanceRiskBucket {
+  label: string;
+  amount: number;
+  count: number;
+}
+
+export interface FinanceRiskReceivableItem {
+  projectId: string;
+  customer: string;
+  address: string;
+  amount: number;
+  ageDays: number;
+}
+
+export interface FinanceRiskPayableItem {
+  projectId: string;
+  customer: string;
+  address: string;
+  status: ProjectStatus;
+  amountDue: number;
+}
+
+export interface FinanceRiskOverview {
+  receivables: {
+    overallOutstanding: number;
+    over60Outstanding: number;
+    buckets: FinanceRiskBucket[];
+    topAtRisk: FinanceRiskReceivableItem[];
+  };
+  payables: {
+    outstandingCommissions: number;
+    projectCount: number;
+    topUnpaid: FinanceRiskPayableItem[];
+  };
+  debt: {
+    currentBalance: number;
+    paidDownLast30Days: number;
+    adjustmentsLast30Days: number;
+    netMovementLast30Days: number;
+  };
+}
+
 // ─── Rate Template DTOs ───────────────────────────────────────────────────────
 
 export interface CreateRateTemplateDTO {

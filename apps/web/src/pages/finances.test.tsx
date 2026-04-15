@@ -9,6 +9,7 @@ const useTransactionsMock = vi.fn();
 const useTransactionSummaryMock = vi.fn();
 const useMonthlyBreakdownMock = vi.fn();
 const useCategoryBreakdownMock = vi.fn();
+const useFinanceRiskMock = vi.fn();
 const exportTransactionsMock = vi.fn();
 
 vi.mock('@/hooks/use-transactions', () => ({
@@ -18,12 +19,26 @@ vi.mock('@/hooks/use-transactions', () => ({
   useCategoryBreakdown: (...args: unknown[]) => useCategoryBreakdownMock(...args),
 }));
 
+vi.mock('@/hooks/use-finance-risk', () => ({
+  useFinanceRisk: (...args: unknown[]) => useFinanceRiskMock(...args),
+}));
+
 vi.mock('@/components/finances/redesign/finances-summary-strip', () => ({
   FinancesSummaryStrip: ({ period }: { period: string }) => <div data-testid="summary-strip">{period}</div>,
 }));
 
 vi.mock('@/components/finances/redesign/finances-overview-panels', () => ({
   FinancesOverviewPanels: () => <div data-testid="overview-panels" />,
+}));
+
+vi.mock('@/components/finances/redesign/finances-cash-risk-panel', () => ({
+  FinancesCashRiskPanel: ({
+    risk,
+    isLoading,
+  }: {
+    risk: { payables: { outstandingCommissions: number } } | null;
+    isLoading: boolean;
+  }) => <div data-testid="cash-risk-panel">{isLoading ? 'loading' : risk?.payables.outstandingCommissions}</div>,
 }));
 
 vi.mock('@/components/finances/redesign/finances-transaction-table', () => ({
@@ -89,6 +104,7 @@ describe('FinancesPage', () => {
     useTransactionSummaryMock.mockReset();
     useMonthlyBreakdownMock.mockReset();
     useCategoryBreakdownMock.mockReset();
+    useFinanceRiskMock.mockReset();
     exportTransactionsMock.mockReset();
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
     Object.defineProperty(URL, 'createObjectURL', {
@@ -134,6 +150,16 @@ describe('FinancesPage', () => {
       ],
       isLoading: false,
     });
+    useFinanceRiskMock.mockReturnValue({
+      data: {
+        payables: {
+          outstandingCommissions: 1800,
+        },
+      },
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
     exportTransactionsMock.mockResolvedValue(new Blob(['csv']));
 
     act(() => {
@@ -149,6 +175,7 @@ describe('FinancesPage', () => {
     expect(container.textContent).toContain('Finances');
     expect(container.textContent).toContain('Add Transaction');
     expect(container.textContent).toContain('Export');
+    expect(container.querySelector('[data-testid="cash-risk-panel"]')?.textContent).toBe('1800');
     expect(container.querySelector('[data-testid="summary-strip"]')?.textContent).toBe('mtd');
 
     const searchInput = container.querySelector('input[placeholder="Search description, category, or payee..."]');
