@@ -612,6 +612,7 @@ export async function getDashboardData(): Promise<DashboardData> {
         address: task.project?.address ?? 'No project linked',
         title: task.title,
         dueDate,
+        assignedToUserId: task.assignedToUserId,
         assignedToName: task.assignedToUser?.name ?? null,
         href: `/calendar?date=${dueDate}`,
         urgency: dueDate < today ? 'HIGH' : dueDate === today ? 'MEDIUM' : 'LOW' as 'HIGH' | 'MEDIUM' | 'LOW',

@@ -672,6 +672,7 @@ export interface ProjectNextAction {
   dueDate: string;
   source: 'WORKFLOW_TASK' | 'ESTIMATE_FOLLOW_UP';
   status: WorkflowTaskStatus | EstimateFollowUpTaskStatus;
+  assignedToUserId: string | null;
   assignedToName: string | null;
 }
 
@@ -879,6 +880,7 @@ export interface DashboardWorkflowOverviewTask {
   address: string;
   title: string;
   dueDate: string;
+  assignedToUserId: string | null;
   assignedToName: string | null;
   href: string;
   urgency: 'HIGH' | 'MEDIUM' | 'LOW';

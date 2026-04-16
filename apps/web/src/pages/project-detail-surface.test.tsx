@@ -106,6 +106,7 @@ function makeProjectDetail() {
       dueDate: '2026-04-09',
       source: 'WORKFLOW_TASK',
       status: 'PENDING',
+      assignedToUserId: 'user-1',
       assignedToName: 'Adnaan',
     },
     scheduleReadiness: {
@@ -246,6 +247,20 @@ describe('ProjectDetailPage surface styling', () => {
 
   it('exposes blocker resolution links and completes the next action inline', async () => {
     const refetchMock = vi.fn();
+    apiGetMock.mockImplementation((url: string) => {
+      if (url === '/auth/users') {
+        return Promise.resolve({
+          data: {
+            data: [
+              { id: 'user-1', name: 'Adnaan', email: 'adnaan@fencetastic.com' },
+              { id: 'user-2', name: 'Office Admin', email: 'office@fencetastic.com' },
+            ],
+          },
+        });
+      }
+
+      return Promise.resolve({ data: { data: [] } });
+    });
     useProjectMock.mockReturnValue({
       project: makeProjectDetail(),
       isLoading: false,
@@ -277,5 +292,35 @@ describe('ProjectDetailPage surface styling', () => {
       taskStatus: 'COMPLETED',
     });
     expect(refetchMock).toHaveBeenCalled();
+
+    const ownerSelect = container.querySelector('select[aria-label="Assign owner for next action"]') as HTMLSelectElement | null;
+    expect(ownerSelect).not.toBeNull();
+
+    await act(async () => {
+      ownerSelect!.value = 'user-2';
+      ownerSelect!.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    expect(apiPatchMock).toHaveBeenCalledWith('/calendar/events/task-1', {
+      assignedToUserId: 'user-2',
+    });
+
+    const dueDateInput = container.querySelector('input[aria-label="Reschedule next action"]') as HTMLInputElement | null;
+    expect(dueDateInput).not.toBeNull();
+
+    await act(async () => {
+      dueDateInput!.value = '2026-04-12';
+      dueDateInput!.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+
+    const saveDueDateButton = container.querySelector('button[aria-label="Save next action due date"]');
+
+    await act(async () => {
+      saveDueDateButton?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+    });
+
+    expect(apiPatchMock).toHaveBeenLastCalledWith('/calendar/events/task-1', {
+      date: '2026-04-12',
+    });
   });
 });

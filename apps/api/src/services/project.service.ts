@@ -510,6 +510,7 @@ export async function listProjects(query: ProjectListQuery = {}) {
             dueDate: nextWorkflowTask.date.toISOString().split('T')[0],
             source: 'WORKFLOW_TASK',
             status: nextWorkflowTask.taskStatus as WorkflowTaskStatus,
+            assignedToUserId: nextWorkflowTask.assignedToUserId ?? null,
             assignedToName: nextWorkflowTask.assignedToUser?.name ?? null,
           }
         : null,
@@ -726,6 +727,7 @@ export async function getProjectById(projectId: string) {
           dueDate: nextWorkflowTask.dueDate,
           source: 'WORKFLOW_TASK',
           status: nextWorkflowTask.status,
+          assignedToUserId: nextWorkflowTask.assignedToUserId,
           assignedToName: nextWorkflowTask.assignedToName,
         }
       : null,

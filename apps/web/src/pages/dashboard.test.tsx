@@ -7,6 +7,7 @@ import DashboardPage from './dashboard';
 
 const useDashboardMock = vi.fn();
 const useFinanceRiskMock = vi.fn();
+const useUserOptionsMock = vi.fn();
 
 vi.mock('@/hooks/use-dashboard', () => ({
   useDashboard: (...args: unknown[]) => useDashboardMock(...args),
@@ -14,6 +15,10 @@ vi.mock('@/hooks/use-dashboard', () => ({
 
 vi.mock('@/hooks/use-finance-risk', () => ({
   useFinanceRisk: (...args: unknown[]) => useFinanceRiskMock(...args),
+}));
+
+vi.mock('@/hooks/use-user-options', () => ({
+  useUserOptions: (...args: unknown[]) => useUserOptionsMock(...args),
 }));
 
 vi.mock('@/components/projects/create-project-dialog', () => ({
@@ -91,6 +96,12 @@ describe('DashboardPage', () => {
     root = createRoot(container);
     useDashboardMock.mockReset();
     useFinanceRiskMock.mockReset();
+    useUserOptionsMock.mockReset();
+
+    useUserOptionsMock.mockReturnValue({
+      users: [],
+      isLoading: false,
+    });
   });
 
   afterEach(() => {

@@ -15,11 +15,13 @@ import { DashboardFollowupsPanel } from '@/components/dashboard/redesign/dashboa
 import { DashboardWorkflowPanel } from '@/components/dashboard/redesign/dashboard-workflow-panel';
 import { DashboardActivityPanel } from '@/components/dashboard/redesign/dashboard-activity-panel';
 import { DashboardInstallsPanel } from '@/components/dashboard/redesign/dashboard-installs-panel';
+import { useUserOptions } from '@/hooks/use-user-options';
 import { api } from '@/lib/api';
 
 export default function DashboardPage() {
   const { data, isLoading, error, refetch } = useDashboard();
   const { data: riskData, isLoading: riskLoading, error: riskError } = useFinanceRisk();
+  const { users, isLoading: usersLoading } = useUserOptions();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   function handlePrint() {
@@ -34,6 +36,28 @@ export default function DashboardPage() {
     } catch (err) {
       console.error('Failed to complete workflow task', err);
       toast.error('Failed to complete task');
+    }
+  }
+
+  async function handleAssignWorkflowTask(taskId: string, userId: string | null) {
+    try {
+      await api.patch(`/calendar/events/${taskId}`, { assignedToUserId: userId });
+      refetch();
+      toast.success(userId ? 'Task owner updated' : 'Task unassigned');
+    } catch (err) {
+      console.error('Failed to update workflow owner', err);
+      toast.error('Failed to update task owner');
+    }
+  }
+
+  async function handleRescheduleWorkflowTask(taskId: string, dueDate: string) {
+    try {
+      await api.patch(`/calendar/events/${taskId}`, { date: dueDate });
+      refetch();
+      toast.success('Task due date updated');
+    } catch (err) {
+      console.error('Failed to reschedule workflow task', err);
+      toast.error('Failed to update due date');
     }
   }
 
@@ -127,7 +151,11 @@ export default function DashboardPage() {
           <DashboardWorkflowPanel
             overview={data?.workflowOverview ?? null}
             isLoading={isLoading}
+            users={users}
+            isUsersLoading={usersLoading}
             onCompleteTask={handleCompleteWorkflowTask}
+            onAssignTask={handleAssignWorkflowTask}
+            onRescheduleTask={handleRescheduleWorkflowTask}
           />
           <DashboardActivityPanel
             activity={data?.recentActivity ?? []}

@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { WorkflowTaskStatus } from '@fencetastic/shared';
 import { toast } from 'sonner';
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useProject } from '@/hooks/use-project';
 import { useSubcontractors } from '@/hooks/use-subcontractors';
 import { useNotes } from '@/hooks/use-notes';
+import { useUserOptions } from '@/hooks/use-user-options';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/formatters';
@@ -106,6 +107,7 @@ export default function ProjectDetailPage() {
   const navigate = useNavigate();
   const { project, isLoading, error, refetch } = useProject(id);
   const { user } = useAuth();
+  const { users, isLoading: usersLoading } = useUserOptions();
 
   const {
     data: subs,
@@ -157,6 +159,10 @@ export default function ProjectDetailPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteTransactionId, setDeleteTransactionId] = useState<string | null>(null);
   const [deleteTransactionType, setDeleteTransactionType] = useState<'INCOME' | 'EXPENSE' | null>(null);
+  const [nextActionDueDateDraft, setNextActionDueDateDraft] = useState('');
+  const [savingNextActionOwner, setSavingNextActionOwner] = useState(false);
+  const [savingNextActionDueDate, setSavingNextActionDueDate] = useState(false);
+  const lastLoadedNextActionDueDateRef = useRef('');
 
   // Error states for fetch failures
   const [incomeError, setIncomeError] = useState<string | null>(null);
@@ -194,6 +200,14 @@ export default function ProjectDetailPage() {
     fetchExpenses();
   }, [fetchIncome, fetchExpenses]);
 
+  useEffect(() => {
+    const incomingDueDate = project?.nextAction?.dueDate ?? '';
+    setNextActionDueDateDraft((current) =>
+      current === lastLoadedNextActionDueDateRef.current ? incomingDueDate : current
+    );
+    lastLoadedNextActionDueDateRef.current = incomingDueDate;
+  }, [project?.nextAction?.dueDate]);
+
   // Handlers
   const handleFieldSave = async (field: string, value: string | number | null) => {
     try {
@@ -226,6 +240,36 @@ export default function ProjectDetailPage() {
     } catch (err) {
       console.error('Task completion failed:', err);
       toast.error('Failed to complete task');
+    }
+  }
+
+  async function handleAssignWorkflowTask(taskId: string, userId: string | null) {
+    setSavingNextActionOwner(true);
+    try {
+      await api.patch(`/calendar/events/${taskId}`, { assignedToUserId: userId });
+      refetch();
+      toast.success(userId ? 'Task owner updated' : 'Task unassigned');
+    } catch (err) {
+      console.error('Task owner update failed:', err);
+      toast.error('Failed to update task owner');
+    } finally {
+      setSavingNextActionOwner(false);
+    }
+  }
+
+  async function handleRescheduleWorkflowTask(taskId: string, dueDate: string) {
+    setSavingNextActionDueDate(true);
+    try {
+      await api.patch(`/calendar/events/${taskId}`, { date: dueDate });
+      lastLoadedNextActionDueDateRef.current = dueDate;
+      setNextActionDueDateDraft(dueDate);
+      refetch();
+      toast.success('Task due date updated');
+    } catch (err) {
+      console.error('Task reschedule failed:', err);
+      toast.error('Failed to update task due date');
+    } finally {
+      setSavingNextActionDueDate(false);
     }
   }
 
@@ -652,6 +696,25 @@ export default function ProjectDetailPage() {
 
             {project.nextAction ? (
               <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+                {(() => {
+                  const nextAction = project.nextAction;
+                  const resolvedOwnerId =
+                    nextAction.assignedToUserId
+                      ? users.some((option) => option.id === nextAction.assignedToUserId)
+                        ? nextAction.assignedToUserId
+                        : null
+                      : users.find((option) => option.name === nextAction.assignedToName)?.id ?? null;
+                  const unresolvedOwnerOptionValue = nextAction.assignedToUserId
+                    ? resolvedOwnerId === nextAction.assignedToUserId
+                      ? null
+                      : nextAction.assignedToUserId
+                    : nextAction.assignedToName
+                      ? `current:${nextAction.id}`
+                      : null;
+                  const ownerValue = resolvedOwnerId ?? unresolvedOwnerOptionValue ?? 'unassigned';
+
+                  return (
+                    <>
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-lg font-semibold text-slate-950">{project.nextAction.title}</p>
@@ -683,6 +746,66 @@ export default function ProjectDetailPage() {
                     </>
                   ) : null}
                 </div>
+                {project.nextAction.source === 'WORKFLOW_TASK' ? (
+                  <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_180px]">
+                    <label className="space-y-1 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      Owner
+                      <select
+                        aria-label="Assign owner for next action"
+                        className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900"
+                        value={ownerValue}
+                        disabled={usersLoading || savingNextActionOwner || savingNextActionDueDate}
+                        onChange={(event) => {
+                          void handleAssignWorkflowTask(project.nextAction!.id, event.target.value === 'unassigned' ? null : event.target.value);
+                        }}
+                      >
+                        <option value="unassigned">Unassigned</option>
+                        {unresolvedOwnerOptionValue && !resolvedOwnerId ? (
+                          <option value={unresolvedOwnerOptionValue}>{project.nextAction.assignedToName ?? 'Current owner'} (current)</option>
+                        ) : null}
+                        {users.map((option) => (
+                          <option key={option.id} value={option.id}>
+                            {option.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="space-y-1 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      Due date
+                      <div className="flex gap-2">
+                        <input
+                          aria-label="Reschedule next action"
+                          type="date"
+                          className="h-10 min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900"
+                          value={nextActionDueDateDraft}
+                          disabled={savingNextActionOwner || savingNextActionDueDate}
+                          onChange={(event) => {
+                            setNextActionDueDateDraft(event.target.value);
+                          }}
+                          onInput={(event) => {
+                            setNextActionDueDateDraft((event.target as HTMLInputElement).value);
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          aria-label="Save next action due date"
+                          className="h-10 rounded-2xl border-slate-200 bg-white px-3 text-slate-700 hover:bg-slate-50"
+                          disabled={!nextActionDueDateDraft || nextActionDueDateDraft === project.nextAction.dueDate || savingNextActionOwner || savingNextActionDueDate}
+                          onClick={() => {
+                            void handleRescheduleWorkflowTask(project.nextAction!.id, nextActionDueDateDraft);
+                          }}
+                        >
+                          {savingNextActionDueDate ? 'Saving…' : 'Save'}
+                        </Button>
+                      </div>
+                    </label>
+                  </div>
+                ) : null}
+                    </>
+                  );
+                })()}
               </div>
             ) : (
               <div className="rounded-[24px] border border-dashed border-slate-300 bg-slate-50 px-5 py-6">

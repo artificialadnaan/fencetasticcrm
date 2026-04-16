@@ -262,6 +262,7 @@ describe('Project Service', () => {
         dueDate: '2026-04-15',
         source: 'WORKFLOW_TASK',
         status: 'PENDING',
+        assignedToUserId: 'user-2',
         assignedToName: 'Office Admin',
       });
       expect(result.data[1].scheduleReadiness).toEqual({
@@ -706,6 +707,7 @@ describe('Project Service', () => {
         dueDate: '2026-04-05',
         source: 'WORKFLOW_TASK',
         status: 'PENDING',
+        assignedToUserId: 'user-2',
         assignedToName: 'Office Admin',
       });
       expect(result.scheduleReadiness).toEqual({

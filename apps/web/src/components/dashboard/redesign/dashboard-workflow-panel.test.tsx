@@ -23,6 +23,8 @@ describe('DashboardWorkflowPanel', () => {
 
   it('filters to unassigned tasks and completes a workflow task inline', async () => {
     const onComplete = vi.fn().mockResolvedValue(undefined);
+    const onAssign = vi.fn().mockResolvedValue(undefined);
+    const onReschedule = vi.fn().mockResolvedValue(undefined);
 
     await act(async () => {
       root.render(
@@ -30,6 +32,12 @@ describe('DashboardWorkflowPanel', () => {
           <DashboardWorkflowPanel
             isLoading={false}
             onCompleteTask={onComplete}
+            onAssignTask={onAssign}
+            onRescheduleTask={onReschedule}
+            users={[
+              { id: 'user-1', name: 'Adnaan', email: 'adnaan@fencetastic.com' },
+              { id: 'user-2', name: 'Office Admin', email: 'office@fencetastic.com' },
+            ]}
             overview={{
               overdueCount: 1,
               dueTodayCount: 1,
@@ -47,6 +55,7 @@ describe('DashboardWorkflowPanel', () => {
                   address: '321 River Meadows Ln',
                   title: 'Collect deposit',
                   dueDate: '2026-04-07',
+                  assignedToUserId: 'user-2',
                   assignedToName: 'Office Admin',
                   href: '/calendar?date=2026-04-07',
                   urgency: 'HIGH',
@@ -58,6 +67,7 @@ describe('DashboardWorkflowPanel', () => {
                   address: '1141 Macgregor Ln',
                   title: 'Confirm crew',
                   dueDate: '2026-04-08',
+                  assignedToUserId: null,
                   assignedToName: null,
                   href: '/calendar?date=2026-04-08',
                   urgency: 'MEDIUM',
@@ -71,6 +81,7 @@ describe('DashboardWorkflowPanel', () => {
                   address: '321 River Meadows Ln',
                   title: 'Collect deposit',
                   dueDate: '2026-04-07',
+                  assignedToUserId: 'user-2',
                   assignedToName: 'Office Admin',
                   href: '/calendar?date=2026-04-07',
                   urgency: 'HIGH',
@@ -82,6 +93,7 @@ describe('DashboardWorkflowPanel', () => {
                   address: '1141 Macgregor Ln',
                   title: 'Confirm crew',
                   dueDate: '2026-04-08',
+                  assignedToUserId: null,
                   assignedToName: null,
                   href: '/calendar?date=2026-04-08',
                   urgency: 'MEDIUM',
@@ -113,5 +125,31 @@ describe('DashboardWorkflowPanel', () => {
     });
 
     expect(onComplete).toHaveBeenCalledWith('task-2');
+
+    const ownerSelect = container.querySelector('select[aria-label="Assign owner for Confirm crew"]') as HTMLSelectElement | null;
+    expect(ownerSelect).not.toBeNull();
+
+    await act(async () => {
+      ownerSelect!.value = 'user-1';
+      ownerSelect!.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    expect(onAssign).toHaveBeenCalledWith('task-2', 'user-1');
+
+    const dueDateInput = container.querySelector('input[aria-label="Reschedule Confirm crew"]') as HTMLInputElement | null;
+    expect(dueDateInput).not.toBeNull();
+
+    await act(async () => {
+      dueDateInput!.value = '2026-04-10';
+      dueDateInput!.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+
+    const saveDueDateButton = container.querySelector('button[aria-label="Save due date for Confirm crew"]');
+
+    await act(async () => {
+      saveDueDateButton?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+    });
+
+    expect(onReschedule).toHaveBeenCalledWith('task-2', '2026-04-10');
   });
 });

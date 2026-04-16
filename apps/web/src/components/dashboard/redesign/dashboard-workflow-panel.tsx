@@ -1,13 +1,18 @@
-import { startTransition, useMemo, useState } from 'react';
+import { startTransition, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { DashboardWorkflowOverview } from '@fencetastic/shared';
 import { Button } from '@/components/ui/button';
 import { formatDate } from '@/lib/formatters';
+import type { UserOption } from '@/hooks/use-user-options';
 
 interface DashboardWorkflowPanelProps {
   overview: DashboardWorkflowOverview | null;
   isLoading: boolean;
+  users?: UserOption[];
+  isUsersLoading?: boolean;
   onCompleteTask?: (taskId: string) => Promise<void> | void;
+  onAssignTask?: (taskId: string, userId: string | null) => Promise<void> | void;
+  onRescheduleTask?: (taskId: string, dueDate: string) => Promise<void> | void;
 }
 
 type WorkflowFilter = 'ALL' | 'OVERDUE' | 'DUE_TODAY' | 'UNASSIGNED';
@@ -27,9 +32,51 @@ function SummaryPill({
   );
 }
 
-export function DashboardWorkflowPanel({ overview, isLoading, onCompleteTask }: DashboardWorkflowPanelProps) {
+export function DashboardWorkflowPanel({
+  overview,
+  isLoading,
+  users = [],
+  isUsersLoading = false,
+  onCompleteTask,
+  onAssignTask,
+  onRescheduleTask,
+}: DashboardWorkflowPanelProps) {
   const [activeFilter, setActiveFilter] = useState<WorkflowFilter>('ALL');
   const [completingId, setCompletingId] = useState<string | null>(null);
+  const [assigningId, setAssigningId] = useState<string | null>(null);
+  const [reschedulingId, setReschedulingId] = useState<string | null>(null);
+  const [rescheduleDrafts, setRescheduleDrafts] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    setRescheduleDrafts((current) => {
+      if (!overview) {
+        return {};
+      }
+
+      const next: Record<string, string> = {};
+      let changed = false;
+
+      for (const task of overview.tasks) {
+        const draft = current[task.id];
+        if (draft && draft !== task.dueDate) {
+          next[task.id] = draft;
+        }
+      }
+
+      if (Object.keys(next).length !== Object.keys(current).length) {
+        changed = true;
+      } else {
+        for (const [key, value] of Object.entries(next)) {
+          if (current[key] !== value) {
+            changed = true;
+            break;
+          }
+        }
+      }
+
+      return changed ? next : current;
+    });
+  }, [overview]);
 
   const visibleTasks = useMemo(() => {
     if (!overview) return [];
@@ -111,6 +158,24 @@ export function DashboardWorkflowPanel({ overview, isLoading, onCompleteTask }: 
 
           <div className="space-y-3">
             {visibleTasks.map((task) => (
+              (() => {
+                const resolvedOwnerId =
+                  task.assignedToUserId
+                    ? users.some((user) => user.id === task.assignedToUserId)
+                      ? task.assignedToUserId
+                      : null
+                    : users.find((user) => user.name === task.assignedToName)?.id ?? null;
+                const unresolvedOwnerOptionValue = task.assignedToUserId
+                  ? resolvedOwnerId === task.assignedToUserId
+                    ? null
+                    : task.assignedToUserId
+                  : task.assignedToName
+                    ? `current:${task.id}`
+                    : null;
+                const ownerValue = resolvedOwnerId ?? unresolvedOwnerOptionValue ?? 'unassigned';
+                const dueDateDraft = rescheduleDrafts[task.id] ?? task.dueDate;
+
+                return (
               <div
                 key={task.id}
                 className="rounded-[24px] border border-white/10 bg-white px-4 py-4 text-slate-950 shadow-[0_12px_32px_rgba(15,23,42,0.18)]"
@@ -126,6 +191,85 @@ export function DashboardWorkflowPanel({ overview, isLoading, onCompleteTask }: 
                   {formatDate(task.dueDate)}
                   {task.assignedToName ? ` • ${task.assignedToName}` : ' • Unassigned'}
                 </p>
+                {(onAssignTask || onRescheduleTask) ? (
+                  <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_180px]">
+                    {onAssignTask ? (
+                      <label className="space-y-1 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                        Owner
+                        <select
+                          aria-label={`Assign owner for ${task.title}`}
+                          className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900"
+                          value={ownerValue}
+                          disabled={assigningId === task.id || isUsersLoading}
+                          onChange={async (event) => {
+                            setAssigningId(task.id);
+                            try {
+                              await onAssignTask?.(task.id, event.target.value === 'unassigned' ? null : event.target.value);
+                            } finally {
+                              setAssigningId(null);
+                            }
+                          }}
+                        >
+                          <option value="unassigned">Unassigned</option>
+                          {unresolvedOwnerOptionValue && !resolvedOwnerId ? (
+                            <option value={unresolvedOwnerOptionValue}>{task.assignedToName ?? 'Current owner'} (current)</option>
+                          ) : null}
+                          {users.map((user) => (
+                            <option key={user.id} value={user.id}>
+                              {user.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ) : null}
+                    {onRescheduleTask ? (
+                      <label className="space-y-1 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                        Due date
+                        <div className="flex gap-2">
+                          <input
+                            aria-label={`Reschedule ${task.title}`}
+                            type="date"
+                            className="h-10 min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900"
+                            value={dueDateDraft}
+                            disabled={reschedulingId === task.id}
+                            onChange={(event) => {
+                              setRescheduleDrafts((current) => ({ ...current, [task.id]: event.target.value }));
+                            }}
+                            onInput={(event) => {
+                              setRescheduleDrafts((current) => ({
+                                ...current,
+                                [task.id]: (event.target as HTMLInputElement).value,
+                              }));
+                            }}
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            aria-label={`Save due date for ${task.title}`}
+                            className="h-10 rounded-2xl border-slate-200 bg-white px-3 text-slate-700 hover:bg-slate-50"
+                            disabled={reschedulingId === task.id || !dueDateDraft || dueDateDraft === task.dueDate}
+                            onClick={async () => {
+                              setReschedulingId(task.id);
+                              try {
+                                await onRescheduleTask?.(task.id, dueDateDraft);
+                                setRescheduleDrafts((current) => {
+                                  const next = { ...current };
+                                  delete next[task.id];
+                                  return next;
+                                });
+                              } finally {
+                                setReschedulingId(null);
+                              }
+                            }}
+                          >
+                            Save
+                          </Button>
+                        </div>
+                      </label>
+                    ) : null}
+                  </div>
+                ) : null}
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Link
                     to={task.href}
@@ -153,6 +297,8 @@ export function DashboardWorkflowPanel({ overview, isLoading, onCompleteTask }: 
                   ) : null}
                 </div>
               </div>
+                );
+              })()
             ))}
           </div>
         </div>
