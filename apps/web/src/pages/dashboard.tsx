@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Download, Plus } from 'lucide-react';
+import { toast } from 'sonner';
 import { CreateProjectDialog } from '@/components/projects/create-project-dialog';
 import { Button } from '@/components/ui/button';
 import { useDashboard } from '@/hooks/use-dashboard';
@@ -14,6 +15,7 @@ import { DashboardFollowupsPanel } from '@/components/dashboard/redesign/dashboa
 import { DashboardWorkflowPanel } from '@/components/dashboard/redesign/dashboard-workflow-panel';
 import { DashboardActivityPanel } from '@/components/dashboard/redesign/dashboard-activity-panel';
 import { DashboardInstallsPanel } from '@/components/dashboard/redesign/dashboard-installs-panel';
+import { api } from '@/lib/api';
 
 export default function DashboardPage() {
   const { data, isLoading, error, refetch } = useDashboard();
@@ -22,6 +24,17 @@ export default function DashboardPage() {
 
   function handlePrint() {
     window.print();
+  }
+
+  async function handleCompleteWorkflowTask(taskId: string) {
+    try {
+      await api.patch(`/calendar/events/${taskId}`, { taskStatus: 'COMPLETED' });
+      refetch();
+      toast.success('Task completed');
+    } catch (err) {
+      console.error('Failed to complete workflow task', err);
+      toast.error('Failed to complete task');
+    }
   }
 
   const secondaryActions = useMemo(
@@ -114,6 +127,7 @@ export default function DashboardPage() {
           <DashboardWorkflowPanel
             overview={data?.workflowOverview ?? null}
             isLoading={isLoading}
+            onCompleteTask={handleCompleteWorkflowTask}
           />
           <DashboardActivityPanel
             activity={data?.recentActivity ?? []}

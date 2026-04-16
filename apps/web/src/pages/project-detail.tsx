@@ -218,6 +218,33 @@ export default function ProjectDetailPage() {
     }
   }
 
+  async function handleCompleteWorkflowTask(taskId: string) {
+    try {
+      await api.patch(`/calendar/events/${taskId}`, { taskStatus: WorkflowTaskStatus.COMPLETED });
+      refetch();
+      toast.success('Task completed');
+    } catch (err) {
+      console.error('Task completion failed:', err);
+      toast.error('Failed to complete task');
+    }
+  }
+
+  function getBlockerHref(code: string) {
+    if (!id) return '/projects';
+    switch (code) {
+      case 'MISSING_DEPOSIT':
+        return `/projects/${id}?tab=payments`;
+      case 'MISSING_MATERIALS':
+        return `/projects/${id}?tab=materials`;
+      case 'MISSING_WORK_ORDER':
+        return `/projects/${id}/work-order`;
+      case 'MISSING_INSTALL_DATE':
+      case 'MISSING_SUBCONTRACTOR':
+      default:
+        return `/projects/${id}?tab=overview`;
+    }
+  }
+
   async function handleDeleteProject() {
     setDeleting(true);
     try {
@@ -643,6 +670,18 @@ export default function ProjectDetailPage() {
                   <Link to={`/calendar?date=${project.nextAction.dueDate}`} className="text-[hsl(var(--brand-blue))] hover:underline">
                     Open in calendar
                   </Link>
+                  {project.nextAction.source === 'WORKFLOW_TASK' ? (
+                    <>
+                      <span>•</span>
+                      <button
+                        type="button"
+                        onClick={() => handleCompleteWorkflowTask(project.nextAction!.id)}
+                        className="text-emerald-700 hover:underline"
+                      >
+                        Complete Task
+                      </button>
+                    </>
+                  ) : null}
                 </div>
               </div>
             ) : (
@@ -720,6 +759,12 @@ export default function ProjectDetailPage() {
                         </span>
                       </div>
                       <p className="mt-2 text-sm leading-6 text-slate-600">{blocker.reason}</p>
+                      <Link
+                        to={getBlockerHref(blocker.code)}
+                        className="mt-3 inline-flex text-sm font-medium text-[hsl(var(--brand-blue))] hover:underline"
+                      >
+                        Resolve blocker
+                      </Link>
                     </div>
                   ))
                 )}

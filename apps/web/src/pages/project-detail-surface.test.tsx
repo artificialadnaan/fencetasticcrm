@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ProjectDetailPage from './project-detail';
 
 const apiGetMock = vi.fn();
+const apiPatchMock = vi.fn();
 const navigateMock = vi.fn();
 const useProjectMock = vi.fn();
 const useSubcontractorsMock = vi.fn();
@@ -14,7 +15,7 @@ const useAuthMock = vi.fn();
 vi.mock('@/lib/api', () => ({
   api: {
     get: (...args: unknown[]) => apiGetMock(...args),
-    patch: vi.fn(),
+    patch: (...args: unknown[]) => apiPatchMock(...args),
     post: vi.fn(),
     delete: vi.fn(),
   },
@@ -154,6 +155,7 @@ describe('ProjectDetailPage surface styling', () => {
     root = createRoot(container);
 
     apiGetMock.mockReset();
+    apiPatchMock.mockReset();
     navigateMock.mockReset();
     useProjectMock.mockReset();
     useSubcontractorsMock.mockReset();
@@ -161,6 +163,7 @@ describe('ProjectDetailPage surface styling', () => {
     useAuthMock.mockReset();
 
     apiGetMock.mockResolvedValue({ data: { data: [] } });
+    apiPatchMock.mockResolvedValue({ data: { data: {} } });
     useProjectMock.mockReturnValue({
       project: makeProjectDetail(),
       isLoading: false,
@@ -240,4 +243,39 @@ describe('ProjectDetailPage surface styling', () => {
     const inverseValue = container.querySelector('[aria-label="Edit Notes"] span');
     expect(inverseValue?.className).toContain('text-white');
   }, 15000);
+
+  it('exposes blocker resolution links and completes the next action inline', async () => {
+    const refetchMock = vi.fn();
+    useProjectMock.mockReturnValue({
+      project: makeProjectDetail(),
+      isLoading: false,
+      error: null,
+      refetch: refetchMock,
+    });
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <ProjectDetailPage />
+        </MemoryRouter>
+      );
+    });
+
+    const blockerLinks = Array.from(container.querySelectorAll('a')).map((node) => node.getAttribute('href'));
+    expect(blockerLinks).toContain('/projects/project-1?tab=payments');
+    expect(blockerLinks).toContain('/projects/project-1?tab=materials');
+
+    const completeButton = Array.from(container.querySelectorAll('button')).find((node) =>
+      node.textContent?.includes('Complete Task')
+    );
+
+    await act(async () => {
+      completeButton?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+    });
+
+    expect(apiPatchMock).toHaveBeenCalledWith('/calendar/events/task-1', {
+      taskStatus: 'COMPLETED',
+    });
+    expect(refetchMock).toHaveBeenCalled();
+  });
 });

@@ -895,6 +895,7 @@ export interface DashboardWorkflowOverview {
   upcomingCount: number;
   unassignedCount: number;
   ownerBreakdown: DashboardWorkflowOwnerSummary[];
+  tasks: DashboardWorkflowOverviewTask[];
   topTasks: DashboardWorkflowOverviewTask[];
 }
 

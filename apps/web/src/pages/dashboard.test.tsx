@@ -119,6 +119,12 @@ describe('DashboardPage', () => {
         todaysFollowUps: [],
         workflowOverview: {
           overdueCount: 2,
+          dueTodayCount: 0,
+          upcomingCount: 0,
+          unassignedCount: 0,
+          ownerBreakdown: [],
+          tasks: [],
+          topTasks: [],
         },
         recentActivity: [],
         upcomingInstalls: [],

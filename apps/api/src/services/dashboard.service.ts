@@ -638,6 +638,7 @@ export async function getDashboardData(): Promise<DashboardData> {
         if (right.count !== left.count) return right.count - left.count;
         return right.ownerName.localeCompare(left.ownerName);
       }),
+    tasks: pendingWorkflowTasks,
     topTasks: pendingWorkflowTasks.slice(0, 5),
   };
 

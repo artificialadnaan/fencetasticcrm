@@ -1,11 +1,16 @@
+import { startTransition, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { DashboardWorkflowOverview } from '@fencetastic/shared';
+import { Button } from '@/components/ui/button';
 import { formatDate } from '@/lib/formatters';
 
 interface DashboardWorkflowPanelProps {
   overview: DashboardWorkflowOverview | null;
   isLoading: boolean;
+  onCompleteTask?: (taskId: string) => Promise<void> | void;
 }
+
+type WorkflowFilter = 'ALL' | 'OVERDUE' | 'DUE_TODAY' | 'UNASSIGNED';
 
 function SummaryPill({
   label,
@@ -22,7 +27,24 @@ function SummaryPill({
   );
 }
 
-export function DashboardWorkflowPanel({ overview, isLoading }: DashboardWorkflowPanelProps) {
+export function DashboardWorkflowPanel({ overview, isLoading, onCompleteTask }: DashboardWorkflowPanelProps) {
+  const [activeFilter, setActiveFilter] = useState<WorkflowFilter>('ALL');
+  const [completingId, setCompletingId] = useState<string | null>(null);
+
+  const visibleTasks = useMemo(() => {
+    if (!overview) return [];
+    switch (activeFilter) {
+      case 'OVERDUE':
+        return overview.tasks.filter((task) => task.urgency === 'HIGH');
+      case 'DUE_TODAY':
+        return overview.tasks.filter((task) => task.urgency === 'MEDIUM');
+      case 'UNASSIGNED':
+        return overview.tasks.filter((task) => !task.assignedToName);
+      default:
+        return overview.tasks;
+    }
+  }, [activeFilter, overview]);
+
   return (
     <section className="shell-panel rounded-[32px] p-6">
       <div className="flex items-start justify-between gap-4 border-b border-white/10 pb-5">
@@ -58,6 +80,28 @@ export function DashboardWorkflowPanel({ overview, isLoading }: DashboardWorkflo
           </div>
 
           <div className="flex flex-wrap gap-2">
+            {[
+              { id: 'ALL', label: 'All' },
+              { id: 'OVERDUE', label: 'Overdue' },
+              { id: 'DUE_TODAY', label: 'Due Today' },
+              { id: 'UNASSIGNED', label: 'Unassigned' },
+            ].map((filter) => (
+              <button
+                key={filter.id}
+                type="button"
+                onClick={() => startTransition(() => setActiveFilter(filter.id as WorkflowFilter))}
+                className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] ${
+                  activeFilter === filter.id
+                    ? 'border-white/20 bg-white text-slate-950'
+                    : 'border-white/10 bg-white/8 text-slate-200'
+                }`}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
             {overview.ownerBreakdown.map((owner) => (
               <div key={owner.ownerName} className="rounded-full border border-white/10 bg-white/8 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-slate-200">
                 {owner.ownerName} • {owner.count}
@@ -66,11 +110,10 @@ export function DashboardWorkflowPanel({ overview, isLoading }: DashboardWorkflo
           </div>
 
           <div className="space-y-3">
-            {overview.topTasks.map((task) => (
-              <Link
+            {visibleTasks.map((task) => (
+              <div
                 key={task.id}
-                to={task.href}
-                className="block rounded-[24px] border border-white/10 bg-white px-4 py-4 text-slate-950 shadow-[0_12px_32px_rgba(15,23,42,0.18)] transition-transform duration-200 hover:-translate-y-0.5 hover:bg-white"
+                className="rounded-[24px] border border-white/10 bg-white px-4 py-4 text-slate-950 shadow-[0_12px_32px_rgba(15,23,42,0.18)]"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -83,7 +126,33 @@ export function DashboardWorkflowPanel({ overview, isLoading }: DashboardWorkflo
                   {formatDate(task.dueDate)}
                   {task.assignedToName ? ` • ${task.assignedToName}` : ' • Unassigned'}
                 </p>
-              </Link>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Link
+                    to={task.href}
+                    className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                  >
+                    Open task
+                  </Link>
+                  {onCompleteTask ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="rounded-2xl bg-emerald-600 text-white hover:bg-emerald-500"
+                      disabled={completingId === task.id}
+                      onClick={async () => {
+                        setCompletingId(task.id);
+                        try {
+                          await onCompleteTask(task.id);
+                        } finally {
+                          setCompletingId(null);
+                        }
+                      }}
+                    >
+                      {completingId === task.id ? 'Completing...' : 'Complete'}
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
             ))}
           </div>
         </div>
