@@ -154,6 +154,7 @@ describe('dashboard.service follow-up reads', () => {
         title: null,
         notes: null,
         href: '/projects/project-1?tab=follow-up',
+        assignedToUserId: null,
         source: 'ESTIMATE_FOLLOW_UP',
       },
       {
@@ -168,6 +169,7 @@ describe('dashboard.service follow-up reads', () => {
         title: null,
         notes: null,
         href: '/projects/project-2?tab=follow-up',
+        assignedToUserId: null,
         source: 'ESTIMATE_FOLLOW_UP',
       },
     ]);
@@ -342,6 +344,7 @@ describe('dashboard.service follow-up reads', () => {
         title: 'Collect signed HOA form',
         notes: 'Need this before install scheduling.',
         href: '/calendar?date=2026-04-08',
+        assignedToUserId: null,
         assignedToName: null,
         source: 'MANUAL_TASK',
       },
@@ -358,6 +361,7 @@ describe('dashboard.service follow-up reads', () => {
       financeProjectMode: null,
       href: '/calendar?date=2026-04-08',
       source: 'MANUAL_TASK',
+      assignedToUserId: null,
       dueDate: '2026-04-08',
       assignedToName: null,
     });
@@ -446,6 +450,7 @@ describe('dashboard.service follow-up reads', () => {
         title: 'Collect HOA approval',
         notes: 'Needed before install lock-in.',
         href: '/calendar?date=2026-04-08',
+        assignedToUserId: 'user-2',
         assignedToName: 'Office Admin',
         source: 'WORKFLOW_TASK',
       },
@@ -462,6 +467,7 @@ describe('dashboard.service follow-up reads', () => {
       financeProjectMode: null,
       href: '/calendar?date=2026-04-08',
       source: 'WORKFLOW_TASK',
+      assignedToUserId: 'user-2',
       assignedToName: 'Office Admin',
       dueDate: '2026-04-08',
     });

@@ -571,6 +571,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       title: null,
       notes: null,
       href: `/projects/${task.projectId}?tab=follow-up`,
+      assignedToUserId: null,
       source: 'ESTIMATE_FOLLOW_UP',
     }));
 
@@ -589,6 +590,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       title: event.title,
       notes: event.notes,
       href: `/calendar?date=${toDateString(event.date)}`,
+      assignedToUserId: event.assignedToUserId ?? null,
       assignedToName: event.assignedToUser?.name ?? null,
       source: event.isWorkflowTask ? 'WORKFLOW_TASK' : 'MANUAL_TASK',
     }));
@@ -682,6 +684,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     financeProjectMode: null,
     href: task.href ?? `/projects/${task.projectId}?tab=follow-up`,
     source: task.source,
+    assignedToUserId: task.assignedToUserId ?? null,
     assignedToName: task.assignedToName ?? null,
     dueDate: task.dueDate,
   }));

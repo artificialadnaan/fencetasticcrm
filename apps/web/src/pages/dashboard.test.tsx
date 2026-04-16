@@ -43,15 +43,27 @@ vi.mock('@/components/dashboard/redesign/dashboard-command-queue', () => ({
   DashboardCommandQueue: ({
     queue,
     onCompleteActionItem,
+    onAssignActionItem,
+    onRescheduleActionItem,
   }: {
     queue: { actionNeeded: Array<{ id: string }> } | null;
     onCompleteActionItem?: (item: unknown) => Promise<void> | void;
+    onAssignActionItem?: (item: unknown, userId: string | null) => Promise<void> | void;
+    onRescheduleActionItem?: (item: unknown, dueDate: string) => Promise<void> | void;
   }) => (
     <div data-testid="command-queue">
       {queue?.actionNeeded.map((item) => (
-        <button key={item.id} type="button" onClick={() => onCompleteActionItem?.(item)}>
-          action-{item.id}
-        </button>
+        <div key={item.id}>
+          <button type="button" onClick={() => onCompleteActionItem?.(item)}>
+            action-{item.id}
+          </button>
+          <button type="button" onClick={() => onAssignActionItem?.(item, 'user-1')}>
+            assign-{item.id}
+          </button>
+          <button type="button" onClick={() => onRescheduleActionItem?.(item, '2026-04-10')}>
+            reschedule-{item.id}
+          </button>
+        </div>
       ))}
     </div>
   ),
@@ -404,6 +416,94 @@ describe('DashboardPage', () => {
       actionButtons[1]?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
     });
     expect(apiPatchMock).toHaveBeenCalledWith('/calendar/events/calendar-event-1', { taskStatus: 'COMPLETED' });
+    expect(refetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('routes action-needed reassignment and reschedule through calendar patch for mutable tasks', async () => {
+    const refetchMock = vi.fn();
+
+    useDashboardMock.mockReturnValue({
+      data: {
+        kpis: {
+          revenueMTD: 0,
+          openProjects: 3,
+          outstandingReceivables: 28166.07,
+          aimannDebtBalance: 300,
+        },
+        commandQueue: {
+          actionNeeded: [
+            {
+              id: 'a-manual',
+              actionId: 'calendar-event-1',
+              source: 'WORKFLOW_TASK',
+              projectId: 'project-88',
+              customer: 'Sharon Harbach',
+              address: '321 River Meadows Ln',
+              title: 'Collect signed HOA form',
+              reason: 'Need this before install scheduling.',
+              urgency: 'MEDIUM',
+              financeProjectMode: null,
+              href: '/calendar?date=2026-04-08',
+              dueDate: '2026-04-08',
+              assignedToUserId: 'user-2',
+              assignedToName: 'Office Admin',
+            },
+          ],
+          moneyAtRisk: [],
+          scheduleBlockers: [],
+        },
+        monthlyRevenueExpenses: [],
+        projectTypeBreakdown: [],
+        todaysFollowUps: [],
+        workflowOverview: {
+          overdueCount: 0,
+          dueTodayCount: 0,
+          upcomingCount: 0,
+          unassignedCount: 0,
+          ownerBreakdown: [],
+          tasks: [],
+          topTasks: [],
+        },
+        recentActivity: [],
+        upcomingInstalls: [],
+      },
+      isLoading: false,
+      error: null,
+      refetch: refetchMock,
+    });
+
+    useFinanceRiskMock.mockReturnValue({
+      data: { receivables: { overallOutstanding: 9700 } },
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <ShellHarness>
+            <DashboardPage />
+          </ShellHarness>
+        </MemoryRouter>
+      );
+    });
+
+    const assignButton = Array.from(container.querySelectorAll('button')).find((node) =>
+      node.textContent?.startsWith('assign-a-manual')
+    );
+    await act(async () => {
+      assignButton?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+    });
+    expect(apiPatchMock).toHaveBeenCalledWith('/calendar/events/calendar-event-1', { assignedToUserId: 'user-1' });
+
+    const rescheduleButton = Array.from(container.querySelectorAll('button')).find((node) =>
+      node.textContent?.startsWith('reschedule-a-manual')
+    );
+    await act(async () => {
+      rescheduleButton?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+    });
+    expect(apiPatchMock).toHaveBeenCalledWith('/calendar/events/calendar-event-1', { date: '2026-04-10' });
     expect(refetchMock).toHaveBeenCalledTimes(2);
   });
 });

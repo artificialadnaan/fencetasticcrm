@@ -32,7 +32,7 @@ export default function DashboardPage() {
   async function handleCompleteWorkflowTask(taskId: string) {
     try {
       await api.patch(`/calendar/events/${taskId}`, { taskStatus: 'COMPLETED' });
-      refetch();
+      await refetch();
       toast.success('Task completed');
     } catch (err) {
       console.error('Failed to complete workflow task', err);
@@ -47,7 +47,7 @@ export default function DashboardPage() {
       } else {
         await api.patch(`/calendar/events/${task.actionId ?? task.id}`, { taskStatus: 'COMPLETED' });
       }
-      refetch();
+      await refetch();
       toast.success('Follow-up completed');
     } catch (err) {
       console.error('Failed to complete dashboard follow-up', err);
@@ -62,7 +62,7 @@ export default function DashboardPage() {
       } else {
         await api.patch(`/calendar/events/${item.actionId ?? item.id}`, { taskStatus: 'COMPLETED' });
       }
-      refetch();
+      await refetch();
       toast.success('Task completed');
     } catch (err) {
       console.error('Failed to complete command queue task', err);
@@ -70,10 +70,32 @@ export default function DashboardPage() {
     }
   }
 
+  async function handleAssignActionItem(item: { actionId?: string | null; id: string }, userId: string | null) {
+    try {
+      await api.patch(`/calendar/events/${item.actionId ?? item.id}`, { assignedToUserId: userId });
+      await refetch();
+      toast.success(userId ? 'Task owner updated' : 'Task unassigned');
+    } catch (err) {
+      console.error('Failed to update command queue owner', err);
+      toast.error('Failed to update task owner');
+    }
+  }
+
+  async function handleRescheduleActionItem(item: { actionId?: string | null; id: string }, dueDate: string) {
+    try {
+      await api.patch(`/calendar/events/${item.actionId ?? item.id}`, { date: dueDate });
+      await refetch();
+      toast.success('Task due date updated');
+    } catch (err) {
+      console.error('Failed to reschedule command queue task', err);
+      toast.error('Failed to update due date');
+    }
+  }
+
   async function handleAssignWorkflowTask(taskId: string, userId: string | null) {
     try {
       await api.patch(`/calendar/events/${taskId}`, { assignedToUserId: userId });
-      refetch();
+      await refetch();
       toast.success(userId ? 'Task owner updated' : 'Task unassigned');
     } catch (err) {
       console.error('Failed to update workflow owner', err);
@@ -84,7 +106,7 @@ export default function DashboardPage() {
   async function handleRescheduleWorkflowTask(taskId: string, dueDate: string) {
     try {
       await api.patch(`/calendar/events/${taskId}`, { date: dueDate });
-      refetch();
+      await refetch();
       toast.success('Task due date updated');
     } catch (err) {
       console.error('Failed to reschedule workflow task', err);
@@ -164,7 +186,11 @@ export default function DashboardPage() {
         <DashboardCommandQueue
           queue={data?.commandQueue ?? null}
           isLoading={isLoading}
+          users={users}
+          isUsersLoading={usersLoading}
           onCompleteActionItem={handleCompleteActionItem}
+          onAssignActionItem={handleAssignActionItem}
+          onRescheduleActionItem={handleRescheduleActionItem}
         />
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.9fr)]">

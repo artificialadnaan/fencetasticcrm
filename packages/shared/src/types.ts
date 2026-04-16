@@ -839,6 +839,7 @@ export interface DashboardFollowUpTask {
   notes?: string | null;
   href?: string | null;
   actionId?: string | null;
+  assignedToUserId?: string | null;
   assignedToName?: string | null;
   source?: 'WORKFLOW_TASK' | 'ESTIMATE_FOLLOW_UP' | 'MANUAL_TASK';
 }
@@ -863,6 +864,7 @@ export interface DashboardCommandItem {
   href?: string | null;
   actionId?: string | null;
   source?: 'WORKFLOW_TASK' | 'ESTIMATE_FOLLOW_UP' | 'MANUAL_TASK';
+  assignedToUserId?: string | null;
   assignedToName?: string | null;
   dueDate?: string | null;
 }
