@@ -154,6 +154,7 @@ describe('dashboard.service follow-up reads', () => {
         title: null,
         notes: null,
         href: '/projects/project-1?tab=follow-up',
+        source: 'ESTIMATE_FOLLOW_UP',
       },
       {
         id: 'task-2',
@@ -167,6 +168,7 @@ describe('dashboard.service follow-up reads', () => {
         title: null,
         notes: null,
         href: '/projects/project-2?tab=follow-up',
+        source: 'ESTIMATE_FOLLOW_UP',
       },
     ]);
     expect(
@@ -346,6 +348,7 @@ describe('dashboard.service follow-up reads', () => {
     ]);
     expect(result.commandQueue.actionNeeded).toContainEqual({
       id: 'followup-manual-event-1',
+      actionId: 'event-1',
       projectId: 'project-77',
       customer: 'Sharon Harbach',
       address: '321 River Meadows Ln',
@@ -354,6 +357,7 @@ describe('dashboard.service follow-up reads', () => {
       urgency: 'MEDIUM',
       financeProjectMode: null,
       href: '/calendar?date=2026-04-08',
+      source: 'MANUAL_TASK',
       dueDate: '2026-04-08',
       assignedToName: null,
     });
@@ -448,6 +452,7 @@ describe('dashboard.service follow-up reads', () => {
     ]);
     expect(result.commandQueue.actionNeeded).toContainEqual({
       id: 'followup-manual-event-1',
+      actionId: 'event-1',
       projectId: 'project-77',
       customer: 'Sharon Harbach',
       address: '321 River Meadows Ln',
@@ -456,6 +461,7 @@ describe('dashboard.service follow-up reads', () => {
       urgency: 'MEDIUM',
       financeProjectMode: null,
       href: '/calendar?date=2026-04-08',
+      source: 'WORKFLOW_TASK',
       assignedToName: 'Office Admin',
       dueDate: '2026-04-08',
     });

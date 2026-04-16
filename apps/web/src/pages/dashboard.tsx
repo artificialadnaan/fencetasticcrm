@@ -55,6 +55,21 @@ export default function DashboardPage() {
     }
   }
 
+  async function handleCompleteActionItem(item: { actionId?: string | null; id: string; source?: string }) {
+    try {
+      if (item.source === 'ESTIMATE_FOLLOW_UP') {
+        await api.post(`/follow-ups/tasks/${item.actionId ?? item.id}/complete`);
+      } else {
+        await api.patch(`/calendar/events/${item.actionId ?? item.id}`, { taskStatus: 'COMPLETED' });
+      }
+      refetch();
+      toast.success('Task completed');
+    } catch (err) {
+      console.error('Failed to complete command queue task', err);
+      toast.error('Failed to complete task');
+    }
+  }
+
   async function handleAssignWorkflowTask(taskId: string, userId: string | null) {
     try {
       await api.patch(`/calendar/events/${taskId}`, { assignedToUserId: userId });
@@ -146,7 +161,11 @@ export default function DashboardPage() {
 
         <DashboardCashRiskStrip risk={riskData} isLoading={riskLoading} error={riskError} />
 
-        <DashboardCommandQueue queue={data?.commandQueue ?? null} isLoading={isLoading} />
+        <DashboardCommandQueue
+          queue={data?.commandQueue ?? null}
+          isLoading={isLoading}
+          onCompleteActionItem={handleCompleteActionItem}
+        />
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.9fr)]">
           <DashboardRevenuePanel

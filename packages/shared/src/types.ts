@@ -861,6 +861,8 @@ export interface DashboardCommandItem {
   urgency: 'HIGH' | 'MEDIUM' | 'LOW';
   financeProjectMode?: FinanceProjectMode | null;
   href?: string | null;
+  actionId?: string | null;
+  source?: 'WORKFLOW_TASK' | 'ESTIMATE_FOLLOW_UP' | 'MANUAL_TASK';
   assignedToName?: string | null;
   dueDate?: string | null;
 }

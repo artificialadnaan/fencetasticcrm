@@ -1,7 +1,7 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FinanceProjectMode } from '@fencetastic/shared';
 import { DashboardCommandQueue } from './dashboard-command-queue';
 
@@ -122,5 +122,51 @@ describe('DashboardCommandQueue', () => {
     const hrefs = links.map((link) => link.getAttribute('href'));
     expect(hrefs).toContain('/calendar?date=2026-04-08');
     expect(hrefs).toContain('/calendar?compose=1&type=followup');
+  });
+
+  it('completes actionable task cards inline from the action-needed lane', async () => {
+    const onComplete = vi.fn().mockResolvedValue(undefined);
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <DashboardCommandQueue
+            isLoading={false}
+            onCompleteActionItem={onComplete}
+            queue={{
+              actionNeeded: [
+                {
+                  id: 'a2',
+                  actionId: 'sequence-task-1',
+                  source: 'ESTIMATE_FOLLOW_UP',
+                  projectId: 'p9',
+                  customer: 'Sharon Harbach',
+                  address: '321 River Meadows Ln',
+                  title: 'Collect signed HOA form',
+                  reason: 'Need this before install scheduling.',
+                  urgency: 'MEDIUM',
+                  financeProjectMode: null,
+                  href: '/projects/p9?tab=follow-up',
+                },
+              ],
+              moneyAtRisk: [],
+              scheduleBlockers: [],
+            }}
+          />
+        </MemoryRouter>,
+      );
+    });
+
+    const completeButton = Array.from(container.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('Complete')
+    );
+
+    await act(async () => {
+      completeButton?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+    });
+
+    expect(onComplete).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'a2', actionId: 'sequence-task-1', source: 'ESTIMATE_FOLLOW_UP' })
+    );
   });
 });

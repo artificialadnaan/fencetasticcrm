@@ -571,6 +571,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       title: null,
       notes: null,
       href: `/projects/${task.projectId}?tab=follow-up`,
+      source: 'ESTIMATE_FOLLOW_UP',
     }));
 
   const manualFollowUps: DashboardFollowUpTask[] = (manualFollowUpEvents as DashboardManualFollowUpEventRow[])
@@ -669,6 +670,7 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   const actionNeeded: DashboardCommandItem[] = todaysFollowUps.slice(0, 5).map((task) => ({
     id: `followup-${task.id}`,
+    actionId: task.actionId ?? task.id,
     projectId: task.projectId,
     customer: task.customer,
     address: task.address,
@@ -679,6 +681,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     urgency: task.dueDate < toDateString(now) ? 'HIGH' : 'MEDIUM',
     financeProjectMode: null,
     href: task.href ?? `/projects/${task.projectId}?tab=follow-up`,
+    source: task.source,
     assignedToName: task.assignedToName ?? null,
     dueDate: task.dueDate,
   }));
