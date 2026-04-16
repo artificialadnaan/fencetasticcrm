@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Download, Plus } from 'lucide-react';
+import type { DashboardFollowUpTask } from '@fencetastic/shared';
 import { toast } from 'sonner';
 import { CreateProjectDialog } from '@/components/projects/create-project-dialog';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,21 @@ export default function DashboardPage() {
     } catch (err) {
       console.error('Failed to complete workflow task', err);
       toast.error('Failed to complete task');
+    }
+  }
+
+  async function handleCompleteFollowUpTask(task: DashboardFollowUpTask) {
+    try {
+      if (task.source === 'ESTIMATE_FOLLOW_UP') {
+        await api.post(`/follow-ups/tasks/${task.actionId ?? task.id}/complete`);
+      } else {
+        await api.patch(`/calendar/events/${task.actionId ?? task.id}`, { taskStatus: 'COMPLETED' });
+      }
+      refetch();
+      toast.success('Follow-up completed');
+    } catch (err) {
+      console.error('Failed to complete dashboard follow-up', err);
+      toast.error('Failed to complete follow-up');
     }
   }
 
@@ -147,6 +163,7 @@ export default function DashboardPage() {
           <DashboardFollowupsPanel
             followUps={data?.todaysFollowUps ?? []}
             isLoading={isLoading}
+            onCompleteFollowUp={handleCompleteFollowUpTask}
           />
           <DashboardWorkflowPanel
             overview={data?.workflowOverview ?? null}

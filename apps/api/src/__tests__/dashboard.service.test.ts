@@ -144,6 +144,7 @@ describe('dashboard.service follow-up reads', () => {
     expect(result.todaysFollowUps).toEqual([
       {
         id: 'task-0',
+        actionId: 'task-0',
         projectId: 'project-1',
         customer: 'Jane Doe',
         address: '123 Fence Lane',
@@ -156,6 +157,7 @@ describe('dashboard.service follow-up reads', () => {
       },
       {
         id: 'task-2',
+        actionId: 'task-2',
         projectId: 'project-2',
         customer: 'John Smith',
         address: '456 Cedar Ave',
@@ -328,6 +330,7 @@ describe('dashboard.service follow-up reads', () => {
     expect(result.todaysFollowUps).toEqual([
       {
         id: 'manual-event-1',
+        actionId: 'event-1',
         projectId: 'project-77',
         customer: 'Sharon Harbach',
         address: '321 River Meadows Ln',
@@ -429,6 +432,7 @@ describe('dashboard.service follow-up reads', () => {
     expect(result.todaysFollowUps).toEqual([
       {
         id: 'manual-event-1',
+        actionId: 'event-1',
         projectId: 'project-77',
         customer: 'Sharon Harbach',
         address: '321 River Meadows Ln',

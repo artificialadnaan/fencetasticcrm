@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { BellDot } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
@@ -18,12 +19,16 @@ const TASK_KIND_LABELS: Record<EstimateFollowUpTaskKind, string> = {
 interface DashboardFollowupsPanelProps {
   followUps: DashboardFollowUpTask[];
   isLoading: boolean;
+  onCompleteFollowUp?: (followUp: DashboardFollowUpTask) => Promise<void> | void;
 }
 
 export function DashboardFollowupsPanel({
   followUps,
   isLoading,
+  onCompleteFollowUp,
 }: DashboardFollowupsPanelProps) {
+  const [completingId, setCompletingId] = useState<string | null>(null);
+
   return (
     <section className="shell-panel rounded-[32px] p-6">
       <div className="flex items-start justify-between gap-4 border-b border-white/10 pb-5">
@@ -67,53 +72,76 @@ export function DashboardFollowupsPanel({
           {followUps.map((followUp) => {
             const statusMeta = PROJECT_STATUS_META[followUp.status as ProjectStatus];
             return (
-              <Link
+              <div
                 key={followUp.id}
-                to={followUp.href ?? `/projects/${followUp.projectId}?tab=follow-up`}
-                className="block rounded-[24px] border border-white/10 bg-white px-4 py-4 text-slate-950 shadow-[0_12px_32px_rgba(15,23,42,0.18)] transition-transform duration-200 hover:-translate-y-0.5 hover:bg-white"
+                className="rounded-[24px] border border-white/10 bg-white px-4 py-4 text-slate-950 shadow-[0_12px_32px_rgba(15,23,42,0.18)]"
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <p className="text-base font-semibold text-slate-950">{followUp.customer}</p>
-                    <p className="mt-1 truncate text-sm text-slate-600">{followUp.address}</p>
+                <Link
+                  to={followUp.href ?? `/projects/${followUp.projectId}?tab=follow-up`}
+                  className="block transition-transform duration-200 hover:-translate-y-0.5"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-base font-semibold text-slate-950">{followUp.customer}</p>
+                      <p className="mt-1 truncate text-sm text-slate-600">{followUp.address}</p>
+                    </div>
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                      {statusMeta?.shortLabel ?? followUp.status}
+                    </span>
                   </div>
-                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
-                    {statusMeta?.shortLabel ?? followUp.status}
-                  </span>
-                </div>
-                <div className="mt-4 grid gap-4 sm:grid-cols-3">
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
-                      Task
-                    </p>
-                    <p className="mt-1 text-sm text-slate-800">
-                      {followUp.title ?? TASK_KIND_LABELS[followUp.kind as EstimateFollowUpTaskKind] ?? followUp.kind}
-                    </p>
+                  <div className="mt-4 grid gap-4 sm:grid-cols-3">
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+                        Task
+                      </p>
+                      <p className="mt-1 text-sm text-slate-800">
+                        {followUp.title ?? TASK_KIND_LABELS[followUp.kind as EstimateFollowUpTaskKind] ?? followUp.kind}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+                        Due date
+                      </p>
+                      <p className="mt-1 text-sm text-slate-800">{formatDate(followUp.dueDate)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+                        Owner
+                      </p>
+                      <p className="mt-1 text-sm text-slate-800">{followUp.assignedToName ?? 'Unassigned'}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
-                      Due date
-                    </p>
-                    <p className="mt-1 text-sm text-slate-800">{formatDate(followUp.dueDate)}</p>
+                  <div className="mt-4 flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    <span>
+                      {followUp.source === 'WORKFLOW_TASK'
+                        ? 'Manual workflow'
+                        : followUp.source === 'MANUAL_TASK'
+                          ? 'Manual task'
+                          : 'Estimate sequence'}
+                    </span>
+                    <span>Open task</span>
                   </div>
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
-                      Owner
-                    </p>
-                    <p className="mt-1 text-sm text-slate-800">{followUp.assignedToName ?? 'Unassigned'}</p>
+                </Link>
+                {onCompleteFollowUp ? (
+                  <div className="mt-4 flex justify-end">
+                    <button
+                      type="button"
+                      disabled={completingId === followUp.id}
+                      className="rounded-2xl border border-slate-200 bg-slate-950 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white transition-colors hover:bg-slate-800"
+                      onClick={async () => {
+                        setCompletingId(followUp.id);
+                        try {
+                          await onCompleteFollowUp(followUp);
+                        } finally {
+                          setCompletingId(null);
+                        }
+                      }}
+                    >
+                      {completingId === followUp.id ? 'Completing…' : 'Complete'}
+                    </button>
                   </div>
-                </div>
-                <div className="mt-4 flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  <span>Open task</span>
-                  <span>
-                    {followUp.source === 'WORKFLOW_TASK'
-                      ? 'Manual workflow'
-                      : followUp.source === 'MANUAL_TASK'
-                        ? 'Manual task'
-                        : 'Estimate sequence'}
-                  </span>
-                </div>
-              </Link>
+                ) : null}
+              </div>
             );
           })}
         </div>

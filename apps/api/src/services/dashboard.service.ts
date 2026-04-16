@@ -561,6 +561,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   const sequencedFollowUps: DashboardFollowUpTask[] = selectEarliestPendingFollowUps(followUpProjects)
     .map((task) => ({
       id: task.id,
+      actionId: task.id,
       projectId: task.projectId,
       customer: task.project.customer,
       address: task.project.address,
@@ -577,6 +578,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     .filter((event) => !event.project || !event.project.isDeleted)
     .map((event) => ({
       id: `manual-${event.id}`,
+      actionId: event.id,
       projectId: event.projectId ?? `manual-${event.id}`,
       customer: event.project?.customer ?? 'General reminder',
       address: event.project?.address ?? 'No project linked',
