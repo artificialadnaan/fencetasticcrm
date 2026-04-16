@@ -311,6 +311,31 @@ export default function CalendarPage() {
     setCurrentDate(requestedDateValue);
   }, [searchParams]);
 
+  useEffect(() => {
+    if (searchParams.get('compose') === '1') {
+      return;
+    }
+
+    const requestedEventId = searchParams.get('eventId');
+    if (!requestedEventId) {
+      return;
+    }
+
+    const requestedEvent = calendarEvents.find((event) => event.id === requestedEventId);
+    if (!requestedEvent) {
+      return;
+    }
+
+    const requestedDateValue = toLocalDate(requestedEvent.start);
+    setSelectedDate(requestedDateValue);
+    setCurrentDate(requestedDateValue);
+    openEditDialog(requestedEvent);
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('eventId');
+    setSearchParams(nextParams, { replace: true });
+  }, [calendarEvents, openEditDialog, searchParams, setSearchParams]);
+
   const handleSave = useCallback(async () => {
     if (!form.title.trim() || !form.date || !form.eventType) {
       setSaveError('Title, date, and event type are required.');

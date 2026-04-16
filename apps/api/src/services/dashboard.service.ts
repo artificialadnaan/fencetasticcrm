@@ -589,7 +589,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       kind: 'MANUAL',
       title: event.title,
       notes: event.notes,
-      href: `/calendar?date=${toDateString(event.date)}`,
+      href: `/calendar?date=${toDateString(event.date)}&eventId=${event.id}`,
       assignedToUserId: event.assignedToUserId ?? null,
       assignedToName: event.assignedToUser?.name ?? null,
       source: event.isWorkflowTask ? 'WORKFLOW_TASK' : 'MANUAL_TASK',
@@ -619,7 +619,7 @@ export async function getDashboardData(): Promise<DashboardData> {
         dueDate,
         assignedToUserId: task.assignedToUserId,
         assignedToName: task.assignedToUser?.name ?? null,
-        href: `/calendar?date=${dueDate}`,
+        href: `/calendar?date=${dueDate}&eventId=${task.id}`,
         urgency: dueDate < today ? 'HIGH' : dueDate === today ? 'MEDIUM' : 'LOW' as 'HIGH' | 'MEDIUM' | 'LOW',
       };
     })

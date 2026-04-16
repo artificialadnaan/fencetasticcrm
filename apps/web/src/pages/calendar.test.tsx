@@ -106,4 +106,68 @@ describe('CalendarPage', () => {
     expect(document.body.textContent).toContain('Selected day');
     expect(document.body.textContent).toContain('Wednesday, Apr 8');
   }, 15000);
+
+  it('opens the requested event from the eventId query string', async () => {
+    useCalendarEventsMock.mockReturnValue({
+      events: [
+        {
+          id: 'calendar-event-1',
+          title: 'Collect signed HOA form',
+          start: '2026-04-08',
+          end: null,
+          type: 'followup',
+          color: '#F59E0B',
+          projectId: 'project-1',
+          notes: 'Need this before install scheduling.',
+          isWorkflowTask: true,
+          assignedToUserId: 'user-2',
+          assignedToName: 'Office Admin',
+          taskStatus: 'PENDING',
+          completedAt: null,
+        },
+      ],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    apiGetMock.mockImplementation(async (url: string) => {
+      if (url.startsWith('/projects')) {
+        return {
+          data: {
+            data: [
+              {
+                id: 'project-1',
+                customer: 'Sharon Harbach',
+                address: '321 River Meadows Ln',
+              },
+            ],
+            pagination: { totalPages: 1 },
+          },
+        };
+      }
+
+      return {
+        data: {
+          data: [{ id: 'user-2', name: 'Office Admin', email: 'office@fencetastic.com' }],
+        },
+      };
+    });
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter
+          initialEntries={['/calendar?date=2026-04-08&eventId=calendar-event-1']}
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        >
+          <Routes>
+            <Route path="/calendar" element={<CalendarPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+    });
+
+    expect(document.body.textContent).toContain('Edit Calendar Event');
+    expect(document.body.textContent).toContain('Collect signed HOA form');
+  }, 15000);
 });
